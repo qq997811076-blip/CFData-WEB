@@ -4,15 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version"
+        description: "Debug APK version label"
         required: false
         default: "v1.0"
         type: string
-      prerelease:
-        description: "Mark release as pre-release"
-        required: false
-        default: false
-        type: boolean
   push:
     branches:
       - "main"
@@ -20,96 +15,9 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
-          - goos: windows
-            goarch: amd64
-            ext: ".exe"
-          - goos: windows
-            goarch: arm64
-            ext: ".exe"
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.25.4"
-          cache: true
-
-      - name: Create Release Assets Directory
-        run: mkdir -p release_assets
-
-      - name: Set Build Time
-        id: set-build-time
-        run: |
-          build_time=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S %z')
-          echo "BUILD_TIME=$build_time" >> $GITHUB_OUTPUT
-
-      - name: Set Version
-        id: set-version
-        run: |
-          version="${{ github.event.inputs.version }}"
-          if [ -z "$version" ]; then
-            version="${{ github.ref_name }}"
-          fi
-          echo "VERSION=$version" >> $GITHUB_OUTPUT
-
-      - name: Download CA Certificates
-        run: |
-          curl -fsSL --retry 3 --connect-timeout 10 \
-            https://curl.se/ca/cacert.pem \
-            -o combined_refactor/ca-certificates.crt
-          cert_count=$(grep -c "BEGIN CERTIFICATE" combined_refactor/ca-certificates.crt || true)
-          echo "Downloaded ${cert_count} CA certificates before build."
-
-      - name: Build
-        run: |
-          ext="${{ matrix.ext || '' }}"
-          filename="cfdata-${{ matrix.goos }}-${{ matrix.goarch }}${ext}"
-          echo "Building ${filename}..."
-          cd combined_refactor
-          go build -trimpath -ldflags "-s -w -X main.appVersion=${{ steps.set-version.outputs.VERSION }}" -o ../release_assets/${filename} .
-        env:
-          GOARCH: ${{ matrix.goarch }}
-          GOOS: ${{ matrix.goos }}
-          CGO_ENABLED: "0"
-
-      - name: Generate SHA256
-        run: |
-          cd release_assets
-          for file in *.sha256; do rm -f "$file"; done
-          for file in $(find . -type f ! -name '*.sha256'); do
-            sha256sum "$file" | awk '{print $1}' > "${file}.sha256"
-          done
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: asset-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext || '' }}
-          path: release_assets/*
-
   android-apk:
     name: Android APK
     runs-on: ubuntu-latest
@@ -144,7 +52,7 @@ jobs:
         run: |
           version="${{ github.event.inputs.version }}"
           if [ -z "$version" ]; then
-            version="${{ github.ref_name }}"
+            version="v1.0"
           fi
           echo "VERSION=$version" >> $GITHUB_OUTPUT
 
@@ -172,121 +80,19 @@ jobs:
         run: |
           unzip -l app/build/outputs/apk/debug/app-debug.apk | tee apk-contents.txt
           grep -q "lib/arm64-v8a/libcfdata.so" apk-contents.txt
-          unzip -l app/build/outputs/apk/debug/app-debug.apk "lib/arm64-v8a/libcfdata.so"
 
-      - name: Prepare APK Asset
+      - name: Prepare APK Artifact
         run: |
           mkdir -p release_assets
-          cp app/build/outputs/apk/debug/app-debug.apk release_assets/cfdata-android-arm64.apk
+          build_time=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M%S')
+          cp app/build/outputs/apk/debug/app-debug.apk "release_assets/${build_time}.apk"
           cd release_assets
-          sha256sum cfdata-android-arm64.apk | awk '{print $1}' > cfdata-android-arm64.apk.sha256
+          sha256sum *.apk | awk '{print $1}' > SHA256SUMS.txt
 
-      - name: Upload Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: asset-android-arm64-apk
+          name: cfdata-debug-apk
           path: release_assets/*
-
-  release:
-    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
-    name: Release
-    needs: [build, android-apk]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: asset-*
-          merge-multiple: true
-
-      - name: Get version
-        id: get-version
-        run: |
-          version="${{ github.event.inputs.version }}"
-          if [ -z "$version" ]; then
-            version="${{ github.ref_name }}"
-          fi
-          echo "VERSION=$version" >> $GITHUB_OUTPUT
-
-      - name: Get build time
-        id: get-time
-        run: |
-          build_time=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S %z')
-          echo "BUILD_TIME=$build_time" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog
-        id: changelog
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.get-version.outputs.VERSION }}
-          CURRENT_SHA: ${{ github.sha }}
-          CURRENT_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' || contains(steps.get-version.outputs.VERSION, '-') }}
-        run: |
-          git fetch --tags --force
-
-          previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
-            --jq '[.[] | select(.draft == false and .tag_name != env.VERSION and (env.CURRENT_PRERELEASE == "true" or .prerelease == false))][0].tag_name // ""')"
-
-          if [ -n "$previous_tag" ] && git rev-parse "$previous_tag^{commit}" >/dev/null 2>&1; then
-            changelog="$(git log --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$CURRENT_SHA")"
-            if [ -z "$changelog" ]; then
-              changelog="- 本次没有新增提交"
-            fi
-            compare_url="https://github.com/${GITHUB_REPOSITORY}/compare/${previous_tag}...${VERSION}"
-            compare_link="[${previous_tag}...${VERSION}](${compare_url})"
-          else
-            previous_tag=""
-            compare_url=""
-            compare_link="无"
-            changelog="- 首次发布，未找到上一个 Release 基准"
-          fi
-
-          {
-            echo "PREVIOUS_TAG=$previous_tag"
-            echo "COMPARE_URL=$compare_url"
-            echo "COMPARE_LINK=$compare_link"
-            echo "CHANGELOG<<EOF"
-            printf '%s\n' "$changelog"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.get-version.outputs.VERSION }}
-          target_commitish: ${{ github.sha }}
-          name: "CFData-WEB Release ${{ steps.get-version.outputs.VERSION }}"
-          body: |
-            ## ${{ steps.get-version.outputs.VERSION }} 发布说明
-
-            构建时间：${{ steps.get-time.outputs.BUILD_TIME }}
-
-            构建方式：GitHub Actions
-
-            上一个版本：${{ steps.changelog.outputs.PREVIOUS_TAG || '无' }}
-
-            对比变更：${{ steps.changelog.outputs.COMPARE_LINK }}
-
-            ### 本次变更
-
-            ${{ steps.changelog.outputs.CHANGELOG }}
-
-            ---
-
-            采用 GitHub Actions 自动构建。
-
-            支持 macOS / Windows / Linux（ARM64、AMD64）。
-
-            支持 Android（ARM64 APK）。
-          files: artifacts/*
-          draft: false
-          prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' || contains(steps.get-version.outputs.VERSION, '-') }}
-          fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if-no-files-found: error
+          retention-days: 14
