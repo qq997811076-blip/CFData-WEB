@@ -11,6 +11,7 @@ on:
   push:
     branches:
       - "main"
+      - "beta-gxg-file-url-20261015"
     tags:
       - "v*"
 
