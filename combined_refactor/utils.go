@@ -23,6 +23,7 @@ var (
 	hostPortSeparatorRegex    = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)\s*[:：#，,]\s*(\d{1,5})`)
 	hostPortWhitespaceRegex   = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)\s+(\d{1,5})(?:\s|$)`)
 	bareIPv4OrDomainRegex     = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)(?:\s|$|[|，,。；;、])`)
+	leadingIPv4MetadataRegex = regexp.MustCompile(`^\s*((?:\d{1,3}\.){3}\d{1,3})(?:\s|#|$)`)
 	possibleBareIPv6LineRegex = regexp.MustCompile(`(?i)([0-9a-f]{1,4}:[0-9a-f:.]+)`)
 )
 
@@ -215,6 +216,15 @@ func parseNSBLine(line string, fallbackPort int) []nsbEndpoint {
 	if len(endpoints) > 0 {
 		sortNSBEndpointsByPosition(endpoints)
 		return endpoints
+	}
+
+	// Accept lines such as "168.222.13.68#0.52M CN": use the leading IPv4
+	// address and ignore the speed/country metadata that follows it.
+	if match := leadingIPv4MetadataRegex.FindStringSubmatch(line); len(match) == 2 {
+		host := match[1]
+		if addr, err := netip.ParseAddr(host); err == nil && addr.Is4() {
+			return []nsbEndpoint{{host: host, port: fallbackPort}}
+		}
 	}
 	return nil
 }
