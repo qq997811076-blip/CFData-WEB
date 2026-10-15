@@ -19,6 +19,7 @@ import (
 
 var (
 	urlCandidateRegex         = regexp.MustCompile(`(?i)\b(?:https?|ws|wss)://[^\s|，,]+`)
+	csvIPv4CandidateRegex     = regexp.MustCompile(`(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:/[0-9]{1,2})?`)
 	bracketIPv6PortRegex      = regexp.MustCompile(`\[([0-9A-Fa-f:.]+)\]\s*[:#，,]\s*(\d{1,5})`)
 	hostPortSeparatorRegex    = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)\s*[:：#，,]\s*(\d{1,5})`)
 	hostPortWhitespaceRegex   = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)\s+(\d{1,5})(?:\s|$)`)
@@ -78,6 +79,54 @@ func readIPsWithFallbackPort(filename string, fallbackPort int) ([]string, error
 		return nil, err
 	}
 	return parseNSBInputs(string(data), fallbackPort), nil
+}
+
+// parseNSBCSVInputs extracts only IPv4 addresses and IPv4 CIDR prefixes from anywhere
+// in each CSV line. It deliberately ignores CSV headers and all surrounding metadata.
+func parseNSBCSVInputs(content string, fallbackPort int) []string {
+	seen := make(map[string]struct{})
+	items := make([]string, 0)
+	for _, line := range strings.Split(content, "\n") {
+		for _, match := range csvIPv4CandidateRegex.FindAllStringIndex(line, -1) {
+			start, end := match[0], match[1]
+			if start > 0 && isIPv4TokenBoundaryChar(line[start-1]) {
+				continue
+			}
+			if end < len(line) && (isIPv4TokenBoundaryChar(line[end]) || line[end] == '/') {
+				continue
+			}
+
+			token := line[start:end]
+			host := ""
+			if strings.Contains(token, "/") {
+				prefix, err := netip.ParsePrefix(token)
+				if err != nil || !prefix.Addr().Is4() {
+					continue
+				}
+				host = prefix.Masked().String()
+			} else {
+				addr, err := netip.ParseAddr(token)
+				if err != nil || !addr.Is4() {
+					continue
+				}
+				host = addr.String()
+			}
+
+			if _, exists := seen[host]; exists {
+				continue
+			}
+			seen[host] = struct{}{}
+			items = append(items, fmt.Sprintf("%s %d", host, fallbackPort))
+		}
+	}
+	return items
+}
+
+func isIPv4TokenBoundaryChar(c byte) bool {
+	return (c >= '0' && c <= '9') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= 'a' && c <= 'z') ||
+		c == '.' 
 }
 
 func defaultNSBPort(enableTLS bool) int {

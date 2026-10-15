@@ -664,10 +664,18 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 		session.sendWSMessage("error", "备用端口必须为 1-65535")
 		return
 	}
-	ips, err := readIPsWithFallbackPort(tmpPath, fallbackPort)
-	if err != nil {
-		session.sendWSMessage("error", "解析上传文件失败: "+err.Error())
-		return
+	var ips []string
+	trimmedFileName := strings.TrimSpace(fileName)
+	lowerFileName := strings.ToLower(trimmedFileName)
+	isURLInput := strings.HasPrefix(lowerFileName, "http://") || strings.HasPrefix(lowerFileName, "https://")
+	if !isURLInput && strings.HasSuffix(lowerFileName, ".csv") {
+		ips = parseNSBCSVInputs(fileContent, fallbackPort)
+	} else {
+		ips, err = readIPsWithFallbackPort(tmpPath, fallbackPort)
+		if err != nil {
+			session.sendWSMessage("error", "解析上传文件失败: "+err.Error())
+			return
+		}
 	}
 	if len(ips) == 0 {
 		session.sendWSMessage("error", "上传文件中未找到有效的 ip 端口行")
