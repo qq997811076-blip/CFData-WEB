@@ -1737,7 +1737,7 @@
                 </div>
                 <div class="option-item">
                     <span class="label" title="同时测速的 IP 数量，设为 1 可获得单个测速结果">⚡ 测速并发</span>
-                    <input id="officialSpeedTest" type="number" value="0" placeholder="0 关闭测速">
+                    <input id="officialSpeedTest" type="number" value="5" min="1" placeholder="默认 5">
                 </div>
                 <div class="option-item">
                     <span class="label" title="指定数据中心，留空自动选择">🏢 数据中心</span>
@@ -2531,49 +2531,68 @@
             const found = [];
             const seen = new Set();
             let duplicates = 0;
-            const tokenRegex = /(^|[^0-9.])((?:[0-9]{1,3}\.){3}[0-9]{1,3})(?:\s*\/\s*([0-9]{1,2}))?(?![0-9./])/g;
+
+            const addIP = (ip, port, country) => {
+                const key = ip + ':' + port;
+                if (seen.has(key)) {
+                    duplicates++;
+                    return;
+                }
+                seen.add(key);
+                found.push({ key, ip, port, country });
+            };
+
             for (const line of String(content || '').split(/\r?\n/)) {
-                tokenRegex.lastIndex = 0;
                 const country = getNSBClipboardCountryCode(line);
+                const cidrRanges = [];
+
+                // 先识别 CIDR，避免把网段末尾的 /20 当作普通 IPv4 后缀。
+                const cidrRegex = /(^|[^0-9.])((?:[0-9]{1,3}\.){3}[0-9]{1,3})\s*\/\s*([0-9]{1,2})(?![0-9./])/g;
                 let match;
-                while ((match = tokenRegex.exec(line)) !== null) {
+                while ((match = cidrRegex.exec(line)) !== null) {
                     const ip = match[2];
+                    const prefix = Number(match[3]);
+                    const start = match.index + match[1].length;
+                    cidrRanges.push({ start, end: cidrRegex.lastIndex });
+
                     const base = nsbIPv4ToNumber(ip);
-                    if (base === null) continue;
-                    const prefixText = match[3];
-                    let ips;
-                    if (prefixText !== undefined) {
-                        const prefix = Number(prefixText);
-                        if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) continue;
-                        const count = Math.pow(2, 32 - prefix);
-                        if (count > 1048576) {
-                            throw new Error('CIDR 网段地址数量过大（' + count + '），单个网段最多展开 1048576 个');
-                        }
-                        const network = Math.floor(base / count) * count;
-                        ips = Array.from({ length: count }, (_, index) => nsbNumberToIPv4(network + index));
-                    } else {
-                        ips = [ip];
+                    if (base === null || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) continue;
+
+                    const count = Math.pow(2, 32 - prefix);
+                    if (count > 1048576) {
+                        throw new Error('CIDR 网段地址数量过大（' + count + '），单个网段最多展开 1048576 个');
                     }
+                    const network = Math.floor(base / count) * count;
+                    let port = fallbackPort;
+                    const tail = line.slice(cidrRegex.lastIndex);
+                    let portMatch = tail.match(/^\s*[:：]\s*(\d{1,5})/);
+                    if (!portMatch) portMatch = tail.match(/^\s+(\d{1,5})(?=\s|$|[,;|#])/);
+                    if (portMatch) {
+                        const candidate = Number(portMatch[1]);
+                        if (candidate >= 1 && candidate <= 65535) port = candidate;
+                    }
+                    for (let offset = 0; offset < count; offset++) {
+                        addIP(nsbNumberToIPv4(network + offset), port, country);
+                    }
+                }
+
+                // 再提取独立 IPv4；IP 前后允许有国家码、速度、端口等文本。
+                const ipv4Regex = /(^|[^0-9.])((?:[0-9]{1,3}\.){3}[0-9]{1,3})(?![0-9./])/g;
+                while ((match = ipv4Regex.exec(line)) !== null) {
+                    const start = match.index + match[1].length;
+                    if (cidrRanges.some(range => start >= range.start && start < range.end)) continue;
+                    const ip = match[2];
+                    if (nsbIPv4ToNumber(ip) === null) continue;
 
                     let port = fallbackPort;
-                    if (prefixText === undefined) {
-                        const tail = line.slice(match.index + match[0].length);
-                        let portMatch = tail.match(/^\s*[:：]\s*(\d{1,5})/);
-                        if (!portMatch) portMatch = tail.match(/^\s+(\d{1,5})(?=\s|$|[,;|#])/);
-                        if (portMatch) {
-                            const candidate = Number(portMatch[1]);
-                            if (candidate >= 1 && candidate <= 65535) port = candidate;
-                        }
+                    const tail = line.slice(ipv4Regex.lastIndex);
+                    let portMatch = tail.match(/^\s*[:：]\s*(\d{1,5})/);
+                    if (!portMatch) portMatch = tail.match(/^\s+(\d{1,5})(?=\s|$|[,;|#])/);
+                    if (portMatch) {
+                        const candidate = Number(portMatch[1]);
+                        if (candidate >= 1 && candidate <= 65535) port = candidate;
                     }
-                    for (const expandedIP of ips) {
-                        const key = expandedIP + ':' + port;
-                        if (seen.has(key)) {
-                            duplicates++;
-                            continue;
-                        }
-                        seen.add(key);
-                        found.push({ key, ip: expandedIP, port, country });
-                    }
+                    addIP(ip, port, country);
                 }
             }
             return { items: found, duplicates };
@@ -2751,11 +2770,10 @@
             targetDC.disabled = !speedEnabled;
             if (!speedEnabled) targetDC.value = '';
             if (speedTestInput) {
-                speedTestInput.disabled = !speedEnabled;
-                if (speedEnabled) {
-                    if (String(speedTestInput.value).trim() === '0' || !String(speedTestInput.value).trim()) speedTestInput.value = '5';
-                } else {
-                    speedTestInput.value = '0';
+                // 测速并发是独立设置，不应随“自动测速”开关被禁用或清零。
+                speedTestInput.disabled = false;
+                if (String(speedTestInput.value).trim() === '' || (parseInt(speedTestInput.value, 10) || 0) <= 0) {
+                    speedTestInput.value = '5';
                 }
             }
         }
@@ -4885,7 +4903,7 @@
         function startNSBTask() {
             syncNSBInputMode();
             const sourceURL = nsbSourceUrlInput ? nsbSourceUrlInput.value.trim() : '';
-            const combinedFileContent = [uploadedFileContent, nsbClipboardContent].map(value => String(value || '').trim()).filter(Boolean).join('\\n');
+            const combinedFileContent = [uploadedFileContent, nsbClipboardContent].map(value => String(value || '').trim()).filter(Boolean).join('\n');
             const hasFile = !!combinedFileContent;
             const hasURL = !!sourceURL;
             if (hasFile === hasURL) {
