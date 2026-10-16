@@ -4259,6 +4259,15 @@
             runningTaskLabel = currentMode === 'nsb' ? `非标优选 ${dc}` : `官方优选 ${dc}`;
             runningTaskMode = currentMode;
             runningTaskTab = 'test';
+            if (currentMode === 'nsb') {
+                officialBatchSpeedRunning = false;
+                officialContinueSpeedUnlocked = false;
+                officialSpeedEndedByRateLimit = false;
+                officialTestCompletePending = false;
+                officialSpeedEnabledForResults = false;
+                syncOfficialSpeedConfigState();
+                updateBatchSpeedButton();
+            }
             setStartLoading(getRunningButtonText());
             resetProgress();
             progressBox.style.display = 'block';
