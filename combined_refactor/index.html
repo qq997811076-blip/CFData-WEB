@@ -2494,12 +2494,12 @@
         function updateNSBClipboardButton() {
             const button = document.getElementById('btnNSBClipboardImport');
             if (!button) return;
-            const count = nsbClipboardContent.split(/\\r?\\n/).filter(line => line.trim()).length;
+            const count = nsbClipboardContent.split(/\r?\n/).filter(line => line.trim()).length;
             button.textContent = count > 0 ? '📋 从剪切板导入（累计 ' + count + ' 条）' : '📋 从剪切板导入';
         }
 
         function getNSBClipboardCountryCode(line) {
-            const validCodes = new Set(('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW UK').split(/\\s+/));
+            const validCodes = new Set(('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW UK').split(/\s+/));
             const matches = String(line || '').matchAll(/(?:^|[^A-Za-z])([A-Z]{2})(?=$|[^A-Za-z])/gi);
             for (const match of matches) {
                 const code = match[1].toUpperCase();
@@ -2527,8 +2527,8 @@
             const found = [];
             const seen = new Set();
             let duplicates = 0;
-            const tokenRegex = /(^|[^0-9.])((?:[0-9]{1,3}\\.){3}[0-9]{1,3})(?:\\s*\\/\\s*([0-9]{1,2}))?(?![0-9./])/g;
-            for (const line of String(content || '').split(/\\r?\\n/)) {
+            const tokenRegex = /(^|[^0-9.])((?:[0-9]{1,3}\.){3}[0-9]{1,3})(?:\s*\/\s*([0-9]{1,2}))?(?![0-9./])/g;
+            for (const line of String(content || '').split(/\r?\n/)) {
                 tokenRegex.lastIndex = 0;
                 const country = getNSBClipboardCountryCode(line);
                 let match;
@@ -2554,8 +2554,8 @@
                     let port = fallbackPort;
                     if (prefixText === undefined) {
                         const tail = line.slice(match.index + match[0].length);
-                        let portMatch = tail.match(/^\\s*[:：]\\s*(\\d{1,5})/);
-                        if (!portMatch) portMatch = tail.match(/^\\s+(\\d{1,5})(?=\\s|$|[,;|#])/);
+                        let portMatch = tail.match(/^\s*[:：]\s*(\d{1,5})/);
+                        if (!portMatch) portMatch = tail.match(/^\s+(\d{1,5})(?=\s|$|[,;|#])/);
                         if (portMatch) {
                             const candidate = Number(portMatch[1]);
                             if (candidate >= 1 && candidate <= 65535) port = candidate;
@@ -2610,8 +2610,8 @@
             }
 
             const merged = new Map();
-            for (const line of String(nsbClipboardContent || '').split(/\\r?\\n/)) {
-                const fields = line.trim().split(/\\s+/);
+            for (const line of String(nsbClipboardContent || '').split(/\r?\n/)) {
+                const fields = line.trim().split(/\s+/);
                 if (fields.length < 2) continue;
                 const ip = fields[0];
                 const port = Number(fields[1]);
@@ -2620,6 +2620,7 @@
                 merged.set(key, { key, ip, port, country: fields.find((field, index) => index >= 2 && /^[A-Z]{2}$/i.test(field)) || '' });
             }
 
+            const previousCount = merged.size;
             let duplicateCount = parsed.duplicates;
             for (const item of parsed.items) {
                 const old = merged.get(item.key);
@@ -2633,7 +2634,7 @@
 
             nsbClipboardContent = Array.from(merged.values()).map(item =>
                 item.ip + ' ' + item.port + (item.country ? ' ' + item.country : '')
-            ).join('\\n');
+            ).join('\n');
             try {
                 localStorage.setItem('cfdata-nsb-clipboard-content', nsbClipboardContent);
             } catch (e) {
@@ -2642,8 +2643,8 @@
 
             if (nsbSourceUrlInput) nsbSourceUrlInput.value = '';
             updateNSBClipboardButton();
-            const added = merged.size - (String(nsbClipboardContent || '').trim() ? 0 : 0);
-            const message = '剪切板导入完成：本次识别 ' + parsed.items.length + ' 个唯一 IP；累计保存 ' + merged.size + ' 个唯一 IP；重复 ' + duplicateCount + ' 个。';
+            const added = merged.size - previousCount;
+            const message = '剪切板导入完成：本次新增 ' + added + ' 个；累计保存 ' + merged.size + ' 个唯一 IP；重复 ' + duplicateCount + ' 个。';
             log(message);
             if (statusEl) statusEl.textContent = message;
             showNoticeCard(message);
