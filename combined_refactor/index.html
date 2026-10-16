@@ -4307,16 +4307,21 @@
                 密钥交换: row.kex || row.Kex || '-',
                 时间戳: row.timestamp || row.Timestamp || '-',
             };
-            if (nsbRows.length) {
-                const idx = nsbRows.findIndex((r) => String(r[normalizedHeaders.indexOf('IP地址')] ?? '').trim() === ip && String(r[normalizedHeaders.indexOf('端口号')] ?? '').trim() === port);
+            if (nsbBatchSpeedRunning || nsbRows.length) {
+                const ipColumn = normalizedHeaders.indexOf('IP地址');
+                const portColumn = normalizedHeaders.indexOf('端口号');
+                const idx = nsbRows.findIndex((r) => String(r[ipColumn] ?? '').trim() === ip && String(r[portColumn] ?? '').trim() === port);
                 if (idx >= 0) {
                     const updated = nsbRows[idx].slice();
                     normalizedHeaders.forEach((header, hIdx) => {
                         if (patch[header] !== undefined && hIdx < updated.length) updated[hIdx] = patch[header];
                     });
                     nsbRows[idx] = updated;
-                    renderScanRowsCSV(nsbHeaders, nsbRows);
+                } else if (nsbBatchSpeedRunning) {
+                    // Insert new IPs immediately; do not limit updates to rows from the previous round.
+                    nsbRows.push(normalizedHeaders.map((header) => patch[header] !== undefined ? patch[header] : '-'));
                 }
+                renderScanRowsCSV(nsbHeaders.length ? nsbHeaders : headerSource, nsbRows);
                 return;
             }
             const liveIdx = nsbLiveIndex[key];
@@ -6456,6 +6461,17 @@
                             updateProgress(p.current || 0, p.total || 1, `${txt}`);
                         }
                     }
+                    break;
+                case 'nsb_scan_round_reset':
+                    // A new auto-loop round starts: discard the prior round immediately.
+                    nsbLiveRows = [];
+                    nsbLiveIndex = {};
+                    nsbLiveRowElements = {};
+                    if (nsbBatchSpeedRunning) {
+                        nsbRows = [];
+                        renderScanRowsCSV(nsbHeaders, nsbRows);
+                    }
+                    if (currentMode === 'nsb') renderAllNSBLiveRows();
                     break;
                 case 'nsb_scan_result':
                     if (nsbBatchSpeedRunning) {

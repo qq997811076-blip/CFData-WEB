@@ -669,6 +669,8 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 	session.sendWSMessage("log", fmt.Sprintf("自动循环已开启：每轮扫描批次=%d，每轮最多取 %d 个扫描合格 IP 测速，测速并发=%d，累计测速达标目标=%d", batchSize, resultLimit, speedTest, speedLimit))
 	for (cursor < total || len(pendingCandidates) > 0) && qualifiedCount < speedLimit {
 		roundNumber++
+		// Clear the previous round's visible list before streaming this round's results.
+		session.sendWSMessage("nsb_scan_round_reset", map[string]any{"round": roundNumber})
 		roundStart := cursor
 
 		// Each round takes at most batchSize entries from the merged queue:
