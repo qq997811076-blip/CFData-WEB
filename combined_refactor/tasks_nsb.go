@@ -416,9 +416,9 @@ func sortNSBResults(results []iptestResult, speedTest int) {
 	})
 }
 
-func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, onProgress func(current int), work func(idx int) int) bool {
+func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, onProgress func(current int), work func(idx int) int) (bool, int) {
 	if total == 0 {
-		return false
+		return false, 0
 	}
 	if maxWorkers <= 0 {
 		maxWorkers = 1
@@ -492,7 +492,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 	close(jobs)
 	if wasCanceled {
 		wg.Wait()
-		return true
+		return true, next
 	}
 	for {
 		mu.Lock()
@@ -505,7 +505,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 		select {
 		case <-ctx.Done():
 			wg.Wait()
-			return true
+			return true, next
 		case acceptedTotal = <-completion:
 		}
 		mu.Lock()
@@ -521,7 +521,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 		}
 	}
 	wg.Wait()
-	return wasCanceled
+	return wasCanceled, next
 }
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
@@ -645,6 +645,139 @@ done:
 	return float64(written) / duration.Seconds() / 1024, ""
 }
 
+
+func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []struct {
+	ip            string
+	port          int
+	originalInput string
+}, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string) {
+	total := len(expandedEntries)
+	allResults := make([]iptestResult, 0, min(total, speedLimit*4))
+	cursor := 0
+	qualifiedCount := 0
+	wasCanceled := false
+
+	session.sendWSMessage("log", fmt.Sprintf("自动循环已开启：每轮扫描最多获取 %d 个扫描合格 IP，累计测速目标=%d", resultLimit, speedLimit))
+	for cursor < total && qualifiedCount < speedLimit {
+		roundStart := cursor
+		remaining := expandedEntries[cursor:]
+		roundResults := make([]iptestResult, 0, min(len(remaining), resultLimit))
+		var resultMu sync.Mutex
+		reportNSBProgress(session, "scan", cursor, total, "自动循环扫描中")
+		canceled, consumed := runNSBScanWorkers(ctx, len(remaining), maxThreads, resultLimit, func(current int) {
+			reportNSBProgress(session, "scan", min(roundStart+current, total), total, "自动循环扫描中")
+		}, func(idx int) int {
+			itemCtx, itemCancel := context.WithTimeout(ctx, 10*time.Second)
+			defer itemCancel()
+			select {
+			case <-itemCtx.Done():
+				return 0
+			default:
+			}
+			entry := remaining[idx]
+			item := fmt.Sprintf("%s %d", entry.ip, entry.port)
+			var res *iptestResult
+			if scanMode == scanModeHTTPing {
+				res, _ = scanNSBEntryHTTP(itemCtx, item, fallbackPort, enableTLS, 0, targetDC, roundStart+idx)
+			} else {
+				res, _ = scanNSBEntry(itemCtx, item, fallbackPort, enableTLS, 0, targetDC, roundStart+idx)
+			}
+			if res == nil {
+				return 0
+			}
+			res.originalInput = entry.originalInput
+			resultMu.Lock()
+			roundResults = append(roundResults, *res)
+			accepted := len(roundResults)
+			resultMu.Unlock()
+			session.sendWSMessage("nsb_scan_result", res.toNSBLiveMessage("", compact))
+			return accepted
+		})
+		if consumed <= 0 {
+			break
+		}
+		cursor += consumed
+		wasCanceled = canceled || ctx.Err() != nil
+		if len(roundResults) > 0 {
+			sortNSBResults(roundResults, 0)
+			remainingTarget := speedLimit - qualifiedCount
+			session.sendWSMessage("log", fmt.Sprintf("自动循环第 %d 轮：本轮扫描合格 %d 个，剩余 IP %d 个，待达标数量 %d", 1+countAutoLoopRounds(allResults), len(roundResults), total-cursor, remainingTarget))
+			reportNSBProgress(session, "speed", qualifiedCount, speedLimit, "自动循环测速中")
+			speedCanceled := runNSBSpeedWorkers(ctx, roundResults, speedTest, remainingTarget, speedMin, func(tested, qualified int) {
+				reportNSBProgress(session, "speed", min(qualifiedCount+qualified, speedLimit), speedLimit, "自动循环测速中")
+			}, func(idx int, speedErr string) {
+				res := &roundResults[idx]
+				session.sendWSMessage("nsb_scan_result", res.toNSBLiveMessage(res.speedText, compact))
+				if debugMode && speedErr != "" {
+					recordAllDebugError("nsb_speed", fmt.Sprintf("ip=%s port=%d round=%d: %s", res.ipAddr, res.port, 1+countAutoLoopRounds(allResults), speedErr))
+				}
+			}, func(idx int) (float64, string) {
+				res := &roundResults[idx]
+				return runNSBDownloadSpeed(ctx, res.ipAddr, res.port, enableTLS, speedURL)
+			})
+			if speedCanceled {
+				wasCanceled = true
+			}
+			for i := range roundResults {
+				if roundResults[i].speedTested && roundResults[i].speedText == "" {
+					roundResults[i].speedText = fmt.Sprintf("%.2fMB/s", roundResults[i].downloadSpeed/1024)
+				}
+				if roundResults[i].speedTested && roundResults[i].downloadSpeed/1024 >= speedMin {
+					roundResults[i].speedQualified = true
+					qualifiedCount++
+				}
+			}
+			allResults = append(allResults, roundResults...)
+		}
+		if wasCanceled || qualifiedCount >= speedLimit {
+			break
+		}
+	}
+	if len(allResults) == 0 {
+		if wasCanceled {
+			session.sendWSMessage("log", "自动循环已终止，当前没有可整理的有效 IP")
+		} else {
+			session.sendWSMessage("error", "自动循环处理完 IP 源，但未发现有效 IP")
+		}
+		return
+	}
+	sortNSBResults(allResults, speedTest)
+	status := "complete"
+	message := "自动循环完成，已达到测速合格数量目标"
+	if wasCanceled {
+		status = "partial"
+		message = "自动循环已手动终止，已保留当前结果"
+	} else if qualifiedCount < speedLimit {
+		status = "partial"
+		message = fmt.Sprintf("IP 源已全部处理完，测速达标 %d/%d 个", qualifiedCount, speedLimit)
+	}
+	if err := writeNSBCSV(outFile, allResults, speedTest, compact, scanMode); err != nil {
+		session.sendWSMessage("error", "导出 CSV 失败: "+err.Error())
+		return
+	}
+	sortedRows := make([]nsbScanMessage, 0, len(allResults))
+	for i := range allResults {
+		sortedRows = append(sortedRows, allResults[i].toNSBLiveMessage(allResults[i].speedText, compact))
+	}
+	session.sendWSMessage("nsb_scan_sorted", sortedRows)
+	session.sendWSMessage("nsb_csv_complete", nsbCSVCompletePayload{
+		Headers: nsbCSVHeaders(compact, scanMode),
+		Rows: nsbCSVRows(allResults, speedTest > 0, compact, scanMode),
+		File: outFile,
+		Status: status,
+		Message: message,
+		QualifiedCount: qualifiedCount,
+	})
+	session.sendWSMessage("log", fmt.Sprintf("自动循环结束：扫描处理 %d/%d 个 IP，测速达标 %d/%d 个", cursor, total, qualifiedCount, speedLimit))
+}
+
+func countAutoLoopRounds(results []iptestResult) int {
+	if len(results) == 0 {
+		return 0
+	}
+	return 1
+}
+
 func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string, autoLoop bool) {
 	session.sendWSMessage("log", fmt.Sprintf("开始非标优选：%s", fileName))
 
@@ -734,6 +867,10 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 		session.sendWSMessage("error", "延迟结果上限必须是非 0 正整数")
 		return
 	}
+	if autoLoop && speedTest > 0 && speedLimit > 0 {
+		runNSBAutoLoop(ctx, session, expandedEntries, outFile, maxThreads, fallbackPort, speedTest, speedURL, enableTLS, resultLimit, targetDC, speedMin, speedLimit, compact, scanMode)
+		return
+	}
 	if resultLimit > 0 {
 		session.sendWSMessage("log", fmt.Sprintf("开始扫描：%d 个地址，目标上限=%d", len(expandedEntries), resultLimit))
 	} else {
@@ -760,7 +897,7 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 		scanResultLimit = 0
 		session.sendWSMessage("log", fmt.Sprintf("非标自动循环已开启：扫描全部剩余地址并累计测速合格结果，目标=%d", speedLimit))
 	}
-	wasCanceled := runNSBScanWorkers(ctx, len(expandedEntries), maxThreads, scanResultLimit, func(current int) {
+	wasCanceled, _ := runNSBScanWorkers(ctx, len(expandedEntries), maxThreads, scanResultLimit, func(current int) {
 		reportNSBProgress(session, "scan", min(current, total), total, "扫描中")
 	}, func(idx int) int {
 		itemCtx, itemCancel := context.WithTimeout(ctx, 10*time.Second)
