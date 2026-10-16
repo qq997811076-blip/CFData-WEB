@@ -1251,7 +1251,7 @@ func runNSBCLI(cfg *cliConfig) error {
 		if scanMode == "" {
 			scanMode = scanModeTCPing
 		}
-		runNSBTask(ctx, session, inputName, content, cfg.outFile, cfg.threads, cfg.nsbFallbackPort, cfg.speedTest, speedTestURL, cfg.enableTLS, cfg.delay, cfg.resultLimit, cfg.nsbDC, cfg.nsbSpeedMin, cfg.nsbSpeedLimit, cfg.compactNSB, scanMode)
+		runNSBTask(ctx, session, inputName, content, cfg.outFile, cfg.threads, cfg.nsbFallbackPort, cfg.speedTest, speedTestURL, cfg.enableTLS, cfg.delay, cfg.resultLimit, cfg.nsbDC, cfg.nsbSpeedMin, cfg.nsbSpeedLimit, cfg.compactNSB, scanMode, false)
 	}); err != nil {
 		return cliTaskError(err)
 	}
