@@ -357,6 +357,21 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String getClipboardText() {
+            try {
+                android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                if (clipboard == null) return "";
+                android.content.ClipData clip = clipboard.getPrimaryClip();
+                if (clip == null || clip.getItemCount() == 0) return "";
+                CharSequence value = clip.getItemAt(0).coerceToText(MainActivity.this);
+                return value == null ? "" : value.toString();
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
+        @JavascriptInterface
         public void saveTextFile(String fileName, String content) {
             mainHandler.post(() -> {
                 pendingExportName = sanitizeFileName(fileName);

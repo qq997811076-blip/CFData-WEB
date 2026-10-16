@@ -1786,6 +1786,9 @@
                     <span style="font-size:12px;color:var(--text-secondary);">支持上传 txt/csv 文件或填写网络
                         URL（二选一）；若识别失败，请整理为每行一个目标，格式：IP 空格 端口，例如 1.2.3.4 443</span>
                 </div>
+                <div class="option-item full-width" style="padding:10px 14px;">
+                    <button id="btnNSBClipboardImport" class="action-btn export-btn" onclick="importNSBClipboard()" style="width:100%;min-height:44px;">📋 从剪切板导入</button>
+                </div>
                 <div class="option-item full-width">
                     <span class="label" title="支持 txt/csv 格式">📄 IP 文件</span>
                     <input id="nsbFileInput" type="file" accept=".txt,.csv,text/plain,text/csv"
@@ -2371,6 +2374,9 @@
         let currentMode = 'official';
         let uploadedFileName = '';
         let uploadedFileContent = '';
+        let nsbClipboardContent = (() => {
+            try { return localStorage.getItem('cfdata-nsb-clipboard-content') || ''; } catch (e) { return ''; }
+        })();
         let nsbHeaders = [];
         let nsbRows = [];
         let nsbLiveRows = [];
@@ -2475,12 +2481,175 @@
             const hasURL = !!(nsbSourceUrlInput && nsbSourceUrlInput.value.trim());
             if (preferred === 'file' && hasFile && nsbSourceUrlInput) {
                 nsbSourceUrlInput.value = '';
-            } else if (preferred === 'url' && hasURL && fileInput) {
-                fileInput.value = '';
+            } else if (preferred === 'url' && hasURL) {
+                if (fileInput) fileInput.value = '';
                 uploadedFileName = '';
                 uploadedFileContent = '';
+                nsbClipboardContent = '';
+                try { localStorage.removeItem('cfdata-nsb-clipboard-content'); } catch (e) {}
+                updateNSBClipboardButton();
             }
         }
+
+        function updateNSBClipboardButton() {
+            const button = document.getElementById('btnNSBClipboardImport');
+            if (!button) return;
+            const count = nsbClipboardContent.split(/\\r?\\n/).filter(line => line.trim()).length;
+            button.textContent = count > 0 ? '📋 从剪切板导入（累计 ' + count + ' 条）' : '📋 从剪切板导入';
+        }
+
+        function getNSBClipboardCountryCode(line) {
+            const validCodes = new Set(('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW UK').split(/\\s+/));
+            const matches = String(line || '').matchAll(/(?:^|[^A-Za-z])([A-Z]{2})(?=$|[^A-Za-z])/gi);
+            for (const match of matches) {
+                const code = match[1].toUpperCase();
+                if (validCodes.has(code)) return code;
+            }
+            return '';
+        }
+
+        function nsbIPv4ToNumber(ip) {
+            const parts = ip.split('.').map(Number);
+            if (parts.length !== 4 || parts.some(value => !Number.isInteger(value) || value < 0 || value > 255)) return null;
+            return parts[0] * 16777216 + parts[1] * 65536 + parts[2] * 256 + parts[3];
+        }
+
+        function nsbNumberToIPv4(value) {
+            return [
+                Math.floor(value / 16777216) % 256,
+                Math.floor(value / 65536) % 256,
+                Math.floor(value / 256) % 256,
+                value % 256
+            ].join('.');
+        }
+
+        function parseNSBClipboardText(content, fallbackPort) {
+            const found = [];
+            const seen = new Set();
+            let duplicates = 0;
+            const tokenRegex = /(^|[^0-9.])((?:[0-9]{1,3}\\.){3}[0-9]{1,3})(?:\\s*\\/\\s*([0-9]{1,2}))?(?![0-9./])/g;
+            for (const line of String(content || '').split(/\\r?\\n/)) {
+                tokenRegex.lastIndex = 0;
+                const country = getNSBClipboardCountryCode(line);
+                let match;
+                while ((match = tokenRegex.exec(line)) !== null) {
+                    const ip = match[2];
+                    const base = nsbIPv4ToNumber(ip);
+                    if (base === null) continue;
+                    const prefixText = match[3];
+                    let ips;
+                    if (prefixText !== undefined) {
+                        const prefix = Number(prefixText);
+                        if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) continue;
+                        const count = Math.pow(2, 32 - prefix);
+                        if (count > 1048576) {
+                            throw new Error('CIDR 网段地址数量过大（' + count + '），单个网段最多展开 1048576 个');
+                        }
+                        const network = Math.floor(base / count) * count;
+                        ips = Array.from({ length: count }, (_, index) => nsbNumberToIPv4(network + index));
+                    } else {
+                        ips = [ip];
+                    }
+
+                    let port = fallbackPort;
+                    if (prefixText === undefined) {
+                        const tail = line.slice(match.index + match[0].length);
+                        let portMatch = tail.match(/^\\s*[:：]\\s*(\\d{1,5})/);
+                        if (!portMatch) portMatch = tail.match(/^\\s+(\\d{1,5})(?=\\s|$|[,;|#])/);
+                        if (portMatch) {
+                            const candidate = Number(portMatch[1]);
+                            if (candidate >= 1 && candidate <= 65535) port = candidate;
+                        }
+                    }
+                    for (const expandedIP of ips) {
+                        const key = expandedIP + ':' + port;
+                        if (seen.has(key)) {
+                            duplicates++;
+                            continue;
+                        }
+                        seen.add(key);
+                        found.push({ key, ip: expandedIP, port, country });
+                    }
+                }
+            }
+            return { items: found, duplicates };
+        }
+
+        async function importNSBClipboard() {
+            let text = '';
+            try {
+                if (window.CFDataAndroid && typeof window.CFDataAndroid.getClipboardText === 'function') {
+                    text = String(window.CFDataAndroid.getClipboardText() || '');
+                } else if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                    text = String(await navigator.clipboard.readText() || '');
+                } else {
+                    showNoticeCard('当前环境不支持直接读取剪切板');
+                    return;
+                }
+            } catch (e) {
+                showNoticeCard('读取剪切板失败：' + (e && e.message ? e.message : String(e)));
+                return;
+            }
+
+            if (!text.trim()) {
+                showNoticeCard('剪切板为空或没有可导入的文本');
+                return;
+            }
+
+            const fallbackPort = parseInt(document.getElementById('nsbFallbackPort')?.value || '443', 10) || 443;
+            let parsed;
+            try {
+                parsed = parseNSBClipboardText(text, fallbackPort);
+            } catch (e) {
+                showNoticeCard('剪切板解析失败：' + (e && e.message ? e.message : String(e)));
+                return;
+            }
+            if (!parsed.items.length) {
+                showNoticeCard('剪切板中没有识别到有效 IPv4；已有导入 IP 已保留');
+                return;
+            }
+
+            const merged = new Map();
+            for (const line of String(nsbClipboardContent || '').split(/\\r?\\n/)) {
+                const fields = line.trim().split(/\\s+/);
+                if (fields.length < 2) continue;
+                const ip = fields[0];
+                const port = Number(fields[1]);
+                if (nsbIPv4ToNumber(ip) === null || !Number.isInteger(port) || port < 1 || port > 65535) continue;
+                const key = ip + ':' + port;
+                merged.set(key, { key, ip, port, country: fields.find((field, index) => index >= 2 && /^[A-Z]{2}$/i.test(field)) || '' });
+            }
+
+            let duplicateCount = parsed.duplicates;
+            for (const item of parsed.items) {
+                const old = merged.get(item.key);
+                if (old) {
+                    duplicateCount++;
+                    if (!old.country && item.country) old.country = item.country;
+                } else {
+                    merged.set(item.key, item);
+                }
+            }
+
+            nsbClipboardContent = Array.from(merged.values()).map(item =>
+                item.ip + ' ' + item.port + (item.country ? ' ' + item.country : '')
+            ).join('\\n');
+            try {
+                localStorage.setItem('cfdata-nsb-clipboard-content', nsbClipboardContent);
+            } catch (e) {
+                log('剪切板 IP 已导入本次会话，但本机持久保存失败：' + (e.message || String(e)));
+            }
+
+            if (nsbSourceUrlInput) nsbSourceUrlInput.value = '';
+            updateNSBClipboardButton();
+            const added = merged.size - (String(nsbClipboardContent || '').trim() ? 0 : 0);
+            const message = '剪切板导入完成：本次识别 ' + parsed.items.length + ' 个唯一 IP；累计保存 ' + merged.size + ' 个唯一 IP；重复 ' + duplicateCount + ' 个。';
+            log(message);
+            if (statusEl) statusEl.textContent = message;
+            showNoticeCard(message);
+        }
+
+        updateNSBClipboardButton();
 
         function applyTheme(theme) {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -4694,7 +4863,8 @@
         function startNSBTask() {
             syncNSBInputMode();
             const sourceURL = nsbSourceUrlInput ? nsbSourceUrlInput.value.trim() : '';
-            const hasFile = !!uploadedFileContent.trim();
+            const combinedFileContent = [uploadedFileContent, nsbClipboardContent].map(value => String(value || '').trim()).filter(Boolean).join('\\n');
+            const hasFile = !!combinedFileContent;
             const hasURL = !!sourceURL;
             if (hasFile === hasURL) {
                 showNoticeCard('请选择本地文件或填写网络 URL（二选一）');
@@ -4767,8 +4937,8 @@
             if (!wsSend({
                 type: 'start_nsb_task',
                 data: {
-                    fileName: uploadedFileName,
-                    fileContent: hasFile ? uploadedFileContent : '',
+                    fileName: uploadedFileName || (nsbClipboardContent.trim() ? 'clipboard-import.txt' : ''),
+                    fileContent: hasFile ? combinedFileContent : '',
                     sourceURL: hasURL ? sourceURL : '',
                     outFile,
                     maxThreads,
