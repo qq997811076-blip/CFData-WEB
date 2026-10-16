@@ -12,6 +12,7 @@ on:
     branches:
       - "main"
       - "beta-gxg-file-url-20261015"
+      - "persist-result-tools"
     tags:
       - "v*"
 
