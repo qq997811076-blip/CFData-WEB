@@ -3285,12 +3285,9 @@
             const target = document.getElementById(tabId);
             if (target) target.classList.add('active');
 
-            if (tabId === 'test' && currentMode === 'nsb') {
-                switchTab('scan');
-                return;
-            }
-
             if (currentMode === 'official' && tabId === 'test') {
+                renderAllTestResults();
+            } else if (currentMode === 'nsb' && tabId === 'test') {
                 renderAllTestResults();
             } else if (currentMode === 'official' && tabId === 'scan' && scanData.length) {
                 renderCurrentScanResults();
