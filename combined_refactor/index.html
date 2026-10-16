@@ -5452,6 +5452,71 @@
             renderGitHubAccounts();
         }
 
+        // Persist the six GitHub upload fields as soon as they change.
+        let githubFieldsSaveVersion = 0;
+        async function saveGitHubFieldsImmediately() {
+            const version = ++githubFieldsSaveVersion;
+            const nameInput = document.getElementById('githubAccountName');
+            const tokenInput = document.getElementById('githubToken');
+            const repoInput = document.getElementById('githubRepo');
+            const branchInput = document.getElementById('githubBranch');
+            const pathInput = document.getElementById('githubPath');
+            const messageInput = document.getElementById('githubMessage');
+            const name = nameInput.value.trim();
+            const repoText = repoInput.value.trim();
+            if (!name && !repoText) return;
+            const [owner, ...repoParts] = repoText.split('/');
+            const repoName = repoParts.join('/');
+            const accounts = getGitHubAccounts();
+            const select = document.getElementById('githubAccountSelect');
+            const selectedIndex = parseInt(select.value, 10);
+            const selected = Number.isNaN(selectedIndex) ? null : accounts[selectedIndex];
+            const existingIndex = selected && (selected.name === name || selected.repo === repoText)
+                ? selectedIndex
+                : accounts.findIndex((a) => a.name === name || (repoText && a.repo === repoText));
+            const oldAccount = existingIndex >= 0 ? accounts[existingIndex] : null;
+            const accountName = name || repoText;
+            const token = tokenInput.value;
+            const next = {
+                ...(oldAccount || {}),
+                name: accountName,
+                repo: repoText,
+                branch: branchInput.value,
+                path: pathInput.value,
+                message: messageInput.value,
+                tokenHash: token ? await sha256Hex(token) : (oldAccount?.tokenHash || ''),
+            };
+            if (version !== githubFieldsSaveVersion) return;
+            if (token) {
+                try {
+                    const encrypted = await encryptGitHubToken(accountName, token);
+                    if (version !== githubFieldsSaveVersion) return;
+                    if (encrypted) {
+                        next.tokenCipher = encrypted;
+                        githubSessionTokens.set(accountName, token);
+                        document.getElementById('githubSaveToken').checked = true;
+                    } else if (oldAccount?.tokenCipher) {
+                        next.tokenCipher = oldAccount.tokenCipher;
+                    }
+                } catch (_) {
+                    if (oldAccount?.tokenCipher) next.tokenCipher = oldAccount.tokenCipher;
+                }
+            } else if (oldAccount?.tokenCipher) {
+                next.tokenCipher = oldAccount.tokenCipher;
+            }
+            if (existingIndex >= 0) accounts[existingIndex] = next;
+            else accounts.push(next);
+            saveGitHubAccounts(accounts);
+            renderGitHubAccounts();
+            if (select && existingIndex >= 0) select.value = String(existingIndex);
+        }
+
+        ['githubAccountName', 'githubToken', 'githubRepo', 'githubBranch', 'githubPath', 'githubMessage'].forEach((id) => {
+            const field = document.getElementById(id);
+            if (field) field.addEventListener('input', () => { saveGitHubFieldsImmediately(); });
+            if (field) field.addEventListener('change', () => { saveGitHubFieldsImmediately(); });
+        });
+
         function getEdgetunnelAccounts() {
             try {
                 const parsed = JSON.parse(localStorage.getItem(edgetunnelAccountStorageKey) || '[]');
