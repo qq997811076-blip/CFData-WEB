@@ -13,6 +13,7 @@ on:
       - "main"
       - "beta-gxg-file-url-20261015"
       - "persist-result-tools"
+      - "fix/nsb-autoloop-qualified-carryover"
     tags:
       - "v*"
 
