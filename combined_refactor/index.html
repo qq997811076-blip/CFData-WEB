@@ -3713,19 +3713,19 @@
             const continueBtn = document.getElementById('btnNSBContinueSpeed');
             const visible = currentMode === 'nsb';
             const rows = visible ? getNSBSpeedTargetRows() : [];
-            const disabled = !visible || isTaskRunning || nsbBatchSpeedRunning || rows.length === 0;
+            const disabled = true;
             if (btn) {
-                btn.style.display = visible ? 'inline-flex' : 'none';
+                btn.style.display = 'none';
                 btn.disabled = disabled;
                 btn.textContent = nsbBatchSpeedRunning ? '测速中...' : '🚀 一键测速';
             }
             if (continueBtn) {
-                continueBtn.style.display = visible ? 'inline-flex' : 'none';
+                continueBtn.style.display = 'none';
                 continueBtn.disabled = disabled || !nsbContinueSpeedUnlocked || !rows.some((row) => getSpeedStatus(row.speed, isNSBSpeedQualified(row.speed)) === 'untested');
                 continueBtn.textContent = nsbBatchSpeedRunning ? '测速中...' : '⏭️ 继续测速';
             }
             const sortBtn = document.getElementById('btnNSBSort');
-            if (sortBtn) sortBtn.style.display = visible ? 'inline-flex' : 'none';
+            if (sortBtn) sortBtn.style.display = 'none';
         }
 
         function syncNSBSpeedConfigState() {
@@ -4415,6 +4415,16 @@
         }
 
         function getOfficialSpeedConfig() {
+            if (currentMode === 'nsb') {
+                const cfg = syncNSBSpeedConfigState();
+                return {
+                    port: parseInt(document.getElementById('nsbFallbackPort')?.value || '443', 10) || 443,
+                    url: cfg.speedURL,
+                    speedMin: cfg.speedMin,
+                    speedLimit: cfg.speedLimit,
+                    results: testData.slice(),
+                };
+            }
             const port = parseInt(document.getElementById('officialTestPort')?.value || '443', 10) || 443;
             const url = resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset');
             const speedMin = parseFloat(document.getElementById('officialSpeedMin')?.value || '0.1') || 0.1;
@@ -4431,7 +4441,7 @@
         function updateBatchSpeedButton() {
             const btn = document.getElementById('btnBatchSpeed');
             const continueBtn = document.getElementById('btnContinueBatchSpeed');
-            const disabled = officialBatchSpeedRunning || isTaskRunning || !testData.length || currentMode !== 'official';
+            const disabled = officialBatchSpeedRunning || isTaskRunning || !testData.length;
             if (btn) {
                 btn.disabled = disabled;
                 btn.textContent = officialBatchSpeedRunning ? '测速中...' : '🚀 一键测速';
@@ -4450,15 +4460,15 @@
             }
             const cfg = syncOfficialSpeedConfigState();
             if (cfg.speedLimit <= 0) {
-                if (!auto) showNoticeCard('测速结果上限必须大于 0');
-                else log('官方自动测速已跳过：测速结果上限为 0');
+                if (!auto) showNoticeCard(currentMode === 'nsb' ? '非标测速结果上限必须大于 0' : '测速结果上限必须大于 0');
+                else log('自动测速已跳过：测速结果上限为 0');
                 return false;
             }
             officialBatchSpeedRunning = true;
             isTaskRunning = true;
             isStoppingTask = false;
-            runningTaskLabel = '官方一键测速';
-            runningTaskMode = 'official';
+            runningTaskLabel = currentMode === 'nsb' ? '非标详细测试批量测速' : '官方一键测速';
+            runningTaskMode = currentMode;
             runningTaskTab = 'test';
             if (!continued) {
                 testData.forEach((row) => { row.Speed = ''; });
