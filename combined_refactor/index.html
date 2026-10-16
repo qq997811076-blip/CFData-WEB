@@ -4902,6 +4902,18 @@
 
         function maybeStartOfficialAutoTest() {
             if (!officialAutoSpeedPending || officialAutoStage !== 'scan') return false;
+            if (String(document.getElementById('officialAutoLoop')?.value || 'off') === 'on') {
+                if (!dcList.length) {
+                    log('官方自动循环没有可测试的数据中心');
+                    officialAutoSpeedPending = false;
+                    officialAutoStage = '';
+                    return false;
+                }
+                officialAutoStage = 'test';
+                log('官方自动循环已开启：本轮详细测试覆盖所有已扫描 IP，测速不足时继续使用剩余候选结果');
+                selectDC('');
+                return true;
+            }
             const targetDC = document.getElementById('officialTargetDC')?.value.trim().toUpperCase() || '';
             const selected = targetDC ? dcList.find((dc) => String(dc.DataCenter || '').toUpperCase() === targetDC) : dcList[0];
             if (!selected) {
