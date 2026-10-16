@@ -650,15 +650,17 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 	ip            string
 	port          int
 	originalInput string
-}, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string) {
+}, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string) {
 	total := len(expandedEntries)
 	allResults := make([]iptestResult, 0, min(total, speedLimit*4))
 	cursor := 0
 	qualifiedCount := 0
 	wasCanceled := false
+	roundNumber := 0
 
 	session.sendWSMessage("log", fmt.Sprintf("自动循环已开启：每轮扫描最多获取 %d 个扫描合格 IP，累计测速目标=%d", resultLimit, speedLimit))
 	for cursor < total && qualifiedCount < speedLimit {
+		roundNumber++
 		roundStart := cursor
 		remaining := expandedEntries[cursor:]
 		roundResults := make([]iptestResult, 0, min(len(remaining), resultLimit))
@@ -678,9 +680,9 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 			item := fmt.Sprintf("%s %d", entry.ip, entry.port)
 			var res *iptestResult
 			if scanMode == scanModeHTTPing {
-				res, _ = scanNSBEntryHTTP(itemCtx, item, fallbackPort, enableTLS, 0, targetDC, roundStart+idx)
+				res, _ = scanNSBEntryHTTP(itemCtx, item, fallbackPort, enableTLS, delay, targetDC, roundStart+idx)
 			} else {
-				res, _ = scanNSBEntry(itemCtx, item, fallbackPort, enableTLS, 0, targetDC, roundStart+idx)
+				res, _ = scanNSBEntry(itemCtx, item, fallbackPort, enableTLS, delay, targetDC, roundStart+idx)
 			}
 			if res == nil {
 				return 0
@@ -701,7 +703,7 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 		if len(roundResults) > 0 {
 			sortNSBResults(roundResults, 0)
 			remainingTarget := speedLimit - qualifiedCount
-			session.sendWSMessage("log", fmt.Sprintf("自动循环第 %d 轮：本轮扫描合格 %d 个，剩余 IP %d 个，待达标数量 %d", 1+countAutoLoopRounds(allResults), len(roundResults), total-cursor, remainingTarget))
+			session.sendWSMessage("log", fmt.Sprintf("自动循环第 %d 轮：本轮扫描合格 %d 个，剩余 IP %d 个，待达标数量 %d", roundNumber, len(roundResults), total-cursor, remainingTarget))
 			reportNSBProgress(session, "speed", qualifiedCount, speedLimit, "自动循环测速中")
 			speedCanceled := runNSBSpeedWorkers(ctx, roundResults, speedTest, remainingTarget, speedMin, func(tested, qualified int) {
 				reportNSBProgress(session, "speed", min(qualifiedCount+qualified, speedLimit), speedLimit, "自动循环测速中")
@@ -709,7 +711,7 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 				res := &roundResults[idx]
 				session.sendWSMessage("nsb_scan_result", res.toNSBLiveMessage(res.speedText, compact))
 				if debugMode && speedErr != "" {
-					recordAllDebugError("nsb_speed", fmt.Sprintf("ip=%s port=%d round=%d: %s", res.ipAddr, res.port, 1+countAutoLoopRounds(allResults), speedErr))
+					recordAllDebugError("nsb_speed", fmt.Sprintf("ip=%s port=%d round=%d: %s", res.ipAddr, res.port, roundNumber, speedErr))
 				}
 			}, func(idx int) (float64, string) {
 				res := &roundResults[idx]
@@ -769,13 +771,6 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 		QualifiedCount: qualifiedCount,
 	})
 	session.sendWSMessage("log", fmt.Sprintf("自动循环结束：扫描处理 %d/%d 个 IP，测速达标 %d/%d 个", cursor, total, qualifiedCount, speedLimit))
-}
-
-func countAutoLoopRounds(results []iptestResult) int {
-	if len(results) == 0 {
-		return 0
-	}
-	return 1
 }
 
 func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string, autoLoop bool) {
@@ -868,7 +863,7 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 		return
 	}
 	if autoLoop && speedTest > 0 && speedLimit > 0 {
-		runNSBAutoLoop(ctx, session, expandedEntries, outFile, maxThreads, fallbackPort, speedTest, speedURL, enableTLS, resultLimit, targetDC, speedMin, speedLimit, compact, scanMode)
+		runNSBAutoLoop(ctx, session, expandedEntries, outFile, maxThreads, fallbackPort, speedTest, speedURL, enableTLS, delay, resultLimit, targetDC, speedMin, speedLimit, compact, scanMode)
 		return
 	}
 	if resultLimit > 0 {
