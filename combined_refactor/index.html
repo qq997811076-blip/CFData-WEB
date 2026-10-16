@@ -3191,6 +3191,8 @@
                 updateStatus('已连接服务器', true);
                 log('已连接服务器');
                 initThemeFromStorage();
+            loadResultToolSettings();
+            bindResultToolPersistence();
             };
             ws.onmessage = (event) => {
                 try {
@@ -5036,7 +5038,36 @@
             { key: 'timestamp', label: '时间戳' },
         ];
 
+
+        const RESULT_TOOL_SETTINGS_KEY = 'cfdata-result-tools-v1';
+        function loadResultToolSettings() {
+            try {
+                const s = JSON.parse(localStorage.getItem(RESULT_TOOL_SETTINGS_KEY) || '{}');
+                if (s.sort) ['sortPriority1','sortPriority2','sortPriority3'].forEach((id,i)=>{ const e=document.getElementById(id); if(e && s.sort[i]) e.value=s.sort[i]; });
+                if (s.copy) Object.entries(s.copy).forEach(([id,v])=>{ const e=document.getElementById(id); if(e && v!==undefined) e.value=v; });
+                if (Array.isArray(s.copyFieldOrder)) copyFieldOrder=s.copyFieldOrder;
+                if (Array.isArray(s.copyCustomFields)) copyCustomFields=s.copyCustomFields;
+                if (s.result) Object.entries(s.result).forEach(([id,v])=>{ const e=document.getElementById(id); if(e && v!==undefined) e.value=v; });
+                if (Array.isArray(s.resultFieldOrder)) resultFieldOrder=s.resultFieldOrder;
+                if (Array.isArray(s.resultCustomFields)) resultCustomFields=s.resultCustomFields;
+            } catch (_) {}
+        }
+        function saveResultToolSettings() {
+            try {
+                const copy={}, result={};
+                ['copyStartRow','copyEndRow','copyIPTypeFilter','copyQualifiedFilter','copyTextSeparatorPreset','copyTextSeparatorCustom'].forEach(id=>{const e=document.getElementById(id);if(e)copy[id]=e.value;});
+                ['resultFormat','resultFileName','resultIPTypeFilter','resultQualifiedFilter','resultTextSeparatorPreset','resultTextSeparatorCustom'].forEach(id=>{const e=document.getElementById(id);if(e)result[id]=e.value;});
+                const sort=['sortPriority1','sortPriority2','sortPriority3'].map(id=>document.getElementById(id)?.value||'');
+                localStorage.setItem(RESULT_TOOL_SETTINGS_KEY,JSON.stringify({sort,copy,result,copyFieldOrder,copyCustomFields,resultFieldOrder,resultCustomFields}));
+            } catch (_) {}
+        }
+        function bindResultToolPersistence() {
+            ['sortPriority1','sortPriority2','sortPriority3','copyStartRow','copyEndRow','copyIPTypeFilter','copyQualifiedFilter','copyTextSeparatorPreset','copyTextSeparatorCustom','resultFormat','resultFileName','resultIPTypeFilter','resultQualifiedFilter','resultTextSeparatorPreset','resultTextSeparatorCustom']
+                .forEach(id=>['input','change'].forEach(ev=>document.getElementById(id)?.addEventListener(ev,saveResultToolSettings)));
+        }
+
         function openResultModal(mode) {
+            loadResultToolSettings();
             resultModalMode = currentMode === 'nsb' ? 'nsb' : mode;
             const rows = getCurrentResultRows(resultModalMode);
             if (!rows.length) return showNoticeCard('暂无可操作结果');
@@ -5135,6 +5166,7 @@
         }
 
         function applySortModal() {
+            saveResultToolSettings();
             const priorities = getSortPriorities();
             if (!priorities.length) return showNoticeCard('请选择排序优先级');
             if (sortModalMode === 'nsb') applyNSBSort(priorities);
@@ -5240,6 +5272,7 @@
         }
 
         function handleResultFormatChange() {
+            saveResultToolSettings();
             const format = document.getElementById('resultFormat').value;
             resultFieldOrder = getDefaultResultFieldOrder(format);
             const pathInput = document.getElementById('githubPath');
@@ -5601,6 +5634,7 @@
             if (checked && !resultFieldOrder.includes(key)) resultFieldOrder.push(key);
             if (!checked) resultFieldOrder = resultFieldOrder.filter((k) => k !== key);
             renderResultOrderList();
+            saveResultToolSettings();
         }
 
         function moveResultField(index, delta) {
@@ -5608,6 +5642,7 @@
             if (next < 0 || next >= resultFieldOrder.length) return;
             [resultFieldOrder[index], resultFieldOrder[next]] = [resultFieldOrder[next], resultFieldOrder[index]];
             renderResultFieldOptions();
+            saveResultToolSettings();
         }
 
         function selectResultFields(all) {
@@ -5652,6 +5687,7 @@
         }
 
         function openCopyModal(mode) {
+            loadResultToolSettings();
             copyModalMode = currentMode === 'nsb' ? 'nsb' : mode;
             document.getElementById('copyModalTitle').textContent = copyModalMode === 'nsb' ? '非标结果一键复制' : (copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制');
             const filterField = document.getElementById('copyIPTypeFilterField');
@@ -5743,6 +5779,7 @@
             if (checked && !copyFieldOrder.includes(key)) copyFieldOrder.push(key);
             if (!checked) copyFieldOrder = copyFieldOrder.filter((k) => k !== key);
             renderCopyOrderList();
+            saveResultToolSettings();
         }
 
         function moveCopyField(index, delta) {
@@ -5750,6 +5787,7 @@
             if (next < 0 || next >= copyFieldOrder.length) return;
             [copyFieldOrder[index], copyFieldOrder[next]] = [copyFieldOrder[next], copyFieldOrder[index]];
             renderCopyFieldOptions();
+            saveResultToolSettings();
         }
 
         function toggleAllCopyFields() {
@@ -5891,6 +5929,7 @@
                 input.value = value === 'space' ? '空格' : value;
             }
             updateTextSeparatorPreview(prefix);
+            saveResultToolSettings();
         }
 
         function markTextSeparatorCustom(prefix) {
