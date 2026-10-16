@@ -1326,7 +1326,8 @@ func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers,
 	qualified := 0
 	wasCanceled := false
 	shouldSend := func() bool {
-		return next < len(results) && qualified+inFlight < targetQualified
+		// 并发由 maxWorkers 控制；目标只决定何时停止派发新任务，不应把并发压到 targetQualified。
+		return next < len(results) && qualified < targetQualified
 	}
 
 	for shouldSend() || inFlight > 0 {
