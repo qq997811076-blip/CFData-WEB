@@ -427,6 +427,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	accepted := 0
+	completed := 0
 	inFlight := 0
 	wasCanceled := false
 	completion := make(chan int, maxWorkers)
@@ -472,13 +473,14 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 		case acceptedTotal := <-completion:
 			mu.Lock()
 			inFlight--
+			completed++
 			if acceptedTotal > accepted {
 				accepted = acceptedTotal
 			}
-			currentAccepted := accepted
+			currentCompleted := completed
 			mu.Unlock()
 			if onProgress != nil {
-				onProgress(currentAccepted)
+				onProgress(currentCompleted)
 			}
 		case jobs <- next:
 			mu.Lock()
@@ -489,6 +491,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 	}
 	close(jobs)
 	if wasCanceled {
+		wg.Wait()
 		return true
 	}
 	for {
@@ -501,20 +504,23 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 		var acceptedTotal int
 		select {
 		case <-ctx.Done():
+			wg.Wait()
 			return true
 		case acceptedTotal = <-completion:
 		}
 		mu.Lock()
 		inFlight--
+		completed++
 		if acceptedTotal > accepted {
 			accepted = acceptedTotal
 		}
-		currentAccepted := accepted
+		currentCompleted := completed
 		mu.Unlock()
 		if onProgress != nil {
-			onProgress(currentAccepted)
+			onProgress(currentCompleted)
 		}
 	}
+	wg.Wait()
 	return wasCanceled
 }
 
@@ -748,9 +754,6 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 	}
 
 	total := len(expandedEntries)
-	if resultLimit > 0 && resultLimit < total {
-		total = resultLimit
-	}
 	reportNSBProgress(session, "scan", 0, total, "扫描中")
 	wasCanceled := runNSBScanWorkers(ctx, len(expandedEntries), maxThreads, resultLimit, func(current int) {
 		reportNSBProgress(session, "scan", min(current, total), total, "扫描中")
