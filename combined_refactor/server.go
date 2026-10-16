@@ -147,15 +147,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 			autoSpeed := params.AutoSpeed && params.OfficialSpeedLimit > 0
 			autoLoop := params.AutoLoop && autoSpeed
+			speedURL := strings.TrimSpace(params.OfficialSpeedURL)
+			if speedURL == "" || isAutoSpeedURL(speedURL) {
+				speedURL = speedTestURL
+			}
 			if params.OfficialScanLimit <= 0 {
 				params.OfficialScanLimit = 1000
 			}
 			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed, "autoLoop": autoLoop, "scanLimit": params.OfficialScanLimit}, func(ctx context.Context, session *appSession) {
 				if autoLoop {
-					speedURL := strings.TrimSpace(params.OfficialSpeedURL)
-					if speedURL == "" || isAutoSpeedURL(speedURL) {
-						speedURL = speedTestURL
-					}
 					runOfficialAutoLoop(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode, params.OfficialScanLimit, strings.TrimSpace(params.OfficialTargetDC), params.OfficialSpeedPort, speedURL, params.OfficialSpeedMin, params.OfficialSpeedLimit, params.OfficialSpeedTest)
 					return
 				}
