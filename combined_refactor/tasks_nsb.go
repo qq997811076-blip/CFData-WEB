@@ -769,6 +769,8 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 			}, func(idx int) (float64, string) {
 				res := &roundResults[idx]
 				return runNSBDownloadSpeed(ctx, res.ipAddr, res.port, enableTLS, speedURL)
+			}, func(configured, poolLimit, peak int) {
+				session.sendWSMessage("log", fmt.Sprintf("自动循环第 %d 轮测速并发核验：设置=%d，工作池上限=%d，实际峰值=%d", roundNumber, configured, poolLimit, peak))
 			})
 			if speedCanceled {
 				wasCanceled = true
@@ -1046,6 +1048,8 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 		}, func(idx int) (float64, string) {
 			res := &nsbResults[idx]
 			return runNSBDownloadSpeed(ctx, res.ipAddr, res.port, enableTLS, speedURL)
+		}, func(configured, poolLimit, peak int) {
+			session.sendWSMessage("log", fmt.Sprintf("测速并发核验：设置=%d，工作池上限=%d，实际峰值=%d", configured, poolLimit, peak))
 		})
 		if speedCanceled {
 			wasCanceled = true
@@ -1136,6 +1140,8 @@ func runNSBSpeedBatch(ctx context.Context, session *appSession, rows []nsbScanMe
 	}, func(idx int) (float64, string) {
 		res := &results[idx]
 		return runNSBDownloadSpeed(ctx, res.ipAddr, res.port, enableTLS, speedURL)
+	}, func(configured, poolLimit, peak int) {
+		session.sendWSMessage("log", fmt.Sprintf("批量测速并发核验：设置=%d，工作池上限=%d，实际峰值=%d", configured, poolLimit, peak))
 	})
 
 	qualifiedCount := 0
@@ -1237,7 +1243,7 @@ func getNSBSpeedStatus(value string, speedMin float64) string {
 	return "unqualified"
 }
 
-func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers, targetQualified int, speedMin float64, onProgress func(tested, qualified int), onResult func(idx int, speedErr string), work func(idx int) (float64, string)) bool {
+func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers, targetQualified int, speedMin float64, onProgress func(tested, qualified int), onResult func(idx int, speedErr string), work func(idx int) (float64, string), onConcurrency func(configured, poolLimit, peak int)) bool {
 	if len(results) == 0 {
 		return false
 	}
@@ -1255,6 +1261,9 @@ func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers,
 	jobs := make(chan int)
 	done := make(chan speedDone, maxWorkers)
 	var wg sync.WaitGroup
+	var concurrencyMu sync.Mutex
+	activeWorkers := 0
+	peakWorkers := 0
 	worker := func() {
 		defer wg.Done()
 		for idx := range jobs {
@@ -1263,7 +1272,19 @@ func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers,
 				return
 			default:
 			}
+			concurrencyMu.Lock()
+			activeWorkers++
+			if activeWorkers > peakWorkers {
+				peakWorkers = activeWorkers
+			}
+			concurrencyMu.Unlock()
+
 			speed, speedErr := work(idx)
+
+			concurrencyMu.Lock()
+			activeWorkers--
+			concurrencyMu.Unlock()
+
 			select {
 			case <-ctx.Done():
 				return
@@ -1286,6 +1307,14 @@ func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers,
 	}
 
 	workers := min(maxWorkers, len(results))
+	defer func() {
+		if onConcurrency != nil {
+			concurrencyMu.Lock()
+			peak := peakWorkers
+			concurrencyMu.Unlock()
+			onConcurrency(maxWorkers, workers, peak)
+		}
+	}()
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go worker()
@@ -1310,6 +1339,7 @@ func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers,
 			wasCanceled = true
 			next = len(results)
 			close(jobs)
+			wg.Wait()
 			return true
 		case item := <-done:
 			inFlight--
