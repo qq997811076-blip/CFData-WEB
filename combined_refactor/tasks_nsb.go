@@ -666,33 +666,35 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 		resultLimit = 1
 	}
 
-	session.sendWSMessage("log", fmt.Sprintf("自动循环已开启：每轮最多扫描并发批次=%d，候选池剩余合格 IP 会在下一轮重新扫描筛选；每轮最多取 %d 个测速，累计测速目标=%d", batchSize, resultLimit, speedLimit))
+	session.sendWSMessage("log", fmt.Sprintf("自动循环已开启：每轮扫描批次=%d，每轮最多取 %d 个扫描合格 IP 测速，测速并发=%d，累计测速达标目标=%d", batchSize, resultLimit, speedTest, speedLimit))
 	for (cursor < total || len(pendingCandidates) > 0) && qualifiedCount < speedLimit {
 		roundNumber++
 		roundStart := cursor
 
-		// Merge leftovers from the previous round with the next batch of original source IPs.
-		// Leftover candidates are deliberately rescanned through the full scan/filter stage.
+		// Each round takes at most batchSize entries from the merged queue:
+		// rescannable leftovers first, then never-scanned source entries.
 		scanEntries := make([]struct {
 			ip            string
 			port          int
 			originalInput string
-		}, 0, len(pendingCandidates)+batchSize)
-		for _, candidate := range pendingCandidates {
+		}, 0, batchSize)
+		pendingTake := min(batchSize, len(pendingCandidates))
+		for i := 0; i < pendingTake; i++ {
+			candidate := pendingCandidates[i]
 			scanEntries = append(scanEntries, struct {
 				ip            string
 				port          int
 				originalInput string
 			}{candidate.ipAddr, candidate.port, candidate.originalInput})
 		}
-		pendingCount := len(pendingCandidates)
-		pendingCandidates = pendingCandidates[:0]
-
-		newSourceCount := 0
-		if cursor < total {
-			batchEnd := min(cursor+batchSize, total)
-			scanEntries = append(scanEntries, expandedEntries[cursor:batchEnd]...)
-			newSourceCount = batchEnd - cursor
+		if pendingTake > 0 {
+			pendingCandidates = append([]iptestResult(nil), pendingCandidates[pendingTake:]...)
+		}
+		sourceSlots := batchSize - len(scanEntries)
+		sourceTake := min(sourceSlots, total-cursor)
+		if sourceTake > 0 {
+			scanEntries = append(scanEntries, expandedEntries[cursor:cursor+sourceTake]...)
+			cursor += sourceTake
 		}
 		if len(scanEntries) == 0 {
 			break
@@ -700,9 +702,10 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 
 		batchResults := make([]iptestResult, 0, len(scanEntries))
 		var resultMu sync.Mutex
-		reportNSBProgress(session, "scan", min(cursor, total), total, fmt.Sprintf("自动循环第 %d 轮重新扫描筛选中", roundNumber))
+		session.sendWSMessage("log", fmt.Sprintf("自动循环第 %d 轮：合并候选池后取出 %d 个重新扫描，其中旧候选 %d 个、新源 IP %d 个", roundNumber, len(scanEntries), pendingTake, sourceTake))
+		reportNSBProgress(session, "scan", min(roundStart+sourceTake, total), total, fmt.Sprintf("自动循环第 %d 轮扫描筛选中", roundNumber))
 		canceled, consumed := runNSBScanWorkers(ctx, len(scanEntries), maxThreads, 0, func(current int) {
-			reportNSBProgress(session, "scan", min(roundStart+current, total), total, fmt.Sprintf("自动循环第 %d 轮重新扫描筛选中", roundNumber))
+			reportNSBProgress(session, "scan", min(roundStart+current, total), total, fmt.Sprintf("自动循环第 %d 轮扫描筛选中", roundNumber))
 		}, func(idx int) int {
 			itemCtx, itemCancel := context.WithTimeout(ctx, 10*time.Second)
 			defer itemCancel()
@@ -730,32 +733,28 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 			session.sendWSMessage("nsb_scan_result", res.toNSBLiveMessage("", compact))
 			return accepted
 		})
-
-		// Source entries are consumed only when their corresponding jobs were submitted.
-		// Cancellation ends this run, so an exact resume cursor is not needed afterward.
-		if newSourceCount > 0 {
-			sourceConsumed := consumed - pendingCount
-			if sourceConsumed < 0 {
-				sourceConsumed = 0
-			}
-			if sourceConsumed > newSourceCount {
-				sourceConsumed = newSourceCount
-			}
-			cursor += sourceConsumed
-		}
 		wasCanceled = canceled || ctx.Err() != nil
-		batchQualified := len(batchResults)
-
-		if len(batchResults) > 0 {
-			sortNSBResults(batchResults, 0)
+		if wasCanceled {
+			// Keep scanned successes for output; the task is ending and won't loop again.
+			if len(batchResults) > 0 {
+				pendingCandidates = append(pendingCandidates, batchResults...)
+			}
+			break
 		}
+		if consumed == 0 && len(batchResults) == 0 {
+			break
+		}
+
+		sortNSBResults(batchResults, 0)
 		selectedCount := min(resultLimit, len(batchResults))
 		roundResults := append([]iptestResult(nil), batchResults[:selectedCount]...)
+		// Scan-qualified entries beyond the per-round limit go back into the merged
+		// candidate queue and must pass the scan/filter stage again in a later round.
 		if selectedCount < len(batchResults) {
 			pendingCandidates = append(pendingCandidates, batchResults[selectedCount:]...)
 		}
 
-		session.sendWSMessage("log", fmt.Sprintf("自动循环第 %d 轮：重新扫描 %d 个候选/源地址，扫描合格 %d 个，本轮取 %d 个测速，候选池保留 %d 个待下一轮重新扫描，剩余未读取源地址 %d 个，测速达标 %d/%d", roundNumber, consumed, batchQualified, len(roundResults), len(pendingCandidates), total-cursor, qualifiedCount, speedLimit))
+		session.sendWSMessage("log", fmt.Sprintf("自动循环第 %d 轮：本轮扫描 %d 个，扫描合格 %d 个，取 %d 个测速，合格候选池剩余 %d 个，未扫描源 IP %d 个，累计测速达标 %d/%d", roundNumber, consumed, len(batchResults), len(roundResults), len(pendingCandidates), total-cursor, qualifiedCount, speedLimit))
 		if len(roundResults) > 0 {
 			remainingTarget := speedLimit - qualifiedCount
 			reportNSBProgress(session, "speed", qualifiedCount, speedLimit, "自动循环测速中")
@@ -782,9 +781,7 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 					roundResults[i].speedQualified = true
 					qualifiedCount++
 				}
-				// If the target was reached before this entry was tested, carry it into
-				// the candidate pool so it can be rescanned next round rather than lost.
-				if !roundResults[i].speedTested && !wasCanceled {
+				if !roundResults[i].speedTested && !wasCanceled && qualifiedCount < speedLimit {
 					pendingCandidates = append(pendingCandidates, roundResults[i])
 				}
 			}
@@ -792,10 +789,6 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 		}
 
 		if wasCanceled || qualifiedCount >= speedLimit {
-			break
-		}
-		// Prevent spinning if a round neither consumed source entries nor produced candidates.
-		if consumed == 0 && len(batchResults) == 0 && cursor >= total {
 			break
 		}
 	}
@@ -816,7 +809,7 @@ func runNSBAutoLoop(ctx context.Context, session *appSession, expandedEntries []
 		message = "自动循环已手动终止，已保留当前结果"
 	} else if qualifiedCount < speedLimit {
 		status = "partial"
-		message = fmt.Sprintf("IP 源及候选池已处理完，测速达标 %d/%d 个", qualifiedCount, speedLimit)
+		message = fmt.Sprintf("候选池及剩余 IP 已处理完，测速达标 %d/%d 个", qualifiedCount, speedLimit)
 	}
 	if err := writeNSBCSV(outFile, allResults, speedTest, compact, scanMode); err != nil {
 		session.sendWSMessage("error", "导出 CSV 失败: "+err.Error())
