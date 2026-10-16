@@ -32,7 +32,9 @@ func initLocations() {
 
 	if _, err = os.Stat(filename); os.IsNotExist(err) {
 		sendLog("本地 locations.json 不存在，正在从服务器下载...")
-		content, err := getURLContent(url)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		content, err := getURLContentWithContext(ctx, url)
+		cancel()
 		if err != nil {
 			sendLog("获取位置信息失败: " + err.Error())
 			sendLog("⚠️ locationMap 未就绪，后续扫描结果的 城市/地区 列将为空；可删除本地缓存（Web 端右上角设置）或检查网络后重启")
