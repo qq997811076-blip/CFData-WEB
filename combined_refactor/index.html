@@ -1772,6 +1772,13 @@
                     </div>
                 </div>
                 <div class="option-item full-width">
+                    <span class="label" title="未达到测速合格数量时继续测试剩余 IP，不重复扫描">🔁 自动循环</span>
+                    <select id="officialAutoLoop">
+                        <option value="off" selected>关闭</option>
+                        <option value="on">开启</option>
+                    </select>
+                </div>
+                <div class="option-item full-width">
                     <span class="label">🧹 精简地址库</span>
                     <div class="field-with-action">
                         <input id="compactIPv4Hint" type="text" value="按 /24 子网探测 TCP:80 连通性，仅保留活跃子网并覆盖 ips-v4.txt"
@@ -1887,6 +1894,13 @@
                         <button class="mini-action-btn" title="恢复自动选择测速网站"
                             onclick="resetDefaultSpeedUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset')">↺</button>
                     </div>
+                </div>
+                <div class="option-item full-width">
+                    <span class="label" title="未达到测速合格数量时继续处理剩余 IP，不重复扫描">🔁 自动循环</span>
+                    <select id="nsbAutoLoop">
+                        <option value="off" selected>关闭</option>
+                        <option value="on">开启</option>
+                    </select>
                 </div>
                 <div class="option-item full-width">
                     <span class="label">⬆ 自动上传</span>
@@ -4875,6 +4889,7 @@
                 officialSpeedMin: officialSpeedConfig.speedMin,
                 officialSpeedLimit: officialSpeedConfig.speedLimit,
                 officialSpeedTest: officialSpeedConfig.speedTest,
+                autoLoop: String(document.getElementById('officialAutoLoop')?.value || 'off') === 'on',
             } })) {
                 officialAutoSpeedPending = false;
                 officialAutoStage = '';
@@ -4993,6 +5008,7 @@
                     speedLimit,
                     compact,
                     scanMode: getScanMode(),
+                    autoLoop: String(document.getElementById('nsbAutoLoop')?.value || 'off') === 'on',
                 }
             })) {
                 finishRunningTask('✨ 开始扫描与测试');

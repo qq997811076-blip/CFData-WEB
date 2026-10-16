@@ -20,6 +20,7 @@ type startTaskRequest struct {
 	OfficialSpeedMin  float64 `json:"officialSpeedMin"`
 	OfficialSpeedLimit int    `json:"officialSpeedLimit"`
 	OfficialSpeedTest  int    `json:"officialSpeedTest"`
+	AutoLoop          bool   `json:"autoLoop"`
 }
 
 type startTestRequest struct {
@@ -62,6 +63,7 @@ type startNSBTaskRequest struct {
 	SpeedLimit   int     `json:"speedLimit"`
 	Compact      bool    `json:"compact"`
 	ScanMode     string  `json:"scanMode"`
+	AutoLoop     bool    `json:"autoLoop"`
 }
 
 type startNSBSpeedBatchRequest struct {

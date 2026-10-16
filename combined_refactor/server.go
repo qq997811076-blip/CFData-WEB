@@ -152,7 +152,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				dc := strings.TrimSpace(params.OfficialTargetDC)
-				if dc == "" {
+				if params.AutoLoop {
+					dc = ""
+					session.sendWSMessage("log", "官方自动循环已开启：测速合格数量未达目标时，扩展测试全部已扫描 IP")
+				}
+				if dc == "" && !params.AutoLoop {
 					session.scanMutex.Lock()
 					copy := append([]ScanResult(nil), session.scanResults...)
 					session.scanMutex.Unlock()
@@ -298,7 +302,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					fileName = params.SourceURL
 					fileContent = content
 				}
-				runNSBTask(ctx, session, fileName, fileContent, params.OutFile, params.MaxThreads, params.FallbackPort, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.Delay, params.ResultLimit, params.DC, params.SpeedMin, params.SpeedLimit, params.Compact, scanMode)
+				runNSBTask(ctx, session, fileName, fileContent, params.OutFile, params.MaxThreads, params.FallbackPort, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.Delay, params.ResultLimit, params.DC, params.SpeedMin, params.SpeedLimit, params.Compact, scanMode, params.AutoLoop)
 			})
 		},
 		"start_nsb_speed_batch": func(data json.RawMessage) {

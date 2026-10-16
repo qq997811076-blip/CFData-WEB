@@ -645,7 +645,7 @@ done:
 	return float64(written) / duration.Seconds() / 1024, ""
 }
 
-func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string) {
+func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string, autoLoop bool) {
 	session.sendWSMessage("log", fmt.Sprintf("开始非标优选：%s", fileName))
 
 	tmpFile, err := os.CreateTemp(".", "cfdata-nsb-*.txt")
@@ -755,7 +755,12 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 
 	total := len(expandedEntries)
 	reportNSBProgress(session, "scan", 0, total, "扫描中")
-	wasCanceled := runNSBScanWorkers(ctx, len(expandedEntries), maxThreads, resultLimit, func(current int) {
+	scanResultLimit := resultLimit
+	if autoLoop && speedTest > 0 && speedLimit > 0 {
+		scanResultLimit = 0
+		session.sendWSMessage("log", fmt.Sprintf("非标自动循环已开启：扫描全部剩余地址并累计测速合格结果，目标=%d", speedLimit))
+	}
+	wasCanceled := runNSBScanWorkers(ctx, len(expandedEntries), maxThreads, scanResultLimit, func(current int) {
 		reportNSBProgress(session, "scan", min(current, total), total, "扫描中")
 	}, func(idx int) int {
 		itemCtx, itemCancel := context.WithTimeout(ctx, 10*time.Second)
@@ -810,7 +815,7 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 	}
 
 	sortNSBResults(nsbResults, 0)
-	if resultLimit > 0 && len(nsbResults) > resultLimit {
+	if !autoLoop && resultLimit > 0 && len(nsbResults) > resultLimit {
 		nsbResults = nsbResults[:resultLimit]
 	}
 	sortedScanRows := make([]nsbScanMessage, 0, len(nsbResults))
