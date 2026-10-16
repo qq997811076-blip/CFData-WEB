@@ -132,7 +132,7 @@ func expandNSBIPv4Prefix(prefix netip.Prefix) []string {
 	if !prefix.Addr().Is4() {
 		return nil
 	}
-	bits, _ := prefix.Bits()
+	bits := prefix.Bits()
 	count := uint64(1) << uint(32-bits)
 	if count > 1048576 {
 		return nil
