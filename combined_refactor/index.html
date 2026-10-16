@@ -2403,6 +2403,9 @@
         })();
         let nsbHeaders = [];
         let nsbRows = [];
+        // Preserve qualified rows across automatic-loop rounds for the export filter only.
+        let nsbQualifiedExportRows = new Map();
+        let nsbQualifiedExportRoundHasData = false;
         let nsbLiveRows = [];
         let nsbLiveIndex = {};
         let nsbLiveRowElements = {};
@@ -4275,6 +4278,7 @@
 
         function updateNSBDisplayedResult(row) {
             if (!row) return;
+            nsbQualifiedExportRoundHasData = true;
             const ip = String(row.ip || row.IP || '').trim();
             const port = String(row.port || row.Port || '').trim();
             if (!ip || !port) return;
@@ -4927,6 +4931,8 @@
         }
 
         function startNSBTask() {
+            nsbQualifiedExportRows.clear();
+            nsbQualifiedExportRoundHasData = false;
             syncNSBInputMode();
             const sourceURL = nsbSourceUrlInput ? nsbSourceUrlInput.value.trim() : '';
             const combinedFileContent = [uploadedFileContent, nsbClipboardContent].map(value => String(value || '').trim()).filter(Boolean).join('\n');
@@ -5951,7 +5957,14 @@
             const filter = document.getElementById('resultIPTypeFilter')?.value || 'all';
             const qualified = document.getElementById('resultQualifiedFilter')?.value || 'all';
             if (currentMode === 'nsb') {
-                return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
+                const currentRows = rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
+                if (qualified !== 'qualified' || !nsbQualifiedExportRows.size) return currentRows;
+                const merged = new Map();
+                nsbQualifiedExportRows.forEach((row, key) => {
+                    if (matchesIPTypeFilter(row.ipType, filter)) merged.set(key, row);
+                });
+                currentRows.forEach((row) => merged.set(`${row.ip}:${row.port}`, row));
+                return Array.from(merged.values());
             }
             return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
         }
@@ -6463,7 +6476,17 @@
                     }
                     break;
                 case 'nsb_scan_round_reset':
-                    // A new auto-loop round starts: discard the prior round immediately.
+                    // Keep a snapshot of qualified results for export while the visible round refreshes.
+                    if (nsbQualifiedExportRoundHasData && nsbRows.length) {
+                        getNSBResultObjects().forEach((result) => {
+                            if (matchesQualifiedFilter(result, 'qualified')) {
+                                const key = `${result.ip}:${result.port}`;
+                                nsbQualifiedExportRows.set(key, { ...result });
+                            }
+                        });
+                    }
+                    nsbQualifiedExportRoundHasData = false;
+                    // A new auto-loop round starts: discard the prior round from the live table.
                     nsbLiveRows = [];
                     nsbLiveIndex = {};
                     nsbLiveRowElements = {};
