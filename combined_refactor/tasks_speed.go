@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -162,65 +163,57 @@ func isSpeedRateLimited(speedErr string) bool {
 	return strings.Contains(speedErr, "速率限制")
 }
 
-func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port int, limit int, speedMinMB float64, customURL string, onResult func(current, total, qualified int, result TestResult), onRateLimited func()) ([]TestResult, []TestResult) {
-	capacity := len(results)
-	if limit > 0 && limit < capacity {
-		capacity = limit
-	}
-	qualified := make([]TestResult, 0, capacity)
-	interSpeedPause := func() bool {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(1200 * time.Millisecond):
-			return true
-		}
-	}
+func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port int, limit int, speedMinMB float64, customURL string, maxWorkers int, onResult func(current, total, qualified int, result TestResult), onRateLimited func()) ([]TestResult, []TestResult) {
+	if len(results) == 0 { return results, nil }
+	if maxWorkers <= 0 { maxWorkers = 1 }
+	if maxWorkers > len(results) { maxWorkers = len(results) }
+	qualified := make([]TestResult, 0, len(results))
+	jobs := make(chan int)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	current := 0
 	consecutiveRateLimited := 0
-	for i := range results {
-		select {
-		case <-ctx.Done():
-			return results, qualified
-		default:
-		}
-		if limit > 0 && len(qualified) >= limit {
-			break
-		}
-		speedMB, speedErr := runWindowedSpeedTest(ctx, results[i].IP, port, customURL)
-		if speedErr != "" {
-			results[i].Speed = speedErr
-			if isSpeedRateLimited(speedErr) {
-				consecutiveRateLimited++
+	stoppedByRateLimit := false
+	stopScheduling := false
+	worker := func() {
+		defer wg.Done()
+		for idx := range jobs {
+			select { case <-ctx.Done(): return; default: }
+			speedMB, speedErr := runWindowedSpeedTest(ctx, results[idx].IP, port, customURL)
+			mu.Lock()
+			if speedErr != "" {
+				results[idx].Speed = speedErr
+				if isSpeedRateLimited(speedErr) { consecutiveRateLimited++ } else { consecutiveRateLimited = 0 }
 			} else {
 				consecutiveRateLimited = 0
+				results[idx].Speed = fmt.Sprintf("%.2fMB/s", speedMB)
+				if speedMB >= speedMinMB && (limit <= 0 || len(qualified) < limit) { qualified = append(qualified, results[idx]) }
 			}
-		} else {
-			consecutiveRateLimited = 0
-			results[i].Speed = fmt.Sprintf("%.2fMB/s", speedMB)
-			if speedMB >= speedMinMB {
-				qualified = append(qualified, results[i])
-			}
-		}
-		if onResult != nil {
-			if ctx.Err() != nil {
-				return results, qualified
-			}
-			onResult(i+1, len(results), len(qualified), results[i])
-		}
-		if !interSpeedPause() {
-			return results, qualified
-		}
-		if consecutiveRateLimited >= 3 {
-			if onRateLimited != nil {
-				onRateLimited()
-			}
-			break
+			current++
+			if consecutiveRateLimited >= 3 { stoppedByRateLimit = true; stopScheduling = true }
+			if limit > 0 && len(qualified) >= limit { stopScheduling = true }
+			currentSnapshot, qualifiedSnapshot := current, len(qualified)
+			resultSnapshot := results[idx]
+			mu.Unlock()
+			if onResult != nil && ctx.Err() == nil { onResult(currentSnapshot, len(results), qualifiedSnapshot, resultSnapshot) }
+			select { case <-ctx.Done(): return; case <-time.After(1200 * time.Millisecond): }
 		}
 	}
+	wg.Add(maxWorkers)
+	for i := 0; i < maxWorkers; i++ { go worker() }
+feed:
+	for i := range results {
+		mu.Lock(); stop := stopScheduling; mu.Unlock()
+		if stop { break }
+		select { case <-ctx.Done(): break feed; case jobs <- i: }
+	}
+	close(jobs)
+	wg.Wait()
+	if stoppedByRateLimit && onRateLimited != nil { onRateLimited() }
 	return results, qualified
 }
 
-func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, customURL string, speedLimit int, speedMin float64, fallbackResults []TestResult, skipTested bool) {
+func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, customURL string, speedLimit int, speedMin float64, maxWorkers int, fallbackResults []TestResult, skipTested bool) {
 	if port <= 0 {
 		port = 443
 	}
@@ -264,10 +257,10 @@ func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, c
 	}
 	sortOfficialTestResults(results)
 
-	session.sendWSMessage("log", fmt.Sprintf("开始测速：%d 条记录，目标上限=%d，测速阈值=%.2fMB/s", len(results), speedLimit, speedMin))
+	if maxWorkers <= 0 { maxWorkers = 1 }; if maxWorkers > len(results) { maxWorkers = len(results) }; session.sendWSMessage("log", fmt.Sprintf("开始测速：%d 条记录，并发=%d，目标上限=%d，测速阈值=%.2fMB/s", len(results), maxWorkers, speedLimit, speedMin))
 	session.sendWSMessage("official_speed_progress", map[string]interface{}{"current": 0, "total": len(results), "qualified": 0, "limit": speedLimit})
 	rateLimited := false
-	updated, qualified := runOfficialSpeedTestsCore(ctx, results, port, speedLimit, speedMin, customURL, func(current, total, qualified int, result TestResult) {
+	updated, qualified := runOfficialSpeedTestsCore(ctx, results, port, speedLimit, speedMin, customURL, maxWorkers, func(current, total, qualified int, result TestResult) {
 		session.sendWSMessage("speed_test_result", map[string]string{"ip": result.IP, "speed": result.Speed})
 		session.sendWSMessage("official_speed_progress", map[string]interface{}{"current": current, "total": total, "qualified": qualified, "limit": speedLimit})
 	}, func() {

@@ -19,6 +19,7 @@ type startTaskRequest struct {
 	OfficialSpeedURL  string  `json:"officialSpeedURL"`
 	OfficialSpeedMin  float64 `json:"officialSpeedMin"`
 	OfficialSpeedLimit int    `json:"officialSpeedLimit"`
+	OfficialSpeedTest  int    `json:"officialSpeedTest"`
 }
 
 type startTestRequest struct {
@@ -39,6 +40,7 @@ type startOfficialSpeedBatchRequest struct {
 	URL        string       `json:"url"`
 	SpeedMin   float64      `json:"speedMin"`
 	SpeedLimit int          `json:"speedLimit"`
+	SpeedTest  int          `json:"speedTest"`
 	Results    []TestResult `json:"results"`
 	SkipTested bool         `json:"skipTested"`
 }

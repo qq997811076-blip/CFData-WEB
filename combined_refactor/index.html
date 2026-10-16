@@ -1736,6 +1736,10 @@
                     </select>
                 </div>
                 <div class="option-item">
+                    <span class="label" title="同时测速的 IP 数量，设为 1 可获得单个测速结果">⚡ 测速并发</span>
+                    <input id="officialSpeedTest" type="number" value="0" placeholder="0 关闭测速">
+                </div>
+                <div class="option-item">
                     <span class="label" title="指定数据中心，留空自动选择">🏢 数据中心</span>
                     <input id="officialTargetDC" type="text" value="" placeholder="留空自动选择" disabled>
                 </div>
@@ -2741,9 +2745,19 @@
         function updateOfficialAutoSpeedControls() {
             const autoSpeed = document.getElementById('officialAutoSpeed');
             const targetDC = document.getElementById('officialTargetDC');
+            const speedTestInput = document.getElementById('officialSpeedTest');
             if (!autoSpeed || !targetDC) return;
-            targetDC.disabled = String(autoSpeed.value || 'off').toLowerCase() !== 'on';
-            if (targetDC.disabled) targetDC.value = '';
+            const speedEnabled = String(autoSpeed.value || 'off').toLowerCase() === 'on';
+            targetDC.disabled = !speedEnabled;
+            if (!speedEnabled) targetDC.value = '';
+            if (speedTestInput) {
+                speedTestInput.disabled = !speedEnabled;
+                if (speedEnabled) {
+                    if (String(speedTestInput.value).trim() === '0' || !String(speedTestInput.value).trim()) speedTestInput.value = '5';
+                } else {
+                    speedTestInput.value = '0';
+                }
+            }
         }
 
         function updateNSBSpeedControls() {
@@ -4579,7 +4593,8 @@
             const url = resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset');
             const speedMin = parseFloat(document.getElementById('officialSpeedMin')?.value || '0.1') || 0.1;
             const speedLimit = parseInt(document.getElementById('officialSpeedLimit')?.value || '0', 10) || 0;
-            return { port, url, speedMin, speedLimit, results: testData.slice() };
+            const speedTest = parseInt(document.getElementById('officialSpeedTest')?.value || '0', 10) || 0;
+            return { port, url, speedMin, speedLimit, speedTest, results: testData.slice() };
         }
 
         function syncOfficialSpeedConfigState(cfg = getOfficialSpeedConfig()) {
@@ -4607,6 +4622,11 @@
             if (!testData.length) {
                 if (!auto) showNoticeCard('请先完成数据中心详细测试');
                 return false;
+            }
+            const speedTestInput = document.getElementById('officialSpeedTest');
+            if (speedTestInput && (parseInt(speedTestInput.value, 10) || 0) <= 0) {
+                speedTestInput.disabled = false;
+                speedTestInput.value = '5';
             }
             const cfg = syncOfficialSpeedConfigState();
             if (cfg.speedLimit <= 0) {
@@ -4836,6 +4856,7 @@
                 officialSpeedURL: officialSpeedConfig.url,
                 officialSpeedMin: officialSpeedConfig.speedMin,
                 officialSpeedLimit: officialSpeedConfig.speedLimit,
+                officialSpeedTest: officialSpeedConfig.speedTest,
             } })) {
                 officialAutoSpeedPending = false;
                 officialAutoStage = '';

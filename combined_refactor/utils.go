@@ -97,26 +97,93 @@ func parseNSBCSVInputs(content string, fallbackPort int) []string {
 			}
 
 			token := line[start:end]
-			host := ""
+			hosts := []string{}
 			if strings.Contains(token, "/") {
 				prefix, err := netip.ParsePrefix(token)
 				if err != nil || !prefix.Addr().Is4() {
 					continue
 				}
-				host = prefix.Masked().String()
+				hosts = expandNSBIPv4Prefix(prefix)
 			} else {
 				addr, err := netip.ParseAddr(token)
 				if err != nil || !addr.Is4() {
 					continue
 				}
-				host = addr.String()
+				hosts = []string{addr.String()}
 			}
 
-			if _, exists := seen[host]; exists {
+			for _, host := range hosts {
+				key := fmt.Sprintf("%s %d", host, fallbackPort)
+				if _, exists := seen[key]; exists {
+					continue
+				}
+				seen[key] = struct{}{}
+				items = append(items, key)
+			}
+		}
+	}
+	return items
+}
+
+// expandNSBIPv4Prefix expands an IPv4 CIDR into individual addresses.
+// A single prefix is capped at 1,048,576 addresses to avoid accidental memory exhaustion.
+func expandNSBIPv4Prefix(prefix netip.Prefix) []string {
+	prefix = prefix.Masked()
+	if !prefix.Addr().Is4() {
+		return nil
+	}
+	bits, _ := prefix.Bits()
+	count := uint64(1) << uint(32-bits)
+	if count > 1048576 {
+		return nil
+	}
+	bytes := prefix.Addr().As4()
+	base := uint64(bytes[0])<<24 | uint64(bytes[1])<<16 | uint64(bytes[2])<<8 | uint64(bytes[3])
+	items := make([]string, 0, int(count))
+	for offset := uint64(0); offset < count; offset++ {
+		value := base + offset
+		addr := [4]byte{byte(value >> 24), byte(value >> 16), byte(value >> 8), byte(value)}
+		items = append(items, netip.AddrFrom4(addr).String())
+	}
+	return items
+}
+
+var nsbCIDRPortRegex = regexp.MustCompile(`^\s*[:：]?\s*(\d{1,5})(?:\s|$|[,;|#])`)
+
+func parseNSBCIDRInputs(content string, fallbackPort int) []string {
+	seen := make(map[string]struct{})
+	items := make([]string, 0)
+	for _, line := range strings.Split(content, "\n") {
+		for _, match := range csvIPv4CandidateRegex.FindAllStringIndex(line, -1) {
+			start, end := match[0], match[1]
+			if start > 0 && isIPv4TokenBoundaryChar(line[start-1]) {
 				continue
 			}
-			seen[host] = struct{}{}
-			items = append(items, fmt.Sprintf("%s %d", host, fallbackPort))
+			if end < len(line) && (isIPv4TokenBoundaryChar(line[end]) || line[end] == '/') {
+				continue
+			}
+			token := line[start:end]
+			if !strings.Contains(token, "/") {
+				continue
+			}
+			prefix, err := netip.ParsePrefix(token)
+			if err != nil || !prefix.Addr().Is4() {
+				continue
+			}
+			port := fallbackPort
+			if portMatch := nsbCIDRPortRegex.FindStringSubmatch(line[end:]); len(portMatch) == 2 {
+				if parsed, err := strconv.Atoi(portMatch[1]); err == nil && parsed >= 1 && parsed <= 65535 {
+					port = parsed
+				}
+			}
+			for _, host := range expandNSBIPv4Prefix(prefix) {
+				key := fmt.Sprintf("%s %d", host, port)
+				if _, exists := seen[key]; exists {
+					continue
+				}
+				seen[key] = struct{}{}
+				items = append(items, key)
+			}
 		}
 	}
 	return items
@@ -150,6 +217,16 @@ func parseNSBInputs(content string, fallbackPort int) []string {
 		}
 		seen[key] = true
 		endpoints = append(endpoints, ep)
+	}
+	for _, item := range parseNSBCIDRInputs(content, fallbackPort) {
+		parts := strings.Fields(item)
+		if len(parts) != 2 {
+			continue
+		}
+		port, err := strconv.Atoi(parts[1])
+		if err == nil {
+			add(nsbEndpoint{host: parts[0], port: port})
+		}
 	}
 	for _, ep := range parseNSBCSVDocument(content, fallbackPort) {
 		add(ep)
