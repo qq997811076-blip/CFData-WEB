@@ -3250,11 +3250,11 @@
                 officialControls.classList.add('hidden');
                 nsbControls.classList.remove('hidden');
                 const testTab = document.querySelectorAll('.tab')[1];
-                testTab.style.display = 'none';
-                if (document.querySelector('.tab.active') !== document.querySelector('.tabs .tab:first-child')) {
+                testTab.style.display = 'block';
+                if (document.querySelector('.tab.active') !== document.querySelector('.tabs .tab:first-child') && !currentTestingDC) {
                     switchTab('scan');
                 }
-                document.getElementById('dcSection').style.display = 'none';
+                document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
                 if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
                 updateNSBCompactToggle();
                 if (isTaskRunning && runningTaskMode === 'nsb') {
@@ -4241,8 +4241,12 @@
         function selectDC(dc) {
             if (requireProxyWarning(() => selectDC(dc))) return;
             if (isTaskRunning && currentTestingDC !== '') return;
-            const port = parseInt(document.getElementById('officialTestPort').value);
-            const delay = parseInt(document.getElementById('officialDelay').value) || 500;
+            const port = currentMode === 'nsb'
+                ? (parseInt(document.getElementById('nsbFallbackPort').value) || 443)
+                : (parseInt(document.getElementById('officialTestPort').value) || 443);
+            const delay = currentMode === 'nsb'
+                ? (parseInt(document.getElementById('nsbDelay').value) || 500)
+                : (parseInt(document.getElementById('officialDelay').value) || 500);
 
             testResultsCount = 0;
             autoUploadKeys = new Set();
@@ -4255,8 +4259,8 @@
             document.querySelector('#testTable tbody').innerHTML = '';
             document.getElementById('currentTestDC').textContent = `测试中: ${dc}`;
             isTaskRunning = true;
-            runningTaskLabel = `官方优选 ${dc}`;
-            runningTaskMode = 'official';
+            runningTaskLabel = currentMode === 'nsb' ? `非标优选 ${dc}` : `官方优选 ${dc}`;
+            runningTaskMode = currentMode;
             runningTaskTab = 'test';
             setStartLoading(getRunningButtonText());
             resetProgress();
@@ -4274,7 +4278,7 @@
         }
 
         function renderTestRow(res) {
-            const port = res.Port || parseInt(document.getElementById('officialTestPort').value) || 443;
+            const port = res.Port || (currentMode === 'nsb' ? parseInt(document.getElementById('nsbFallbackPort').value) : parseInt(document.getElementById('officialTestPort').value)) || 443;
             const meta = testResultToObject(res);
             const speedText = res.Speed || '未测速';
             const speedStatus = getSpeedStatus(speedText, isOfficialSpeedQualified(speedText));
@@ -4347,8 +4351,8 @@
             const speedVal = document.getElementById(`speed-val-${ip.replace(/[:.]/g, '_')}`);
             if (speedVal) speedVal.textContent = '⏳...';
             currentSpeedTestingIP = ip;
-            const port = parseInt(document.getElementById('officialTestPort').value);
-            const customUrl = resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset');
+            const port = currentMode === 'nsb' ? (parseInt(document.getElementById('nsbFallbackPort').value) || 443) : (parseInt(document.getElementById('officialTestPort').value) || 443);
+            const customUrl = currentMode === 'nsb' ? resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset') : resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset');
             if (!wsSend({ type: 'start_speed_test', data: { ip, port, url: customUrl } })) {
                 if (speedVal) speedVal.textContent = '连接未就绪';
                 if (btn) {
@@ -5990,8 +5994,8 @@
                 case 'scan_complete_wait_dc':
                     const wasStoppingScan = isStoppingTask;
                     finishRunningTask('✨ 重新开始扫描');
-                    if (currentMode === 'official') {
-                        sortAndRenderScanResults();
+                    if (currentMode === 'official' || currentMode === 'nsb') {
+                        if (currentMode === 'official') sortAndRenderScanResults();
                         showDCSelection(msg.data);
                         if (!wasStoppingScan) {
                             completeProgressWithCurrentCount('扫描完成，选择数据中心');
@@ -6000,13 +6004,13 @@
                     break;
                 case 'test_progress':
                     if (isStoppingTask) break;
-                    if (currentMode === 'official') {
+                    if (currentMode === 'official' || currentMode === 'nsb') {
                         updateProgress(msg.data.current || 0, msg.data.total || 0, '测试中');
                     }
                     break;
                 case 'test_result':
                     if (isStoppingTask) break;
-                    addTestResult(msg.data, currentMode === 'official' && document.getElementById('test').classList.contains('active'));
+                    addTestResult(msg.data, (currentMode === 'official' || currentMode === 'nsb') && document.getElementById('test').classList.contains('active'));
                     break;
                 case 'test_complete':
                     if (isStoppingTask) {
@@ -6014,19 +6018,21 @@
                         log('任务已手动终止');
                         break;
                     }
-                    if (currentMode === 'official') {
+                    if (currentMode === 'official' || currentMode === 'nsb') {
                         testData = msg.data;
                         renderAllTestResults();
                         onTestComplete();
-                        officialTestCompletePending = true;
                         updateProgress(msg.data.length, msg.data.length, '测试完成');
                         if (backgroundTaskFollowing) {
                             switchTab('test');
                         }
-                        if (officialAutoSpeedPending && officialAutoStage === 'test') {
-                            officialAutoStage = 'speed';
-                        } else {
-                            autoUploadOfficialResults();
+                        if (currentMode === 'official') {
+                            officialTestCompletePending = true;
+                            if (officialAutoSpeedPending && officialAutoStage === 'test') {
+                                officialAutoStage = 'speed';
+                            } else {
+                                autoUploadOfficialResults();
+                            }
                         }
                     }
                     break;
@@ -6134,7 +6140,22 @@
                     nsbLiveRows = [];
                     nsbLiveIndex = {};
                     nsbLiveRowElements = {};
-                    (msg.data || []).forEach((row) => addNSBLiveResult(row || {}, false));
+                    scanData = [];
+                    (msg.data || []).forEach((row) => {
+                        addNSBLiveResult(row || {}, false);
+                        const latencyText = String(row?.latency || '').trim();
+                        const latencyMs = parseFloat(latencyText) || 0;
+                        scanData.push({
+                            IP: row?.ip || row?.IP || '',
+                            Port: parseInt(row?.port || row?.Port || 0) || 0,
+                            DataCenter: row?.dc || row?.DC || '',
+                            DCCountry: row?.dcCountry || row?.DCCountry || '',
+                            Region: row?.region || row?.Region || '',
+                            City: row?.city || row?.City || '',
+                            LatencyStr: latencyText || (latencyMs ? (latencyMs + 'ms') : ''),
+                            TCPDuration: latencyMs * 1000000,
+                        });
+                    });
                     if (currentMode === 'nsb') renderAllNSBLiveRows();
                     break;
                 case 'nsb_speed_complete':

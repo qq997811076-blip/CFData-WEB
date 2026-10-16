@@ -809,6 +809,28 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 	}
 	session.sendWSMessage("nsb_scan_sorted", sortedScanRows)
 
+	// 将非标第一次延迟结果转换为官方详细测试所使用的候选集合。
+	session.scanMutex.Lock()
+	session.scanResults = make([]ScanResult, 0, len(nsbResults))
+	for _, r := range nsbResults {
+		loc := locationMap[r.dataCenter]
+		latency := r.tcpDuration
+		if latency <= 0 {
+			if v, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(r.latency), "ms"), 64); err == nil {
+				latency = time.Duration(v * float64(time.Millisecond))
+			}
+		}
+		session.scanResults = append(session.scanResults, ScanResult{
+			IP: r.ipAddr, Port: r.port, DataCenter: r.dataCenter, DCCountry: loc.Cca2,
+			Region: r.region, City: r.city, LatencyStr: fmt.Sprintf("%dms", latency.Milliseconds()), TCPDuration: latency,
+		})
+	}
+	candidateScan := append([]ScanResult(nil), session.scanResults...)
+	session.scanMutex.Unlock()
+	session.sendWSMessage("log", "非标延迟扫描完成，请选择数据中心进行详细测试")
+	session.sendWSMessage("scan_complete_wait_dc", buildDCList(candidateScan))
+	return
+
 	completionStatus := "complete"
 	completionMessage := "测试完成"
 	qualifiedCount := 0
