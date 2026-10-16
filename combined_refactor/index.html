@@ -1731,6 +1731,17 @@
                     <input id="officialSpeedLimit" type="number" value="5" placeholder="0 关闭测速">
                 </div>
                 <div class="option-item">
+                    <span class="label" title="每轮最多获取的扫描合格 IP 数量">🎯 扫描合格数量</span>
+                    <input id="officialScanLimit" type="number" value="1000" min="1" placeholder="默认 1000">
+                </div>
+                <div class="option-item">
+                    <span class="label" title="测速达标数量不足时，继续扫描剩余官方 IP 源">🔁 自动循环</span>
+                    <select id="officialAutoLoop">
+                        <option value="off" selected>关闭</option>
+                        <option value="on">开启</option>
+                    </select>
+                </div>
+                <div class="option-item">
                     <span class="label" title="扫描完成后自动进行详细测试和测速">🧪 自动测速</span>
                     <select id="officialAutoSpeed" onchange="updateOfficialAutoSpeedControls()">
                         <option value="off" selected>关闭</option>
@@ -4837,7 +4848,8 @@
             const autoSpeed = String(document.getElementById('officialAutoSpeed')?.value || 'off').toLowerCase() === 'on';
             officialSpeedEnabledForResults = autoSpeed && officialSpeedConfig.speedLimit > 0;
             officialAutoSpeedPending = autoSpeed;
-            officialAutoStage = autoSpeed ? 'scan' : '';
+            const officialAutoLoop = String(document.getElementById('officialAutoLoop')?.value || 'off') === 'on';
+            officialAutoStage = autoSpeed ? (officialAutoLoop ? 'test' : 'scan') : '';
             officialBatchSpeedRunning = false;
             officialContinueSpeedUnlocked = false;
             isStoppingTask = false;
@@ -4882,6 +4894,8 @@
                 officialSpeedMin: officialSpeedConfig.speedMin,
                 officialSpeedLimit: officialSpeedConfig.speedLimit,
                 officialSpeedTest: officialSpeedConfig.speedTest,
+                officialScanLimit: Math.max(1, parseInt(document.getElementById('officialScanLimit')?.value || '1000', 10) || 1000),
+                autoLoop: String(document.getElementById('officialAutoLoop')?.value || 'off') === 'on',
             } })) {
                 officialAutoSpeedPending = false;
                 officialAutoStage = '';

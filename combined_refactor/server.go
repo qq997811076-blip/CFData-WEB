@@ -146,7 +146,19 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				scanMode = scanModeTCPing
 			}
 			autoSpeed := params.AutoSpeed && params.OfficialSpeedLimit > 0
-			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed}, func(ctx context.Context, session *appSession) {
+			autoLoop := params.AutoLoop && autoSpeed
+			if params.OfficialScanLimit <= 0 {
+				params.OfficialScanLimit = 1000
+			}
+			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed, "autoLoop": autoLoop, "scanLimit": params.OfficialScanLimit}, func(ctx context.Context, session *appSession) {
+				if autoLoop {
+					speedURL := strings.TrimSpace(params.OfficialSpeedURL)
+					if speedURL == "" || isAutoSpeedURL(speedURL) {
+						speedURL = speedTestURL
+					}
+					runOfficialAutoLoop(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode, params.OfficialScanLimit, strings.TrimSpace(params.OfficialTargetDC), params.OfficialSpeedPort, speedURL, params.OfficialSpeedMin, params.OfficialSpeedLimit, params.OfficialSpeedTest)
+					return
+				}
 				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode)
 				if ctx.Err() != nil || !autoSpeed || !session.isBackgroundTask() {
 					return
@@ -164,10 +176,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				runDetailedTest(ctx, session, dc, params.OfficialSpeedPort, params.Delay, scanMode)
 				if ctx.Err() != nil || !session.isBackgroundTask() || params.OfficialSpeedLimit <= 0 {
 					return
-				}
-				speedURL := strings.TrimSpace(params.OfficialSpeedURL)
-				if speedURL == "" || isAutoSpeedURL(speedURL) {
-					speedURL = speedTestURL
 				}
 				session.testMutex.Lock()
 				results := append([]TestResult(nil), session.testResults...)
