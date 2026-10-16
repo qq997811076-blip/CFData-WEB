@@ -152,11 +152,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				dc := strings.TrimSpace(params.OfficialTargetDC)
-				if params.AutoLoop {
-					dc = ""
-					session.sendWSMessage("log", "官方自动循环已开启：测速合格数量未达目标时，扩展测试全部已扫描 IP")
-				}
-				if dc == "" && !params.AutoLoop {
+				if dc == "" {
 					session.scanMutex.Lock()
 					copy := append([]ScanResult(nil), session.scanResults...)
 					session.scanMutex.Unlock()
