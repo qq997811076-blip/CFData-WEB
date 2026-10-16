@@ -2893,6 +2893,92 @@
             setTimeout(() => document.body.classList.remove('no-transition'), 500);
         }
 
+        // Persist all ordinary UI settings immediately so WebView restarts do not reset them.
+        const UI_SETTINGS_STORAGE_KEY = 'cfdata-ui-settings-v1';
+        let uiSettingsSaveTimer = null;
+
+        function isPersistableUIControl(el) {
+            if (!el || !el.id) return false;
+            const type = String(el.type || '').toLowerCase();
+            if (type === 'file' || type === 'password' || type === 'submit' || type === 'button' || type === 'reset') return false;
+            // Never copy credentials into the generic settings snapshot.
+            if (/(token|password|passwd|secret|private.?key)/i.test(el.id)) return false;
+            return el.matches('input, select, textarea');
+        }
+
+        function saveAllUISettings() {
+            try {
+                const values = {};
+                document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+                    if (!isPersistableUIControl(el)) return;
+                    const type = String(el.type || '').toLowerCase();
+                    if (type === 'checkbox' || type === 'radio') {
+                        values[el.id] = { kind: type, checked: !!el.checked };
+                    } else {
+                        values[el.id] = { kind: 'value', value: el.value };
+                    }
+                });
+                localStorage.setItem(UI_SETTINGS_STORAGE_KEY, JSON.stringify(values));
+            } catch (e) {
+                console.warn('[cfdata] 自动保存设置失败:', e);
+            }
+        }
+
+        function restoreAllUISettings() {
+            try {
+                const raw = localStorage.getItem(UI_SETTINGS_STORAGE_KEY);
+                if (!raw) return;
+                const values = JSON.parse(raw);
+                if (!values || typeof values !== 'object') return;
+                document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+                    if (!isPersistableUIControl(el) || !Object.prototype.hasOwnProperty.call(values, el.id)) return;
+                    const saved = values[el.id];
+                    if (!saved || typeof saved !== 'object') return;
+                    const type = String(el.type || '').toLowerCase();
+                    if ((type === 'checkbox' || type === 'radio') && saved.kind === type) {
+                        el.checked = !!saved.checked;
+                    } else if (saved.kind === 'value' && saved.value !== undefined && type !== 'checkbox' && type !== 'radio') {
+                        // Restore select values only when the option still exists.
+                        if (el.tagName !== 'SELECT' || Array.from(el.options).some(option => option.value === String(saved.value))) {
+                            el.value = String(saved.value);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.warn('[cfdata] 恢复设置失败:', e);
+            }
+        }
+
+        function initAutomaticUISettingsPersistence() {
+            // Restore only after dynamic account/select options have been populated.
+            restoreAllUISettings();
+            const persistSoon = event => {
+                if (!isPersistableUIControl(event.target)) return;
+                if (uiSettingsSaveTimer !== null) window.clearTimeout(uiSettingsSaveTimer);
+                uiSettingsSaveTimer = window.setTimeout(() => {
+                    uiSettingsSaveTimer = null;
+                    saveAllUISettings();
+                }, 120);
+            };
+            document.addEventListener('input', persistSoon, true);
+            document.addEventListener('change', persistSoon, true);
+            window.addEventListener('pagehide', saveAllUISettings);
+            window.addEventListener('beforeunload', saveAllUISettings);
+            // Migrate the existing explicit config snapshot into the new always-on snapshot
+            // when no automatic snapshot exists yet.
+            try {
+                if (!localStorage.getItem(UI_SETTINGS_STORAGE_KEY)) {
+                    const raw = localStorage.getItem('cfdata-config');
+                    if (raw) {
+                        applyConfigValues(JSON.parse(raw));
+                        saveAllUISettings();
+                    }
+                }
+            } catch (e) {
+                console.warn('[cfdata] 配置迁移失败:', e);
+            }
+        }
+
         function readFormValues() {
             function val(id) {
                 const el = document.getElementById(id);
@@ -6596,6 +6682,7 @@
             initializeUI();
             renderGitHubAccounts();
             renderEdgetunnelAccounts();
+            initAutomaticUISettingsPersistence();
             switchMode('official');
             initThemeFromStorage();
         });
