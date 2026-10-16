@@ -427,6 +427,8 @@
             font-size: 12px;
         }
 
+        #officialSpeedTestItem { display: flex; visibility: visible; }
+
         .option-item.full-width {
             grid-column: 1 / -1;
         }
@@ -1735,7 +1737,7 @@
                         <option value="on">开启</option>
                     </select>
                 </div>
-                <div class="option-item">
+                <div id="officialSpeedTestItem" class="option-item">
                     <span class="label" title="同时测速的 IP 数量，设为 1 可获得单个测速结果">⚡ 测速并发</span>
                     <input id="officialSpeedTest" type="number" value="5" min="1" placeholder="默认 5">
                 </div>
@@ -2531,7 +2533,6 @@
             const found = [];
             const seen = new Set();
             let duplicates = 0;
-
             const addIP = (ip, port, country) => {
                 const key = ip + ':' + port;
                 if (seen.has(key)) {
@@ -2542,57 +2543,45 @@
                 found.push({ key, ip, port, country });
             };
 
-            for (const line of String(content || '').split(/\r?\n/)) {
+            // 单次扫描每行中的 IPv4/CIDR，命中 CIDR 时直接展开成完整 IP 列表。
+            // 支持 IP 前后附带速度、国家代码、端口等其他文本。
+            const tokenRegex = /(^|[^0-9.])((?:[0-9]{1,3}\\.){3}[0-9]{1,3})(?:\\s*\\/\\s*([0-9]{1,2}))?(?![0-9./])/g;
+            for (const line of String(content || '').split(/\\r?\\n/)) {
                 const country = getNSBClipboardCountryCode(line);
-                const cidrRanges = [];
-
-                // 先识别 CIDR，避免把网段末尾的 /20 当作普通 IPv4 后缀。
-                const cidrRegex = /(^|[^0-9.])((?:[0-9]{1,3}\.){3}[0-9]{1,3})\s*\/\s*([0-9]{1,2})(?![0-9./])/g;
+                tokenRegex.lastIndex = 0;
                 let match;
-                while ((match = cidrRegex.exec(line)) !== null) {
+                while ((match = tokenRegex.exec(line)) !== null) {
                     const ip = match[2];
-                    const prefix = Number(match[3]);
-                    const start = match.index + match[1].length;
-                    cidrRanges.push({ start, end: cidrRegex.lastIndex });
-
                     const base = nsbIPv4ToNumber(ip);
-                    if (base === null || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) continue;
+                    if (base === null) continue;
 
-                    const count = Math.pow(2, 32 - prefix);
-                    if (count > 1048576) {
-                        throw new Error('CIDR 网段地址数量过大（' + count + '），单个网段最多展开 1048576 个');
+                    let ips;
+                    if (match[3] !== undefined) {
+                        const prefix = Number(match[3]);
+                        if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) continue;
+                        const count = Math.pow(2, 32 - prefix);
+                        if (count > 1048576) {
+                            throw new Error('CIDR 网段地址数量过大（' + count + '），单个网段最多展开 1048576 个');
+                        }
+                        const network = Math.floor(base / count) * count;
+                        ips = new Array(count);
+                        for (let offset = 0; offset < count; offset++) {
+                            ips[offset] = nsbNumberToIPv4(network + offset);
+                        }
+                    } else {
+                        ips = [ip];
                     }
-                    const network = Math.floor(base / count) * count;
+
+                    const tail = line.slice(match.index + match[0].length);
+                    let portMatch = tail.match(/^\\s*[:：]\\s*(\\d{1,5})/);
+                    if (!portMatch) portMatch = tail.match(/^\\s+(\\d{1,5})(?=\\s|$|[,;|#])/);
                     let port = fallbackPort;
-                    const tail = line.slice(cidrRegex.lastIndex);
-                    let portMatch = tail.match(/^\s*[:：]\s*(\d{1,5})/);
-                    if (!portMatch) portMatch = tail.match(/^\s+(\d{1,5})(?=\s|$|[,;|#])/);
                     if (portMatch) {
                         const candidate = Number(portMatch[1]);
                         if (candidate >= 1 && candidate <= 65535) port = candidate;
                     }
-                    for (let offset = 0; offset < count; offset++) {
-                        addIP(nsbNumberToIPv4(network + offset), port, country);
-                    }
-                }
 
-                // 再提取独立 IPv4；IP 前后允许有国家码、速度、端口等文本。
-                const ipv4Regex = /(^|[^0-9.])((?:[0-9]{1,3}\.){3}[0-9]{1,3})(?![0-9./])/g;
-                while ((match = ipv4Regex.exec(line)) !== null) {
-                    const start = match.index + match[1].length;
-                    if (cidrRanges.some(range => start >= range.start && start < range.end)) continue;
-                    const ip = match[2];
-                    if (nsbIPv4ToNumber(ip) === null) continue;
-
-                    let port = fallbackPort;
-                    const tail = line.slice(ipv4Regex.lastIndex);
-                    let portMatch = tail.match(/^\s*[:：]\s*(\d{1,5})/);
-                    if (!portMatch) portMatch = tail.match(/^\s+(\d{1,5})(?=\s|$|[,;|#])/);
-                    if (portMatch) {
-                        const candidate = Number(portMatch[1]);
-                        if (candidate >= 1 && candidate <= 65535) port = candidate;
-                    }
-                    addIP(ip, port, country);
+                    for (const expandedIP of ips) addIP(expandedIP, port, country);
                 }
             }
             return { items: found, duplicates };
