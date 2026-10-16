@@ -4290,7 +4290,7 @@
             const speedStatus = getSpeedStatus(speedText, isOfficialSpeedQualified(speedText));
             const speedColor = speedText.includes('MB/s') ? (parseFloat(speedText) > SPEED_GREEN ? '#10b981' : '#f59e0b') : (speedText === '未测速' ? 'inherit' : '#ef4444');
             const isTesting = currentSpeedTestingIP === res.IP;
-            const speedDisabled = isTesting || isTaskRunning || officialBatchSpeedRunning;
+            const speedDisabled = isTesting || officialBatchSpeedRunning || (isTaskRunning && currentTestingDC !== '');
             const buttonText = isTesting ? '测速中' : (res.Speed ? '重新测速' : '测速');
             const lcFactor = getLatencyColorFactor();
             const row = `<tr class="${speedStatus === 'qualified' ? 'row-qualified' : (speedStatus === 'unqualified' ? 'row-unqualified' : '')}"><td>${renderIPCell(res.IP, res.OriginalInput || res.originalInput)}</td><td><span class="copy-ip" onclick="copyToClipboard('${port}', event)">${port}</span></td><td>${meta.dc || '-'}</td><td>${meta.dcCountry || '-'}</td><td>${meta.region || '-'}</td><td>${meta.city || '-'}</td><td>${getScanModeLabel()}</td><td>${(res.LossRate * 100).toFixed(0)}%</td><td>${(res.MinLatency / 1_000_000).toFixed(0)} ms</td><td>${(res.MaxLatency / 1_000_000).toFixed(0)} ms</td><td style="color:${getLatencyColor(res.AvgLatency / 1_000_000, lcFactor)}; font-weight:600;">${(res.AvgLatency / 1_000_000).toFixed(0)} ms</td><td style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:none;"><span class="speed-result" id="speed-val-${res.IP.replace(/[:.]/g, '_')}" style="color:${speedColor};"><span>${speedText}</span>${renderSpeedStatusTag(speedStatus)}</span><button class="action-btn speed-btn" id="btn-speed-${res.IP.replace(/[:.]/g, '_')}" onclick="runSpeedTest('${res.IP}')" ${speedDisabled ? 'disabled' : ''}>${buttonText}</button></td></tr>`;
@@ -6037,8 +6037,17 @@
                             if (officialAutoSpeedPending && officialAutoStage === 'test') {
                                 officialAutoStage = 'speed';
                             } else {
+                                // 详细测试已经收到完整结果后立即结束前端“任务运行”状态，
+                                // 避免按钮仍被 isTaskRunning 锁住，导致“一键测速/继续测速/单IP测速”灰掉。
+                                finishRunningTask('✨ 开始扫描与测试');
+                                updateBatchSpeedButton();
+                                renderAllTestResults();
                                 autoUploadOfficialResults();
                             }
+                        } else {
+                            finishRunningTask('✨ 开始扫描与测试');
+                            updateNSBSpeedButtons();
+                            renderAllTestResults();
                         }
                     }
                     break;
