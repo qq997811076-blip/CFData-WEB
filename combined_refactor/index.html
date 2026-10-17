@@ -4009,7 +4009,7 @@
             if (currentMode === 'official') {
                 return;
             }
-            if (nsbRows.length) {
+            if (nsbRows.length || nsbQualifiedExportRows.size) {
                 renderScanRowsCSV(nsbHeaders, nsbRows);
                 return;
             }
@@ -4132,9 +4132,39 @@
             tbody.innerHTML = '';
             renderScanHeaders('nsb');
             const visibleHeaders = filterNSBHeaders(headers);
-            const originalInputIndex = headers.map(normalizeNSBHeader).indexOf('原始输入');
+            const normalizedHeaders = (headers || []).map(normalizeNSBHeader);
+            const originalInputIndex = normalizedHeaders.indexOf('原始输入');
+            let rowsForDisplay = Array.isArray(rows) ? rows.slice() : [];
 
-            const filteredRows = filterNSBRowsByQualified(filterNSBRowsByIPType(headers, rows, nsbTableIPTypeFilter), headers, nsbTableQualifiedFilter);
+            // When showing qualified results, merge qualified IPs saved from earlier auto-loop rounds.
+            // Keep the current round live, but do not let an empty round reset hide earlier qualified IPs.
+            if (normalizeQualifiedFilter(nsbTableQualifiedFilter) === 'qualified' && nsbQualifiedExportRows.size) {
+                const ipIndex = normalizedHeaders.indexOf('IP地址');
+                const portIndex = normalizedHeaders.indexOf('端口号');
+                const speedIndex = normalizedHeaders.indexOf('下载速度');
+                const merged = new Map();
+                nsbQualifiedExportRows.forEach((result, key) => {
+                    const historicalRow = normalizedHeaders.map((header) => {
+                        if (header === 'IP地址') return result.ip || result.IP || '';
+                        if (header === '端口号') return result.port || result.Port || '';
+                        const field = RESULT_FIELDS.find((item) => item.label === header);
+                        if (field && result[field.key] !== undefined) return result[field.key];
+                        return result[header] !== undefined ? result[header] : '-';
+                    });
+                    merged.set(key, historicalRow);
+                });
+                rowsForDisplay.forEach((row) => {
+                    const speed = speedIndex >= 0 ? row[speedIndex] : '';
+                    if (speedIndex < 0 || isNSBSpeedQualified(speed)) {
+                        const ip = ipIndex >= 0 ? String(row[ipIndex] || '').trim() : '';
+                        const port = portIndex >= 0 ? String(row[portIndex] || '').trim() : '';
+                        if (ip && port) merged.set(`${ip}:${port}`, row);
+                    }
+                });
+                rowsForDisplay = Array.from(merged.values());
+            }
+
+            const filteredRows = filterNSBRowsByQualified(filterNSBRowsByIPType(headers, rowsForDisplay, nsbTableIPTypeFilter), headers, nsbTableQualifiedFilter);
             filteredRows.forEach((r) => {
                 const visibleRow = filterNSBRow(headers, r);
                 const originalInput = originalInputIndex !== -1 ? r[originalInputIndex] : undefined;
@@ -6493,8 +6523,9 @@
                     if (nsbBatchSpeedRunning) {
                         nsbRows = [];
                         renderScanRowsCSV(nsbHeaders, nsbRows);
+                    } else if (currentMode === 'nsb') {
+                        renderAllNSBLiveRows();
                     }
-                    if (currentMode === 'nsb') renderAllNSBLiveRows();
                     break;
                 case 'nsb_scan_result':
                     if (nsbBatchSpeedRunning) {
