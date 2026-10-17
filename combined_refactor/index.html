@@ -4138,34 +4138,6 @@
             const originalInputIndex = normalizedHeaders.indexOf('原始输入');
             let rowsForDisplay = Array.isArray(rows) ? rows.slice() : [];
 
-            // When showing qualified results, merge qualified IPs saved from earlier auto-loop rounds.
-            // Keep the current round live, but do not let an empty round reset hide earlier qualified IPs.
-            if (normalizeQualifiedFilter(nsbTableQualifiedFilter) === 'qualified' && nsbQualifiedExportRows.size) {
-                const ipIndex = normalizedHeaders.indexOf('IP地址');
-                const portIndex = normalizedHeaders.indexOf('端口号');
-                const speedIndex = normalizedHeaders.indexOf('下载速度');
-                const merged = new Map();
-                nsbQualifiedExportRows.forEach((result, key) => {
-                    const historicalRow = normalizedHeaders.map((header) => {
-                        if (header === 'IP地址') return result.ip || result.IP || '';
-                        if (header === '端口号') return result.port || result.Port || '';
-                        const field = RESULT_FIELDS.find((item) => item.label === header);
-                        if (field && result[field.key] !== undefined) return result[field.key];
-                        return result[header] !== undefined ? result[header] : '-';
-                    });
-                    merged.set(key, historicalRow);
-                });
-                rowsForDisplay.forEach((row) => {
-                    const speed = speedIndex >= 0 ? row[speedIndex] : '';
-                    if (speedIndex < 0 || isNSBSpeedQualified(speed)) {
-                        const ip = ipIndex >= 0 ? String(row[ipIndex] || '').trim() : '';
-                        const port = portIndex >= 0 ? String(row[portIndex] || '').trim() : '';
-                        if (ip && port) merged.set(`${ip}:${port}`, row);
-                    }
-                });
-                rowsForDisplay = Array.from(merged.values());
-            }
-
             const filteredRows = filterNSBRowsByQualified(filterNSBRowsByIPType(headers, rowsForDisplay, nsbTableIPTypeFilter), headers, nsbTableQualifiedFilter);
             filteredRows.forEach((r) => {
                 const visibleRow = filterNSBRow(headers, r);
@@ -4357,15 +4329,21 @@
             if (nsbBatchSpeedRunning || nsbRows.length) {
                 const ipColumn = normalizedHeaders.indexOf('IP地址');
                 const portColumn = normalizedHeaders.indexOf('端口号');
+                const speedColumn = normalizedHeaders.indexOf('下载速度');
                 const idx = nsbRows.findIndex((r) => String(r[ipColumn] ?? '').trim() === ip && String(r[portColumn] ?? '').trim() === port);
                 if (idx >= 0) {
-                    const updated = nsbRows[idx].slice();
-                    normalizedHeaders.forEach((header, hIdx) => {
-                        if (patch[header] !== undefined && hIdx < updated.length) updated[hIdx] = patch[header];
-                    });
-                    nsbRows[idx] = updated;
+                    const existingQualified = speedColumn >= 0 && isNSBSpeedQualified(nsbRows[idx][speedColumn]);
+                    const incomingQualified = isNSBSpeedQualified(patch['下载速度']);
+                    // A previously qualified IP must not be downgraded or replaced by a later round's failed result.
+                    if (!(existingQualified && !incomingQualified)) {
+                        const updated = nsbRows[idx].slice();
+                        normalizedHeaders.forEach((header, hIdx) => {
+                            if (patch[header] !== undefined && hIdx < updated.length) updated[hIdx] = patch[header];
+                        });
+                        nsbRows[idx] = updated;
+                    }
                 } else if (nsbBatchSpeedRunning) {
-                    // Insert new IPs immediately; do not limit updates to rows from the previous round.
+                    // Add new round results to the same list; qualified entries survive the next round reset.
                     nsbRows.push(normalizedHeaders.map((header) => patch[header] !== undefined ? patch[header] : '-'));
                 }
                 renderScanRowsCSV(nsbHeaders.length ? nsbHeaders : headerSource, nsbRows);
@@ -6519,7 +6497,7 @@
                     }
                     break;
                 case 'nsb_scan_round_reset':
-                    // Keep a snapshot of qualified results for export while the visible round refreshes.
+                    // Preserve qualified rows in the current result list; refresh only non-qualified rows.
                     if (nsbQualifiedExportRoundHasData && nsbRows.length) {
                         getNSBResultObjects().forEach((result) => {
                             if (matchesQualifiedFilter(result, 'qualified')) {
@@ -6529,12 +6507,17 @@
                         });
                     }
                     nsbQualifiedExportRoundHasData = false;
-                    // A new auto-loop round starts: discard the prior round from the live table.
-                    nsbLiveRows = [];
+                    const liveHeaderSource = nsbHeaders.length ? nsbHeaders : NSB_LIVE_HEADERS;
+                    const liveNormalizedHeaders = liveHeaderSource.map(normalizeNSBHeader);
+                    const liveSpeedIndex = liveNormalizedHeaders.indexOf('下载速度');
+                    nsbRows = nsbRows.filter((row) => liveSpeedIndex >= 0 && isNSBSpeedQualified(row[liveSpeedIndex]));
+                    nsbLiveRows = nsbLiveRows.filter((row) => isNSBSpeedQualified(row.speed));
                     nsbLiveIndex = {};
+                    nsbLiveRows.forEach((row, index) => {
+                        nsbLiveIndex[`${row.ip || ''}:${row.port || ''}`] = index;
+                    });
                     nsbLiveRowElements = {};
                     if (nsbBatchSpeedRunning) {
-                        nsbRows = [];
                         renderScanRowsCSV(nsbHeaders, nsbRows);
                     } else if (currentMode === 'nsb') {
                         renderAllNSBLiveRows();
