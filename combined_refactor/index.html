@@ -1735,13 +1735,6 @@
                     <input id="officialScanLimit" type="number" value="1000" min="1" placeholder="默认 1000">
                 </div>
                 <div class="option-item">
-                    <span class="label" title="测速达标数量不足时，继续扫描剩余官方 IP 源">🔁 自动循环</span>
-                    <select id="officialAutoLoop">
-                        <option value="off" selected>关闭</option>
-                        <option value="on">开启</option>
-                    </select>
-                </div>
-                <div class="option-item">
                     <span class="label" title="扫描完成后自动进行详细测试和测速">🧪 自动测速</span>
                     <select id="officialAutoSpeed" onchange="updateOfficialAutoSpeedControls()">
                         <option value="off" selected>关闭</option>
@@ -1781,6 +1774,13 @@
                         <button class="mini-action-btn" title="恢复自动选择测速网站"
                             onclick="resetDefaultSpeedUrl('officialSpeedUrl', 'officialSpeedUrlPreset')">↺</button>
                     </div>
+                </div>
+                <div class="option-item full-width">
+                    <span class="label" title="最终合格 IP 数量未达目标时，重新执行官方优选完整流程">🔁 自动循环</span>
+                    <select id="officialAutoLoop">
+                        <option value="off" selected>关闭</option>
+                        <option value="on">开启</option>
+                    </select>
                 </div>
                 <div class="option-item full-width">
                     <span class="label">🧹 精简地址库</span>
@@ -2428,6 +2428,11 @@
         let officialTestCompletePending = false;
         let officialSpeedEndedByRateLimit = false;
         let officialContinueSpeedUnlocked = false;
+        let officialLoopRunning = false;
+        let officialLoopNeedsNextRound = false;
+        let officialLoopRound = 0;
+        let officialLoopTarget = 0;
+        let officialLoopQualifiedResults = new Map();
         let backgroundTaskActive = false;
         let backgroundTaskFollowing = false;
         let backgroundStatusTimer = null;
@@ -4538,10 +4543,27 @@
         }
 
         function addTestResult(res, render = true) {
-            testResultsCount++;
-            testData.push(res);
+            if (!officialLoopRunning) {
+                testResultsCount++;
+                testData.push(res);
+                updateBadge('testCount', getFilteredOfficialTestData().length);
+                if (render && matchesOfficialQualifiedFilter(res, officialTestQualifiedFilter)) renderTestRow(res);
+                updateBatchSpeedButton();
+                return;
+            }
+            const ipKey = String(res?.IP || '').trim();
+            if (ipKey && officialLoopQualifiedResults.has(ipKey)) {
+                updateBatchSpeedButton();
+                return;
+            }
+            const existingIndex = ipKey
+                ? testData.findIndex((item) => String(item?.IP || '').trim() === ipKey)
+                : -1;
+            if (existingIndex >= 0) testData[existingIndex] = res;
+            else testData.push(res);
+            testResultsCount = testData.length;
             updateBadge('testCount', getFilteredOfficialTestData().length);
-            if (render && matchesOfficialQualifiedFilter(res, officialTestQualifiedFilter)) renderTestRow(res);
+            if (render) renderAllTestResults();
             updateBatchSpeedButton();
         }
 
@@ -4859,6 +4881,8 @@
         }
 
         function confirmStopCurrentTask() {
+            officialLoopRunning = false;
+            officialLoopNeedsNextRound = false;
             if (!wsSend({ type: 'stop_task', data: {} })) {
                 showNoticeCard('连接未就绪，无法发送停止命令');
                 return;
@@ -4879,6 +4903,24 @@
             officialSpeedEnabledForResults = autoSpeed && officialSpeedConfig.speedLimit > 0;
             officialAutoSpeedPending = autoSpeed;
             const officialAutoLoop = String(document.getElementById('officialAutoLoop')?.value || 'off') === 'on';
+            const shouldLoopOfficial = officialAutoLoop && autoSpeed && officialSpeedConfig.speedLimit > 0;
+            if (shouldLoopOfficial) {
+                if (!officialLoopRunning) {
+                    officialLoopQualifiedResults = new Map();
+                    officialLoopRound = 0;
+                }
+                officialLoopRunning = true;
+                officialLoopTarget = officialSpeedConfig.speedLimit;
+                officialLoopRound++;
+                officialLoopNeedsNextRound = true;
+                log(`官方自动循环第 ${officialLoopRound} 轮开始，最终合格目标 ${officialLoopTarget}`);
+            } else {
+                officialLoopRunning = false;
+                officialLoopNeedsNextRound = false;
+                officialLoopRound = 0;
+                officialLoopTarget = 0;
+                officialLoopQualifiedResults = new Map();
+            }
             officialAutoStage = autoSpeed ? (officialAutoLoop ? 'test' : 'scan') : '';
             officialBatchSpeedRunning = false;
             officialContinueSpeedUnlocked = false;
@@ -4904,7 +4946,7 @@
             document.getElementById('currentTestDC').textContent = '';
 
             scanData = [];
-            testData = [];
+            testData = officialLoopRunning ? Array.from(officialLoopQualifiedResults.values()) : [];
             dcList = [];
             testedDCs.clear();
             currentTestingDC = '';
@@ -4914,6 +4956,10 @@
             updateBadge('scanCount', 0);
             updateBadge('testCount', 0);
             updateBadge('dcCount', 0);
+            if (officialLoopRunning) {
+                setOfficialTestQualifiedFilter('all');
+                renderAllTestResults();
+            }
 
             if (!wsSend({ type: 'start_task', data: {
                 ipType, threads, port, delay, scanMode: getScanMode(),
@@ -6388,7 +6434,17 @@
                         break;
                     }
                     if (currentMode === 'official') {
-                        testData = msg.data;
+                        if (officialLoopRunning) {
+                            const merged = new Map();
+                            officialLoopQualifiedResults.forEach((row, key) => merged.set(key, row));
+                            (msg.data || []).forEach((row) => {
+                                const key = String(row?.IP || '').trim();
+                                if (key && !merged.has(key)) merged.set(key, row);
+                            });
+                            testData = Array.from(merged.values());
+                        } else {
+                            testData = msg.data;
+                        }
                         renderAllTestResults();
                         onTestComplete();
                         officialTestCompletePending = true;
@@ -6420,11 +6476,30 @@
                         log('任务已手动终止');
                         break;
                     }
+                    const wasOfficialLoop = officialLoopRunning;
+                    if (wasOfficialLoop) {
+                        testData.forEach((row) => {
+                            const key = String(row?.IP || '').trim();
+                            if (key && matchesOfficialQualifiedFilter(row, 'qualified') && !officialLoopQualifiedResults.has(key)) {
+                                officialLoopQualifiedResults.set(key, { ...row });
+                            }
+                        });
+                        officialLoopQualifiedResults.forEach((row, key) => {
+                            const index = testData.findIndex((item) => String(item?.IP || '').trim() === key);
+                            if (index < 0) testData.push(row);
+                            else testData[index] = row;
+                        });
+                        testData = Array.from(new Map(testData.map((row) => [String(row?.IP || '').trim(), row]).filter(([key]) => key)).values());
+                    }
+                    const loopQualifiedCount = wasOfficialLoop ? officialLoopQualifiedResults.size : 0;
+                    const loopReachedTarget = wasOfficialLoop && loopQualifiedCount >= officialLoopTarget;
                     officialAutoSpeedPending = false;
                     officialAutoStage = '';
                     officialBatchSpeedRunning = false;
                     officialSpeedEndedByRateLimit = !!msg.data?.rateLimited;
-                    officialSpeedEnabledForResults = ((msg.data?.totalQualified ?? msg.data?.qualified) || 0) > 0;
+                    officialSpeedEnabledForResults = wasOfficialLoop
+                        ? loopQualifiedCount > 0
+                        : (((msg.data?.totalQualified ?? msg.data?.qualified) || 0) > 0);
                     officialContinueSpeedUnlocked = true;
                     finishRunningTask('✨ 开始扫描与测试');
                     updateBatchSpeedButton();
@@ -6436,10 +6511,22 @@
                         progressBar.style.width = '100%';
                         progressBar.style.animation = 'none';
                         progressBar.textContent = '检测到触发速率限制，请稍后重试或更换网络环境';
+                    } else if (wasOfficialLoop) {
+                        updateProgress(loopQualifiedCount, officialLoopTarget, '循环累计合格');
                     } else {
                         updateProgress(msg.data?.qualified || 0, msg.data?.limit || 1, '测速完成');
                     }
-                    autoUploadOfficialResults();
+                    if (wasOfficialLoop && !loopReachedTarget) {
+                        officialLoopNeedsNextRound = true;
+                        log(`官方自动循环第 ${officialLoopRound} 轮结束：累计唯一合格 IP ${loopQualifiedCount}/${officialLoopTarget}，未达标，下一轮重新执行官方完整流程`);
+                    } else {
+                        if (wasOfficialLoop && loopReachedTarget) {
+                            officialLoopRunning = false;
+                            officialLoopNeedsNextRound = false;
+                            log(`官方自动循环达标：累计唯一合格 IP ${loopQualifiedCount}/${officialLoopTarget}，停止循环`);
+                        }
+                        autoUploadOfficialResults();
+                    }
                     break;
                 case 'github_upload_result':
                     if (!msg.data.silent) {
@@ -6616,6 +6703,8 @@
                     break;
 
                 case 'task_stopped':
+                    officialLoopRunning = false;
+                    officialLoopNeedsNextRound = false;
                     if (nsbStopHandledByComplete) {
                         nsbStopHandledByComplete = false;
                         break;
@@ -6625,6 +6714,8 @@
                     break;
 
                 case 'error':
+                    officialLoopRunning = false;
+                    officialLoopNeedsNextRound = false;
                     recordWebDebugError('server_error', msg.data);
                     isStoppingTask = false;
                     if (String(msg.data || '').includes('已有任务正在运行')) {
@@ -6726,6 +6817,13 @@
                     }
                     finishRunningTask('✨ 开始扫描与测试');
                     updateBatchSpeedButton();
+                    if (currentMode === 'official' && officialLoopRunning && officialLoopNeedsNextRound && !isStoppingTask) {
+                        officialLoopNeedsNextRound = false;
+                        window.setTimeout(() => {
+                            if (officialLoopRunning && !isTaskRunning && !isStoppingTask) startOfficialTask();
+                        }, 250);
+                        break;
+                    }
                     if (officialTestCompletePending) {
                         officialTestCompletePending = false;
                         renderAllTestResults();
