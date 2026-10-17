@@ -4912,7 +4912,7 @@
                 officialLoopRunning = true;
                 officialLoopTarget = officialSpeedConfig.speedLimit;
                 officialLoopRound++;
-                officialLoopNeedsNextRound = true;
+                officialLoopNeedsNextRound = false;
                 log(`官方自动循环第 ${officialLoopRound} 轮开始，最终合格目标 ${officialLoopTarget}`);
             } else {
                 officialLoopRunning = false;
@@ -4921,7 +4921,7 @@
                 officialLoopTarget = 0;
                 officialLoopQualifiedResults = new Map();
             }
-            officialAutoStage = autoSpeed ? (officialAutoLoop ? 'test' : 'scan') : '';
+            officialAutoStage = autoSpeed ? 'scan' : '';
             officialBatchSpeedRunning = false;
             officialContinueSpeedUnlocked = false;
             isStoppingTask = false;
