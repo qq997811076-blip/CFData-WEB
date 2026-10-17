@@ -6478,9 +6478,11 @@
                     }
                     const wasOfficialLoop = officialLoopRunning;
                     if (wasOfficialLoop) {
-                        testData.forEach((row) => {
+                        // 循环只累计后端最后下载测速确认合格的结果，不再以前端筛选状态推测合格。
+                        const roundQualifiedResults = Array.isArray(msg.data?.qualifiedResults) ? msg.data.qualifiedResults : [];
+                        roundQualifiedResults.forEach((row) => {
                             const key = String(row?.IP || '').trim();
-                            if (key && matchesOfficialQualifiedFilter(row, 'qualified') && !officialLoopQualifiedResults.has(key)) {
+                            if (key && !officialLoopQualifiedResults.has(key)) {
                                 officialLoopQualifiedResults.set(key, { ...row });
                             }
                         });

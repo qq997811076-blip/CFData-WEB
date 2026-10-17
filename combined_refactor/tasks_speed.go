@@ -279,6 +279,23 @@ func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, c
 		}
 	}
 	totalQualified := countOfficialQualifiedResults(session.testResults, speedMin)
+	// 自动循环以本轮最终下载测速的真实合格结果为准，并提供唯一 IP 列表给前端累计。
+	qualifiedResults := make([]TestResult, 0, totalQualified)
+	qualifiedSeen := make(map[string]struct{}, totalQualified)
+	for _, result := range session.testResults {
+		if speed, ok := parseSpeedMBForSort(result.Speed); !ok || speed < speedMin {
+			continue
+		}
+		key := strings.TrimSpace(result.IP)
+		if key == "" {
+			continue
+		}
+		if _, exists := qualifiedSeen[key]; exists {
+			continue
+		}
+		qualifiedSeen[key] = struct{}{}
+		qualifiedResults = append(qualifiedResults, result)
+	}
 	session.testMutex.Unlock()
 	if ctx.Err() != nil {
 		session.sendWSMessage("log", "官方批量测速已终止")
@@ -288,7 +305,7 @@ func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, c
 		session.sendWSMessage("log", fmt.Sprintf("官方批量测速完成，达标 %d/%d，总达标 %d", len(qualified), speedLimit, totalQualified))
 	}
 	if ctx.Err() == nil {
-		session.sendWSMessage("official_speed_complete", map[string]interface{}{"qualified": len(qualified), "totalQualified": totalQualified, "limit": speedLimit, "rateLimited": rateLimited})
+		session.sendWSMessage("official_speed_complete", map[string]interface{}{"qualified": len(qualified), "totalQualified": totalQualified, "qualifiedResults": qualifiedResults, "limit": speedLimit, "rateLimited": rateLimited})
 	}
 }
 
