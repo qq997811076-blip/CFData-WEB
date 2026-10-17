@@ -4128,6 +4128,8 @@
         }
 
         function renderScanRowsCSV(headers, rows) {
+            // During live auto-loop rounds nsbHeaders may not have arrived yet; live rows use NSB_LIVE_HEADERS.
+            headers = Array.isArray(headers) && headers.length ? headers : NSB_LIVE_HEADERS;
             const tbody = document.querySelector('#scanTable tbody');
             tbody.innerHTML = '';
             renderScanHeaders('nsb');
@@ -4341,6 +4343,17 @@
                 密钥交换: row.kex || row.Kex || '-',
                 时间戳: row.timestamp || row.Timestamp || '-',
             };
+            // Record each qualifying speed result immediately, not only at the next round reset.
+            // The map is task-scoped and deduplicated by IP:port.
+            const speedText = patch['下载速度'];
+            if (getSpeedStatus(speedText, isNSBSpeedQualified(speedText)) === 'qualified') {
+                const qualifiedResult = { ip, port, ipport: key };
+                normalizedHeaders.forEach((header) => {
+                    const field = RESULT_FIELDS.find((item) => item.label === header);
+                    if (field) qualifiedResult[field.key] = patch[header] ?? '-';
+                });
+                nsbQualifiedExportRows.set(key, qualifiedResult);
+            }
             if (nsbBatchSpeedRunning || nsbRows.length) {
                 const ipColumn = normalizedHeaders.indexOf('IP地址');
                 const portColumn = normalizedHeaders.indexOf('端口号');
