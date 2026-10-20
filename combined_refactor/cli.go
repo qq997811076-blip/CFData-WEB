@@ -352,9 +352,9 @@ func runCLI(cfg *cliConfig) error {
 	case "official":
 		return runOfficialCLI(cfg)
 	case "nsb":
-		return runNSBCLI(cfg)
+		return runOfficialCLI(cfg)
 	default:
-		return fmt.Errorf("不支持的 -mode: %s（仅支持 official 或 nsb）", cfg.mode)
+		return fmt.Errorf("不支持的 -mode: %s（仅支持 official）", cfg.mode)
 	}
 }
 
@@ -1010,43 +1010,14 @@ func handleCLIMessage(cfg *cliConfig, session *appSession, msgType string, data 
 			total := asInt(m["total"])
 			setCLIProgress(session, "test", current, total)
 		}
-	case "nsb_progress":
-		if cfg.showProgress {
-			m, ok := data.(map[string]interface{})
-			if !ok {
-				debugWrongType("map[string]interface{}")
-				break
-			}
-			phase := fmt.Sprint(m["phase"])
-			label := "scan"
-			if phase == "speed" {
-				label = "speed"
-			}
-			current := asInt(m["current"])
-			total := asInt(m["total"])
-			setCLIProgress(session, label, current, total)
-		}
-	case "scan_result":
+		case "scan_result":
 		res, ok := data.(ScanResult)
 		if !ok {
 			debugWrongType("ScanResult")
 			break
 		}
 		fmt.Printf("%s[scan-result]%s %s %s:%d %s %s %s\n", ansiMagenta, ansiReset, advanceCLIProgress(session, "scan"), res.IP, res.Port, res.DataCenter, res.City, colorizeLatencyString(res.LatencyStr))
-	case "nsb_scan_result":
-		m, ok := data.(nsbScanMessage)
-		if !ok {
-			debugWrongType("nsbScanMessage")
-			break
-		}
-		if m.Speed != "" && m.Speed != "-" {
-			progress := advanceCLIProgress(session, "speed")
-			fmt.Printf("%s[speed]%s %s %s:%s %s\n", ansiMagenta, ansiReset, progress, m.IP, m.Port, colorizeSpeedString(m.Speed))
-		} else {
-			progress := advanceCLIProgress(session, "scan")
-			fmt.Printf("%s[scan-result]%s %s %s:%s %s\n", ansiMagenta, ansiReset, progress, m.IP, m.Port, colorizeLatencyString(m.Latency))
-		}
-	case "test_result":
+		case "test_result":
 		res, ok := data.(TestResult)
 		if !ok {
 			debugWrongType("TestResult")
@@ -1063,23 +1034,7 @@ func handleCLIMessage(cfg *cliConfig, session *appSession, msgType string, data 
 		session.testResults = append([]TestResult(nil), results...)
 		session.testMutex.Unlock()
 		fmt.Printf("%s[test-complete]%s %d results\n", ansiCyan, ansiReset, len(results))
-	case "nsb_csv_complete":
-		payload, ok := data.(nsbCSVCompletePayload)
-		if !ok {
-			debugWrongType("nsbCSVCompletePayload")
-			break
-		}
-		session.nsbMutex.Lock()
-		session.nsbHeaders = append([]string(nil), payload.Headers...)
-		session.nsbRows = append([][]string(nil), payload.Rows...)
-		session.nsbMutex.Unlock()
-		fmt.Printf("%s[nsb-output]%s %s (%d rows)\n", ansiGreen, ansiReset, payload.File, len(payload.Rows))
-		if payload.Status == "failed" {
-			fmt.Printf("%s[nsb]%s 任务失败: 测试%s\n", ansiRed, ansiReset, payload.Message)
-		} else if payload.Status == "partial" {
-			fmt.Printf("%s[nsb]%s 任务结束: %s\n", ansiYellow, ansiReset, payload.Message)
-		}
-	case "speed_test_result":
+		case "speed_test_result":
 		m, ok := data.(map[string]string)
 		if !ok {
 			debugWrongType("map[string]string")
@@ -2067,7 +2022,7 @@ func normalizeIPTypeFilter(value string) string {
 }
 
 func cliFieldKeyFromHeader(header string) string {
-	header = normalizeNSBHeaderForCLI(header)
+	header = strings.TrimSpace(header)
 	for _, field := range cliResultFields {
 		if field.Label == header {
 			return field.Key
@@ -2076,7 +2031,7 @@ func cliFieldKeyFromHeader(header string) string {
 	return ""
 }
 
-func normalizeNSBHeaderForCLI(header string) string {
+func normalizeCLIHeader(header string) string {
 	switch strings.TrimSpace(header) {
 	case "IP":
 		return "IP地址"
