@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - replace-nsb-with-independent-official
+      - replace-nsb-with-official-from-39418922471
     paths:
       - ".github/workflows/build-apk-only.yml"
       - "combined_refactor/index.html"
