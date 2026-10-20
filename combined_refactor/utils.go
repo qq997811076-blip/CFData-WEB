@@ -9,20 +9,11 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 )
 
-var (
-	urlCandidateRegex         = regexp.MustCompile(`(?i)\b(?:https?|ws|wss)://[^\s|，,]+`)
-	bracketIPv6PortRegex      = regexp.MustCompile(`\[([0-9A-Fa-f:.]+)\]\s*[:#，,]\s*(\d{1,5})`)
-	hostPortSeparatorRegex    = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)\s*[:：#，,]\s*(\d{1,5})`)
-	hostPortWhitespaceRegex   = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)\s+(\d{1,5})(?:\s|$)`)
-	bareIPv4OrDomainRegex     = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)(?:\s|$|[|，,。；;、])`)
-	possibleBareIPv6LineRegex = regexp.MustCompile(`(?i)([0-9a-f]{1,4}:[0-9a-f:.]+)`)
-)
 
 func readNonEmptyLines(reader io.Reader) ([]string, error) {
 	scanner := bufio.NewScanner(reader)
