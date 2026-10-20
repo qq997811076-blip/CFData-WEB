@@ -319,24 +319,8 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	fmt.Println(colorize("========== 参数设置向导 ==========", ansiBold+ansiCyan))
 	fmt.Println("逐项设置参数：每项显示当前值与格式说明，直接回车保持不变，输入 b 返回菜单。")
 	var o int
-
 	sectionHeader("基本设置")
-	modeIdx := 0
-	if strings.EqualFold(strings.TrimSpace(fileCfg.Mode), "nsb") {
-		modeIdx = 1
-	}
-	idx, o := askChoice("模式", "官方优选=内置 CF IP 池扫描；非标优选=自定义目标扫描",
-		[]string{"官方优选（official）", "非标优选（nsb）"}, modeIdx)
-	if o != promptOK {
-		return o
-	}
-	if idx == 0 {
-		fileCfg.Mode = "official"
-	} else {
-		fileCfg.Mode = "nsb"
-	}
-	isNSB := idx == 1
-
+	fileCfg.Mode = "official"
 	scanIdx := 0
 	if strings.EqualFold(strings.TrimSpace(fileCfg.ScanMode), "httping") {
 		scanIdx = 1
@@ -410,245 +394,43 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	fileCfg.SkipGeo = idx == 0
 
 	sectionHeader("扫描与测速")
-	if isNSB {
-		useURL := strings.TrimSpace(fileCfg.SourceURL) != "" && strings.TrimSpace(fileCfg.File) == ""
-		idx, o = askChoice("输入方式", "非标优选的扫描目标来源，二选一",
-			[]string{"输入文件（本机文件路径）", "网络URL（http/https 文本地址）"}, boolChoiceIndex(!useURL))
-		if o != promptOK {
-			return o
-		}
-		if idx == 0 {
-			for {
-				v, o := askLine("输入文件", displayOrEmpty(fileCfg.File), "格式: 本机文件路径，如 ip.txt（每行 IP[ 端口]）")
-				if o != promptOK {
-					return o
-				}
-				if v == "" {
-					if strings.TrimSpace(fileCfg.File) != "" {
-						break
-					}
-					fmt.Println("    不能为空，请输入文件路径")
-					continue
-				}
-				fileCfg.File = v
-				break
-			}
-			fileCfg.SourceURL = ""
-		} else {
-			for {
-				v, o := askLine("网络URL", displayOrEmpty(fileCfg.SourceURL), "格式: http(s):// 地址，返回 IP 列表文本")
-				if o != promptOK {
-					return o
-				}
-				if v == "" {
-					if strings.TrimSpace(fileCfg.SourceURL) != "" {
-						break
-					}
-					fmt.Println("    不能为空，请输入网络URL")
-					continue
-				}
-				fileCfg.SourceURL = v
-				break
-			}
-			fileCfg.File = ""
-		}
-
-		fallbackDisplay := "自动（随 TLS 使用 443/80）"
-		if fileCfg.NSBFallbackPort > 0 {
-			fallbackDisplay = strconv.Itoa(fileCfg.NSBFallbackPort)
-		}
-		n, o := askInt("备用端口", fallbackDisplay, "输入缺省端口；0=随 TLS 自动（开启 TLS 用 443，否则 80）", fileCfg.NSBFallbackPort, 0, 65535)
-		if o != promptOK {
-			return o
-		}
-		fileCfg.NSBFallbackPort = n
-
-		n, o = askInt("并发数量", strconv.Itoa(fileCfg.NSBThreads), "同时扫描的 IP 数量，越大越快但占用带宽越多", fileCfg.NSBThreads, 1, 0)
-		if o != promptOK {
-			return o
-		}
-		fileCfg.NSBThreads = n
-	} else {
-		n, o := askInt("并发数量", strconv.Itoa(fileCfg.Threads), "同时扫描的 IP 数量，越大越快但占用带宽越多", fileCfg.Threads, 1, 0)
-		if o != promptOK {
-			return o
-		}
-		fileCfg.Threads = n
-	}
-
-	delayCurrent := fileCfg.Delay
-	if isNSB {
-		delayCurrent = fileCfg.NSBDelay
-	}
-	delayMin := 1
-	delayHint := "TCPing/HTTPing 延迟超过该值视为不合格（毫秒）"
-	if isNSB {
-		delayMin = 0
-		delayHint = "TCPing/HTTPing 延迟超过该值视为不合格（毫秒）；0=不筛延迟"
-	}
-	n, o := askInt("扫描合格延迟", fmt.Sprintf("%dms", delayCurrent), delayHint, delayCurrent, delayMin, 0)
-	if o != promptOK {
-		return o
-	}
-	if isNSB {
-		fileCfg.NSBDelay = n
-	} else {
-		fileCfg.Delay = n
-	}
-
-	if isNSB {
-		n, o = askInt("扫描合格数量", strconv.Itoa(fileCfg.ResultLimit), "延迟测试结果达到该数量后停止扫描", fileCfg.ResultLimit, 1, 0)
-		if o != promptOK {
-			return o
-		}
-		fileCfg.ResultLimit = n
-	} else {
-		ipIdx := 0
-		if fileCfg.IPType == 6 {
-			ipIdx = 1
-		}
-		idx, o = askChoice("IP类型", "官方优选扫描的 IP 池版本", []string{"IPv4", "IPv6"}, ipIdx)
-		if o != promptOK {
-			return o
-		}
-		if idx == 0 {
-			fileCfg.IPType = 4
-		} else {
-			fileCfg.IPType = 6
-		}
-
-		n, o = askInt("测试端口", strconv.Itoa(fileCfg.TestPort), "官方扫描目标端口，1-65535", fileCfg.TestPort, 1, 65535)
-		if o != promptOK {
-			return o
-		}
-		fileCfg.TestPort = n
-	}
-
+	n, o := askInt("并发数量", strconv.Itoa(fileCfg.Threads), "同时扫描的 IP 数量，越大越快但占用带宽越多", fileCfg.Threads, 1, 0)
+	if o != promptOK { return o }
+	fileCfg.Threads = n
+	n, o = askInt("扫描合格延迟", fmt.Sprintf("%dms", fileCfg.Delay), "TCPing/HTTPing 延迟超过该值视为不合格（毫秒）", fileCfg.Delay, 1, 0)
+	if o != promptOK { return o }
+	fileCfg.Delay = n
+	ipIdx := 0
+	if fileCfg.IPType == 6 { ipIdx = 1 }
+	idx, o = askChoice("IP类型", "官方优选扫描的 IP 池版本", []string{"IPv4", "IPv6"}, ipIdx)
+	if o != promptOK { return o }
+	if idx == 0 { fileCfg.IPType = 4 } else { fileCfg.IPType = 6 }
+	n, o = askInt("测试端口", strconv.Itoa(fileCfg.TestPort), "官方扫描目标端口，1-65535", fileCfg.TestPort, 1, 65535)
+	if o != promptOK { return o }
+	fileCfg.TestPort = n
 	dcCurrent := "自动"
-	if isNSB {
-		dcCurrent = "不限"
-	}
-	if strings.TrimSpace(fileCfg.DC) != "" {
-		dcCurrent = fileCfg.DC
-	}
-	if isNSB {
-		if strings.TrimSpace(fileCfg.NSBDC) != "" {
-			dcCurrent = fileCfg.NSBDC
-		}
-		v, o := askLine("数据中心", dcCurrent, "格式: 数据中心代码（如 HKG/NRT）；输入 0=不限制结果数据中心")
-		if o != promptOK {
-			return o
-		}
-		if v == "0" {
-			fileCfg.NSBDC = ""
-		} else if v != "" {
-			fileCfg.NSBDC = v
-		}
-	} else {
-		v, o := askLine("数据中心", dcCurrent, "格式: 数据中心代码（如 HKG/NRT）；输入 0=自动选择最低延迟数据中心")
-		if o != promptOK {
-			return o
-		}
-		if v == "0" {
-			fileCfg.DC = ""
-		} else if v != "" {
-			fileCfg.DC = v
-		}
-	}
-
-	if isNSB {
-		tlsIdx := boolChoiceIndex(fileCfg.TLS)
-		idx, o = askChoice("TLS 模式", "开启=HTTPS 连接（缺省端口 443）；关闭=HTTP（缺省端口 80）", []string{"开启", "关闭"}, tlsIdx)
-		if o != promptOK {
-			return o
-		}
-		fileCfg.TLS = idx == 0
-	}
-
+	if strings.TrimSpace(fileCfg.DC) != "" { dcCurrent = fileCfg.DC }
+	v, o := askLine("数据中心", dcCurrent, "格式: 数据中心代码（如 HKG/NRT）；输入 0=自动选择最低延迟数据中心")
+	if o != promptOK { return o }
+	if v == "0" { fileCfg.DC = "" } else if v != "" { fileCfg.DC = v }
 	speedURL := fileCfg.URL
-	if isNSB {
-		speedURL = fileCfg.NSBURL
-	}
 	urlCurrent := "自动选择"
-	if !isAutoSpeedURL(speedURL) && strings.TrimSpace(speedURL) != "" {
-		urlCurrent = speedURL
-	}
+	if !isAutoSpeedURL(speedURL) && strings.TrimSpace(speedURL) != "" { urlCurrent = speedURL }
 	v, o = askLine("测速网址", urlCurrent, "输入 0 或直接回车=自动选择内置测速源；或输入完整 http(s) 下载地址")
-	if o != promptOK {
-		return o
+	if o != promptOK { return o }
+	if v == "0" { speedURL = autoSpeedURLValue } else if v != "" { speedURL = v }
+	fileCfg.URL = speedURL
+	idx, o = askChoice("自动测速", "扫描完成后是否对合格结果下载测速；关闭=测速结果数量为 0", []string{"开启", "关闭"}, boolChoiceIndex(fileCfg.SpeedLimit > 0))
+	if o != promptOK { return o }
+	if idx == 0 { if fileCfg.SpeedLimit <= 0 { fileCfg.SpeedLimit = 5 } } else { fileCfg.SpeedLimit = 0 }
+	if fileCfg.SpeedLimit > 0 {
+		n, o = askInt("测速结果数量", strconv.Itoa(fileCfg.SpeedLimit), "测速达标结果达到该数量后停止", fileCfg.SpeedLimit, 1, 0)
+		if o != promptOK { return o }
+		fileCfg.SpeedLimit = n
+		f, o := askFloatValue("测试合格速度", fmt.Sprintf("%.2fMB/s", fileCfg.SpeedMin), "下载速度低于该值视为不合格（MB/s）", fileCfg.SpeedMin, 0)
+		if o != promptOK { return o }
+		fileCfg.SpeedMin = f
 	}
-	if v == "0" {
-		speedURL = autoSpeedURLValue
-	} else if v != "" {
-		speedURL = v
-	}
-	if isNSB {
-		fileCfg.NSBURL = speedURL
-	} else {
-		fileCfg.URL = speedURL
-	}
-
-	if isNSB {
-		autoOn := fileCfg.SpeedTest > 0 && fileCfg.NSBSpeedLimit > 0
-		idx, o = askChoice("自动测速", "扫描合格后是否进行下载测速（需测速并发与测速结果数量均大于 0）",
-			[]string{"开启", "关闭"}, boolChoiceIndex(autoOn))
-		if o != promptOK {
-			return o
-		}
-		if idx == 0 {
-			if fileCfg.SpeedTest <= 0 {
-				fileCfg.SpeedTest = 1
-			}
-			if fileCfg.NSBSpeedLimit <= 0 {
-				fileCfg.NSBSpeedLimit = 5
-			}
-		} else {
-			fileCfg.SpeedTest = 0
-		}
-		if fileCfg.SpeedTest > 0 && fileCfg.NSBSpeedLimit > 0 {
-			n, o = askInt("测速并发", strconv.Itoa(fileCfg.SpeedTest), "同时测速的 IP 数量；多 IP 并发会降低测速准确性，需要准确速度建议 1", fileCfg.SpeedTest, 1, 0)
-			if o != promptOK {
-				return o
-			}
-			fileCfg.SpeedTest = n
-			n, o = askInt("测速结果数量", strconv.Itoa(fileCfg.NSBSpeedLimit), "测速达标结果达到该数量后停止", fileCfg.NSBSpeedLimit, 1, 0)
-			if o != promptOK {
-				return o
-			}
-			fileCfg.NSBSpeedLimit = n
-			f, o := askFloatValue("测试合格速度", fmt.Sprintf("%.2fMB/s", fileCfg.NSBSpeedMin), "下载速度低于该值视为不合格（MB/s）", fileCfg.NSBSpeedMin, 0)
-			if o != promptOK {
-				return o
-			}
-			fileCfg.NSBSpeedMin = f
-		}
-	} else {
-		idx, o = askChoice("自动测速", "扫描完成后是否对合格结果下载测速；关闭=测速结果数量为 0",
-			[]string{"开启", "关闭"}, boolChoiceIndex(fileCfg.SpeedLimit > 0))
-		if o != promptOK {
-			return o
-		}
-		if idx == 0 {
-			if fileCfg.SpeedLimit <= 0 {
-				fileCfg.SpeedLimit = 5
-			}
-		} else {
-			fileCfg.SpeedLimit = 0
-		}
-		if fileCfg.SpeedLimit > 0 {
-			n, o = askInt("测速结果数量", strconv.Itoa(fileCfg.SpeedLimit), "测速达标结果达到该数量后停止", fileCfg.SpeedLimit, 1, 0)
-			if o != promptOK {
-				return o
-			}
-			fileCfg.SpeedLimit = n
-			f, o := askFloatValue("测试合格速度", fmt.Sprintf("%.2fMB/s", fileCfg.SpeedMin), "下载速度低于该值视为不合格（MB/s）", fileCfg.SpeedMin, 0)
-			if o != promptOK {
-				return o
-			}
-			fileCfg.SpeedMin = f
-		}
-	}
-
 	sectionHeader("输出配置")
 	v, o = askLine("输出文件名", displayOrEmpty(fileCfg.Out), "格式: 文件名，如 ip.csv / ip.txt（扩展名按文件格式自动修正）")
 	if o != promptOK {
@@ -671,12 +453,6 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	} else {
 		fileCfg.Format = "txt"
 	}
-
-	if isNSB {
-		idx, o = askChoice("CSV 精简", "非标模式本地 CSV 是否只保留精简字段", []string{"开启", "关闭"}, boolChoiceIndex(fileCfg.Compact))
-		if o != promptOK {
-			return o
-		}
 		fileCfg.Compact = idx == 0
 	}
 
