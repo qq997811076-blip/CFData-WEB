@@ -1297,7 +1297,7 @@ func pickBestDataCenter(scanResults []ScanResult) string {
 }
 
 func runOfficialSpeedTests(ctx context.Context, session *appSession, results []TestResult, port int, limit int, speedMinMB float64) []TestResult {
-	updated, _ := runOfficialSpeedTestsCore(ctx, results, port, limit, speedMinMB, speedTestURL, func(current, total, qualifiedCount int, result TestResult) {
+	updated, _ := runOfficialSpeedTestsCore(ctx, results, port, limit, speedTestWorkers, speedMinMB, speedTestURL, func(current, total, qualifiedCount int, result TestResult) {
 		setCLIProgress(session, "speed", min(qualifiedCount, limit), limit)
 		fmt.Printf("%s[speed]%s %s %s:%d %s\n", ansiMagenta, ansiReset, renderCLIProgress(session, "speed"), result.IP, port, colorizeSpeedString(result.Speed))
 		if speedMB, ok := parseSpeedMBForSort(result.Speed); ok && speedMB >= speedMinMB {
