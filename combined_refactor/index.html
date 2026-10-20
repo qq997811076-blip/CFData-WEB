@@ -6490,15 +6490,15 @@
                     }
                     break;
                 case 'compact_ipv4_done':
+                    if (isStoppingTask) {
+                        resetStoppedTaskUI('已手动终止');
+                        log('任务已手动终止');
+                        break;
+                    }
                     if (runningTaskMode && currentMode !== runningTaskMode) {
                         finishRunningTask('✨ 开始扫描与测试');
                         finishCompactIPv4('✅');
                         setTimeout(() => finishCompactIPv4('🧹'), 3000);
-                        break;
-                    }
-                    if (isStoppingTask) {
-                        resetStoppedTaskUI('已手动终止');
-                        log('任务已手动终止');
                         break;
                     }
                     flushCompactHits();
