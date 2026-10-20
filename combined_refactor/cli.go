@@ -1966,7 +1966,7 @@ func filterCLIResultRowsByQualified(rows []cliResultRow, filter string, speedMin
 	}
 	filtered := make([]cliResultRow, 0, len(rows))
 	for _, row := range rows {
-		if getNSBSpeedStatus(row["speed"], speedMin) == filter {
+		if cliSpeedStatus(row["speed"], speedMin) == filter {
 			filtered = append(filtered, row)
 		}
 	}
@@ -2089,4 +2089,14 @@ func uploadCLIExportToEdgetunnel(cfg *cliConfig, content string) error {
 	}
 	fmt.Printf("%s[edgetunnel]%s uploaded\n", ansiGreen, ansiReset)
 	return nil
+}
+
+
+func cliSpeedStatus(value string, speedMin float64) string {
+	value = strings.TrimSpace(value)
+	if value == "" || value == "-" || value == "未测速" { return "untested" }
+	value = strings.TrimSpace(strings.TrimSuffix(value, "MB/s"))
+	speed, err := strconv.ParseFloat(value, 64)
+	if err == nil && speed >= speedMin { return "qualified" }
+	return "unqualified"
 }
