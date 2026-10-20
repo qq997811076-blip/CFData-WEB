@@ -3257,6 +3257,10 @@
                 } else if (!isTaskRunning) {
                     switchTab('scan');
                     renderCurrentScanResults();
+                } else {
+                    switchTab('scan');
+                    renderCurrentScanResults();
+                    resetProgress();
                 }
             } else {
                 officialControls.classList.add('hidden');
@@ -3273,6 +3277,9 @@
                     showRunningTaskView();
                 } else if (!isTaskRunning) {
                     renderCurrentScanResults();
+                } else {
+                    renderCurrentScanResults();
+                    resetProgress();
                 }
             }
             if (!isTaskRunning) resetProgress();
