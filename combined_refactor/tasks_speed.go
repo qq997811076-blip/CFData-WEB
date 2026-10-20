@@ -16,6 +16,16 @@ func isTLSPort(port int) bool {
 }
 
 func runWindowedSpeedTest(ctx context.Context, ip string, port int, customURL string) (float64, string) {
+	// 参考 gxg myspeed.go：请求阶段和下载阶段共用 5 秒总期限。
+	const (
+		testDuration     = 5 * time.Second
+		idleTimeout      = 3 * time.Second
+		readBufferSize   = 32 * 1024
+		minDownloadBytes = 64 * 1024
+		minMeasureTime   = 100 * time.Millisecond
+	)
+	const downloadLimit int64 = 50 * 1024 * 1024
+
 	scheme := "http"
 	if isTLSPort(port) {
 		scheme = "https"
@@ -26,106 +36,124 @@ func runWindowedSpeedTest(ctx context.Context, ip string, port int, customURL st
 		return 0, "URL解析错误: " + err.Error()
 	}
 
+	testCtx, cancel := context.WithTimeout(ctx, testDuration)
+	defer cancel()
+
 	transport := &http.Transport{
 		DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
 			dialer := &net.Dialer{Timeout: 5 * time.Second}
 			return dialer.DialContext(c, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)))
 		},
-		TLSHandshakeTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: testDuration,
 		TLSClientConfig:     tlsConfigWithRootCAs(parsedURL.Hostname()),
 		DisableCompression:  true,
 	}
 	client := http.Client{
 		Transport: wrapDebugTransport("official-speed", transport),
-		Timeout:   15 * time.Second,
+		Timeout:   testDuration,
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", parsedURL.String(), nil)
+	req, err := http.NewRequestWithContext(testCtx, http.MethodGet, parsedURL.String(), nil)
 	if err != nil {
 		return 0, "请求构造错误"
 	}
 	req.Host = parsedURL.Host
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Accept-Encoding", "identity")
+	req.Header.Set("Range", fmt.Sprintf("bytes=0-%d", downloadLimit-1))
 
 	resp, err := client.Do(req)
 	if err != nil {
+		if ctx.Err() != nil {
+			return 0, "测速任务已终止"
+		}
 		return 0, "连接错误"
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		return 0, formatSpeedHTTPFailure(resp.StatusCode)
 	}
 
-	buf := make([]byte, 32*1024)
-	var totalBytes int64
-
-	timeout := time.After(6 * time.Second)
+	// 与参考实现一致：下载测速计时从收到有效响应头后开始。
 	measuredStart := time.Now()
-
-	readerCtx, readerCancel := context.WithCancel(ctx)
-	defer readerCancel()
+	var totalBytes int64
+	var lastData time.Time
+	buf := make([]byte, readBufferSize)
 
 	type readChunk struct {
 		n   int
 		err error
 	}
-	chunks := make(chan readChunk, 16)
-	readerDone := make(chan struct{})
-	safeGo("speed-reader", nil, func() {
-		defer close(readerDone)
-		for {
-			n, err := resp.Body.Read(buf)
-			select {
-			case chunks <- readChunk{n: n, err: err}:
-			case <-readerCtx.Done():
-				return
-			}
-			if err != nil {
-				return
-			}
-		}
-	})
 
-	done := false
-	canceled := false
-loop:
-	for !done {
+	for time.Since(measuredStart) < testDuration && totalBytes < downloadLimit {
+		b := buf
+		if remaining := downloadLimit - totalBytes; int64(len(b)) > remaining {
+			b = b[:int(remaining)]
+		}
+		ch := make(chan readChunk, 1)
+		go func(readBuf []byte) {
+			n, readErr := resp.Body.Read(readBuf)
+			ch <- readChunk{n: n, err: readErr}
+		}(b)
+
+		wait := idleTimeout
+		if !lastData.IsZero() {
+			wait -= time.Since(lastData)
+		}
+		if wait <= 0 {
+			cancel()
+			break
+		}
+
+		timer := time.NewTimer(wait)
 		select {
-		case <-ctx.Done():
-			canceled = true
-			done = true
-		case <-timeout:
-			done = true
-		case chunk := <-chunks:
+		case chunk := <-ch:
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
 			if chunk.n > 0 {
 				totalBytes += int64(chunk.n)
+				lastData = time.Now()
 			}
 			if chunk.err != nil {
-				done = true
-				break loop
+				if chunk.err != io.EOF && totalBytes == 0 {
+					return 0, "连接错误"
+				}
+				goto finished
 			}
+			if chunk.n == 0 {
+				time.Sleep(10 * time.Millisecond)
+			}
+		case <-timer.C:
+			cancel()
+			goto finished
+		case <-testCtx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			goto finished
 		}
 	}
 
-	readerCancel()
-	resp.Body.Close()
-	<-readerDone
-
-	if canceled {
+finished:
+	if ctx.Err() != nil {
 		return 0, "测速任务已终止"
 	}
-
-	if totalBytes <= 0 {
-		return 0, "0MB/s"
+	if totalBytes < minDownloadBytes {
+		return 0, "有效下载数据不足 64 KiB"
 	}
 
-	duration := time.Since(measuredStart).Seconds()
-	if duration == 0 {
-		duration = 1
+	used := lastData.Sub(measuredStart)
+	if used < minMeasureTime {
+		used = minMeasureTime
 	}
-	return float64(totalBytes) / duration / 1024 / 1024, ""
+	return float64(totalBytes) / used.Seconds() / 1024 / 1024, ""
 }
 
 func formatSpeedHTTPFailure(statusCode int) string {
