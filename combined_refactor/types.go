@@ -120,101 +120,6 @@ type iptestResult struct {
 	speedQualified bool
 }
 
-type nsbScanMessage struct {
-	IP             string `json:"ip"`
-	OriginalInput  string `json:"originalInput,omitempty"`
-	Port           string `json:"port"`
-	TLS            string `json:"tls,omitempty"`
-	DC             string `json:"dc,omitempty"`
-	Loc            string `json:"loc,omitempty"`
-	Region         string `json:"region,omitempty"`
-	City           string `json:"city,omitempty"`
-	Latency        string `json:"latency,omitempty"`
-	LossRate       string `json:"lossRate,omitempty"`
-	Speed          string `json:"speed,omitempty"`
-	SpeedQualified bool   `json:"speedQualified,omitempty"`
-	OutboundIP     string `json:"outboundIP,omitempty"`
-	IPType         string `json:"ipType,omitempty"`
-	ASNNumber      string `json:"asnNumber,omitempty"`
-	ASNOrg         string `json:"asnOrg,omitempty"`
-	VisitScheme    string `json:"visitScheme,omitempty"`
-	TLSVersion     string `json:"tlsVersion,omitempty"`
-	SNI            string `json:"sni,omitempty"`
-	HTTPVersion    string `json:"httpVersion,omitempty"`
-	Warp           string `json:"warp,omitempty"`
-	Gateway        string `json:"gateway,omitempty"`
-	RBI            string `json:"rbi,omitempty"`
-	Kex            string `json:"kex,omitempty"`
-	Timestamp      string `json:"timestamp,omitempty"`
-}
-
-type nsbCSVCompletePayload struct {
-	Headers        []string   `json:"headers"`
-	Rows           [][]string `json:"rows"`
-	File           string     `json:"file"`
-	Status         string     `json:"status"`
-	Message        string     `json:"message"`
-	QualifiedCount int        `json:"qualifiedCount"`
-}
-
-func (r *iptestResult) toNSBMessage(speedStr string) nsbScanMessage {
-	return nsbScanMessage{
-		IP:             r.ipAddr,
-		OriginalInput:  r.originalInput,
-		Port:           strconv.Itoa(r.port),
-		TLS:            strconv.FormatBool(r.visitScheme == "https"),
-		DC:             r.dataCenter,
-		Loc:            r.locCode,
-		Region:         r.region,
-		City:           r.city,
-		Latency:        r.latency,
-		LossRate:       fmt.Sprintf("%.0f%%", r.lossRate*100),
-		Speed:          speedStr,
-		SpeedQualified: r.speedQualified,
-		OutboundIP:     r.outboundIP,
-		IPType:         r.ipType,
-		ASNNumber:      r.asnNumber,
-		ASNOrg:         r.asnOrg,
-		VisitScheme:    r.visitScheme,
-		TLSVersion:     r.tlsVersion,
-		SNI:            r.sni,
-		HTTPVersion:    r.httpVersion,
-		Warp:           r.warp,
-		Gateway:        r.gateway,
-		RBI:            r.rbi,
-		Kex:            r.kex,
-		Timestamp:      r.timestamp,
-	}
-}
-
-func (r *iptestResult) toNSBLiveMessage(speedStr string, compact bool) nsbScanMessage {
-	if compact {
-		return r.toCompactNSBMessage(speedStr)
-	}
-	return r.toNSBMessage(speedStr)
-}
-
-func (r *iptestResult) toCompactNSBMessage(speedStr string) nsbScanMessage {
-	return nsbScanMessage{
-		IP:             r.ipAddr,
-		OriginalInput:  r.originalInput,
-		Port:           strconv.Itoa(r.port),
-		TLS:            strconv.FormatBool(r.visitScheme == "https"),
-		DC:             r.dataCenter,
-		Loc:            r.locCode,
-		Region:         r.region,
-		City:           r.city,
-		Latency:        r.latency,
-		LossRate:       fmt.Sprintf("%.0f%%", r.lossRate*100),
-		Speed:          speedStr,
-		SpeedQualified: r.speedQualified,
-		OutboundIP:     r.outboundIP,
-		IPType:         r.ipType,
-		ASNNumber:      r.asnNumber,
-		ASNOrg:         r.asnOrg,
-	}
-}
-
 type csvHeaderPayload struct {
 	Headers []string   `json:"headers"`
 	Rows    [][]string `json:"rows"`
@@ -243,10 +148,6 @@ type appSession struct {
 	scanResults          []ScanResult
 	testMutex            sync.Mutex
 	testResults          []TestResult
-	nsbMutex             sync.Mutex
-	nsbHeaders           []string
-	nsbRows              [][]string
-	nsbCompletePayload   *nsbCSVCompletePayload
 	progressMutex        sync.Mutex
 	progressState        map[string][2]int
 	progressPrintTime    map[string]time.Time
