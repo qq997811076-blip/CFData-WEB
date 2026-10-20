@@ -2606,7 +2606,11 @@ table td,
         }
 
         window.addEventListener('message', (event) => {
-            if (event.origin !== window.location.origin || event.source !== window.parent || !event.data || event.data.type !== 'cfdata-config-action') return;
+            if (event.origin !== window.location.origin || !event.data || event.data.type !== 'cfdata-config-action') return;
+            const frame = document.getElementById('nsbFrame');
+            const fromParent = window.parent !== window && event.source === window.parent;
+            const fromNSBFrame = cfdataModeNamespace === 'official' && frame && event.source === frame.contentWindow;
+            if (!fromParent && !fromNSBFrame) return;
             if (event.data.action === 'save') saveConfigToLS(false);
             if (event.data.action === 'load') loadConfigFromLS(false);
         });
