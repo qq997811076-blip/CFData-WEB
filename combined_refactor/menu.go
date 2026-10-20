@@ -325,7 +325,7 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	if strings.EqualFold(strings.TrimSpace(fileCfg.ScanMode), "httping") {
 		scanIdx = 1
 	}
-	idx, o = askChoice("扫描方式", "TCPing=仅 TCP 握手延迟；HTTPing=HTTP TTFB 全链路延迟，数值偏高属正常，两者数据不可互相比较",
+	idx, o := askChoice("扫描方式", "TCPing=仅 TCP 握手延迟；HTTPing=HTTP TTFB 全链路延迟，数值偏高属正常，两者数据不可互相比较",
 		[]string{"TCPing", "HTTPing"}, scanIdx)
 	if o != promptOK {
 		return o
