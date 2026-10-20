@@ -95,7 +95,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		"geoCheckOK":       cfCountryOK,
 		"skipGeoCheck":     skipGeoCheck,
 	})
-	if backgroundSession := currentBackgroundTaskSession(); backgroundSession != nil {
+	if backgroundSession := currentBackgroundTaskSession(session.modeNamespace); backgroundSession != nil {
 		session.sendWSMessage("background_task_found", backgroundSession.backgroundSummary())
 	}
 	safeGo("version-check", session, func() {
@@ -230,7 +230,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			})
 		},
 		"stop_task": func(data json.RawMessage) {
-			if backgroundSession := currentBackgroundTaskSession(); backgroundSession != nil {
+			if backgroundSession := currentBackgroundTaskSession(session.modeNamespace); backgroundSession != nil {
 				if session != backgroundSession {
 					backgroundSession.attachWebSocket(ws)
 					session = backgroundSession
@@ -249,7 +249,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			session.sendWSMessage("log", "当前任务已转入后台运行")
 		},
 		"follow_background_task": func(data json.RawMessage) {
-			backgroundSession := currentBackgroundTaskSession()
+			backgroundSession := currentBackgroundTaskSession(session.modeNamespace)
 			if backgroundSession == nil {
 				session.sendWSMessage("error", "当前没有可跟随的后台任务")
 				return
@@ -279,7 +279,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		},
 		"get_background_task_status": func(data json.RawMessage) {
-			backgroundSession := currentBackgroundTaskSession()
+			backgroundSession := currentBackgroundTaskSession(session.modeNamespace)
 			if backgroundSession == nil {
 				session.sendWSMessage("background_task_missing", nil)
 				return
