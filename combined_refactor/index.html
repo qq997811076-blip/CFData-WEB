@@ -3711,29 +3711,12 @@ startOfficialTask();
             { key: 'ipport', label: 'IP:PORT', txt: true },
             { key: 'ip', label: 'IP地址' },
             { key: 'port', label: '端口号' },
-            { key: 'tls', label: 'TLS' },
-            { key: 'lossRate', label: '丢包率' },
-            { key: 'latency', label: '网络延迟' },
+            { key: 'latency', label: '网络延迟', txt: true },
             { key: 'speed', label: '下载速度' },
-            { key: 'outboundIP', label: '出站IP' },
-            { key: 'ipType', label: 'IP类型' },
-            { key: 'originalInput', label: '原始输入' },
             { key: 'dc', label: '数据中心', txt: true },
             { key: 'dcCountry', label: '落地区域', txt: true },
-            { key: 'loc', label: '源IP位置' },
             { key: 'region', label: '地区', txt: true },
             { key: 'city', label: '城市' },
-            { key: 'asnNumber', label: 'ASN号码' },
-            { key: 'asnOrg', label: 'ASN组织' },
-            { key: 'visitScheme', label: '访问协议' },
-            { key: 'tlsVersion', label: 'TLS版本' },
-            { key: 'sni', label: 'SNI' },
-            { key: 'httpVersion', label: 'HTTP版本' },
-            { key: 'warp', label: 'WARP' },
-            { key: 'gateway', label: 'Gateway' },
-            { key: 'rbi', label: 'RBI' },
-            { key: 'kex', label: '密钥交换' },
-            { key: 'timestamp', label: '时间戳' },
         ];
 
         function openResultModal(mode) {
@@ -4828,7 +4811,7 @@ copyModalMode = mode;
                     break;
                 case 'scan_result':
                     if (isStoppingTask) break;
-                    addScanResult(msg.data, currentMode === 'official' && true);
+                    addScanResult(msg.data, true);
                     break;
                 case 'scan_complete_wait_dc':
                     const wasStoppingScan = isStoppingTask;
