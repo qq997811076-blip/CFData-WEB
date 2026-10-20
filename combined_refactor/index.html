@@ -4955,12 +4955,8 @@
             if (nameInput && !nameInput.value.trim()) nameInput.value = resultModalMode === 'nsb' ? 'Cloudflare_NSB_Results' : (resultModalMode === 'test' ? 'Cloudflare_SpeedTest_Results' : 'Cloudflare_Scan_Results');
             const filterField = document.getElementById('resultIPTypeFilterField');
             if (filterField) filterField.style.display = resultModalMode === 'nsb' ? '' : 'none';
-            const filterSelect = document.getElementById('resultIPTypeFilter');
-            if (filterSelect && resultModalMode !== 'nsb') filterSelect.value = 'all';
             const qualifiedField = document.getElementById('resultQualifiedFilterField');
             if (qualifiedField) qualifiedField.style.display = '';
-            const qualifiedSelect = document.getElementById('resultQualifiedFilter');
-            if (qualifiedSelect) qualifiedSelect.value = 'all';
             if (!resultFieldOrder.length) resultFieldOrder = getDefaultResultFieldOrder(document.getElementById('resultFormat').value);
             renderGitHubAccounts();
             renderResultFieldOptions();
@@ -5582,12 +5578,8 @@
             document.getElementById('copyModalTitle').textContent = copyModalMode === 'nsb' ? '非标结果一键复制' : (copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制');
             const filterField = document.getElementById('copyIPTypeFilterField');
             if (filterField) filterField.style.display = copyModalMode === 'nsb' ? '' : 'none';
-            const filterSelect = document.getElementById('copyIPTypeFilter');
-            if (filterSelect && copyModalMode !== 'nsb') filterSelect.value = 'all';
             const qualifiedField = document.getElementById('copyQualifiedFilterField');
             if (qualifiedField) qualifiedField.style.display = '';
-            const qualifiedSelect = document.getElementById('copyQualifiedFilter');
-            if (qualifiedSelect) qualifiedSelect.value = 'all';
             const rows = getCopyRowsBeforeRange();
             if (!rows.length) return showNoticeCard('暂无可复制结果');
             if (!copyFieldOrder.length) copyFieldOrder = getDefaultResultFieldOrderFor(copyModalMode, 'txt');
