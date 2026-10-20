@@ -821,14 +821,13 @@ func applyCLIFileConfig(cfg *cliConfig, fileCfg cliFileConfig, provided map[stri
 	setInt("outstartrow", &cfg.startRow, fileCfg.OutStartRow)
 	setInt("outendrow", &cfg.endRow, fileCfg.OutEndRow)
 
+	genericURL := speedTestURL
+	cfg.threads = cfg.offThreads
+	cfg.delay = cfg.offDelay
+	if isAutoSpeedURL(cfg.offURL) && provided["url"] && strings.TrimSpace(genericURL) != "" {
+		speedTestURL = genericURL
 	} else {
-		cfg.threads = cfg.offThreads
-		cfg.delay = cfg.offDelay
-		if isAutoSpeedURL(cfg.offURL) && provided["url"] && strings.TrimSpace(genericURL) != "" {
-			speedTestURL = genericURL
-		} else {
-			speedTestURL = cfg.offURL
-		}
+		speedTestURL = cfg.offURL
 	}
 }
 
