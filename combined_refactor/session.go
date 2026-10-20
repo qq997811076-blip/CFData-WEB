@@ -16,7 +16,7 @@ var globalRunningTasks int32
 var globalTaskMutex sync.Mutex
 var activeTaskNamespaces = map[string]int{}
 var backgroundTaskMutex sync.Mutex
-var backgroundTaskSession *appSession
+var backgroundTaskSessions = map[string]*appSession{}
 
 func anyTaskRunning() bool {
 	return atomic.LoadInt32(&globalRunningTasks) > 0
@@ -103,6 +103,9 @@ func (s *appSession) startTask(run taskStarter) {
 }
 
 func (s *appSession) startTaskNamed(label string, mode string, params map[string]interface{}, run taskStarter) {
+	if normalizeTaskNamespace(s.modeNamespace) == "nsb" {
+		label = strings.ReplaceAll(label, "官方", "非标")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	started := s.beginTask(cancel, label, mode, params)
 	if !started {
@@ -192,10 +195,10 @@ func (s *appSession) markBackgroundStopping() {
 func (s *appSession) beginTask(cancel context.CancelFunc, label string, mode string, params map[string]interface{}) bool {
 	globalTaskMutex.Lock()
 	defer globalTaskMutex.Unlock()
-	clearCompletedBackgroundTaskSession()
+	namespace := normalizeTaskNamespace(s.modeNamespace)
+	clearCompletedBackgroundTaskSession(namespace)
 	s.taskMutex.Lock()
 	defer s.taskMutex.Unlock()
-	namespace := normalizeTaskNamespace(s.modeNamespace)
 	if activeTaskNamespaces[namespace] > 0 {
 		return false
 	}
@@ -233,36 +236,39 @@ func (s *appSession) endTask() {
 func registerBackgroundTaskSession(session *appSession) {
 	backgroundTaskMutex.Lock()
 	defer backgroundTaskMutex.Unlock()
-	backgroundTaskSession = session
+	namespace := normalizeTaskNamespace(session.modeNamespace)
+	backgroundTaskSessions[namespace] = session
 }
 
-func clearCompletedBackgroundTaskSession() {
+func clearCompletedBackgroundTaskSession(namespace string) {
 	backgroundTaskMutex.Lock()
 	defer backgroundTaskMutex.Unlock()
-	if backgroundTaskSession == nil {
+	session := backgroundTaskSessions[normalizeTaskNamespace(namespace)]
+	if session == nil {
 		return
 	}
-	backgroundTaskSession.taskMutex.Lock()
-	defer backgroundTaskSession.taskMutex.Unlock()
-	if backgroundTaskSession.isTaskRunning {
+	session.taskMutex.Lock()
+	defer session.taskMutex.Unlock()
+	if session.isTaskRunning {
 		return
 	}
-	backgroundTaskSession.backgroundTask = false
-	backgroundTaskSession = nil
+	session.backgroundTask = false
+	delete(backgroundTaskSessions, normalizeTaskNamespace(namespace))
 }
 
-func currentBackgroundTaskSession() *appSession {
+func currentBackgroundTaskSession(namespace string) *appSession {
 	backgroundTaskMutex.Lock()
 	defer backgroundTaskMutex.Unlock()
-	if backgroundTaskSession == nil {
+	session := backgroundTaskSessions[normalizeTaskNamespace(namespace)]
+	if session == nil {
 		return nil
 	}
-	backgroundTaskSession.taskMutex.Lock()
-	defer backgroundTaskSession.taskMutex.Unlock()
-	if !backgroundTaskSession.backgroundTask {
+	session.taskMutex.Lock()
+	defer session.taskMutex.Unlock()
+	if !session.backgroundTask {
 		return nil
 	}
-	return backgroundTaskSession
+	return session
 }
 
 func (s *appSession) backgroundSummary() backgroundTaskSnapshot {
