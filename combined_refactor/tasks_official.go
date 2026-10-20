@@ -608,3 +608,9 @@ func sortOfficialTestResults(results []TestResult) {
 func latencyDisplayMilliseconds(value time.Duration) int64 {
 	return int64((value + time.Millisecond/2) / time.Millisecond)
 }
+
+
+func scanModeLabel(scanMode string) string {
+	if scanMode == scanModeHTTPing { return "HTTPing" }
+	return "TCPing"
+}
