@@ -104,6 +104,7 @@ type resetConfigResult struct {
 
 type appSession struct {
 	ws                   *websocket.Conn
+	modeNamespace        string
 	emit                 func(msgType string, data interface{})
 	wsMutex              sync.Mutex
 	taskMutex            sync.Mutex
