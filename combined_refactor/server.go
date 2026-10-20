@@ -230,69 +230,19 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			})
 		},
 		"start_nsb_task": func(data json.RawMessage) {
-			var params startNSBTaskRequest
-			if err := json.Unmarshal(data, &params); err != nil {
-				session.sendWSMessage("error", "start_nsb_task 参数解析失败")
-				return
-			}
-			if params.MaxThreads <= 0 {
-				params.MaxThreads = speedTestWorkers
-			}
-			if params.SpeedTest < 0 {
-				params.SpeedTest = 0
-			}
-			if params.Delay < 0 {
-				params.Delay = 0
-			}
-			if params.ResultLimit < 0 {
-				params.ResultLimit = 0
-			}
-			if params.SpeedLimit < 0 {
-				params.SpeedLimit = 0
-			}
-			if params.SpeedMin < 0 {
-				params.SpeedMin = 0
-			}
-			if strings.TrimSpace(params.SpeedURL) == "" {
-				params.SpeedURL = speedTestURL
-			}
-			if strings.TrimSpace(params.OutFile) == "" {
-				params.OutFile = "ip.csv"
-			}
-			hasFileContent := strings.TrimSpace(params.FileContent) != ""
-			hasSourceURL := strings.TrimSpace(params.SourceURL) != ""
-			if hasFileContent == hasSourceURL {
-				session.sendWSMessage("error", "请选择本地文件或网络URL（二选一）")
-				return
-			}
-			if hasSourceURL {
-				parsedURL, err := url.Parse(params.SourceURL)
-				if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
-					session.sendWSMessage("error", "网络URL必须是有效的 http/https 地址")
-					return
-				}
-			}
-			scanMode := params.ScanMode
-			if scanMode == "" {
-				scanMode = scanModeTCPing
-			}
-			session.startTaskNamed("非标优选", "nsb", map[string]interface{}{"fileName": params.FileName, "sourceURL": params.SourceURL, "outFile": params.OutFile, "maxThreads": params.MaxThreads, "fallbackPort": params.FallbackPort, "speedTest": params.SpeedTest, "speedURL": params.SpeedURL, "enableTLS": params.EnableTLS, "delay": params.Delay, "resultLimit": params.ResultLimit, "dc": params.DC, "speedMin": params.SpeedMin, "speedLimit": params.SpeedLimit, "compact": params.Compact, "scanMode": scanMode}, func(ctx context.Context, session *appSession) {
-				fileName := params.FileName
-				fileContent := params.FileContent
-				if hasSourceURL {
-					session.sendWSMessage("log", "正在获取非标网络输入: "+params.SourceURL)
-					content, err := getURLContentWithContext(ctx, params.SourceURL)
-					if err != nil {
-						if ctx.Err() != nil {
-							return
-						}
-						session.sendWSMessage("error", "获取非标网络输入失败: "+err.Error())
-						return
-					}
-					fileName = params.SourceURL
-					fileContent = content
-				}
-				runNSBTask(ctx, session, fileName, fileContent, params.OutFile, params.MaxThreads, params.FallbackPort, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.Delay, params.ResultLimit, params.DC, params.SpeedMin, params.SpeedLimit, params.Compact, scanMode)
+			var params startTaskRequest
+			if err := json.Unmarshal(data, &params); err != nil { session.sendWSMessage("error", "非标优选参数解析失败"); return }
+			if params.Threads <= 0 { params.Threads = 100 }; if params.Port <= 0 { params.Port = 443 }; if params.Delay < 0 { params.Delay = 0 }
+			scanMode := params.ScanMode; if scanMode == "" { scanMode = scanModeTCPing }
+			session.startTaskNamed("非标优选（独立官方算法）", "nsb", map[string]interface{}{"ipType":params.IPType,"threads":params.Threads,"port":params.Port,"delay":params.Delay,"scanMode":scanMode}, func(ctx context.Context, session *appSession) {
+				runNSBOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode)
+				if ctx.Err()!=nil { return }
+				session.scanMutex.Lock(); scanCopy := append([]ScanResult(nil), session.nsbOfficialScanResults...); session.scanMutex.Unlock()
+				if len(scanCopy)==0 { return }
+				dc := strings.TrimSpace(params.OfficialTargetDC); if dc=="" { dc=pickBestDataCenter(scanCopy) }
+				testPort := params.OfficialSpeedPort; if testPort <= 0 { testPort=params.Port }
+				if dc!="" && ctx.Err()==nil { runNSBOfficialDetailedTest(ctx, session, dc, testPort, params.Delay, scanMode) }
+				if ctx.Err()==nil { session.sendWSMessage("nsb_speed_complete", map[string]interface{}{"qualified":0,"totalQualified":0,"limit":0,"rateLimited":false}) }
 			})
 		},
 		"start_nsb_speed_batch": func(data json.RawMessage) {
