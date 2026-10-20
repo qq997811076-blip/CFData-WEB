@@ -17,7 +17,7 @@ func isTLSPort(port int) bool {
 }
 
 func runWindowedSpeedTest(ctx context.Context, ip string, port int, customURL string) (float64, string) {
-	// 参考 gxg myspeed.go：请求阶段和下载阶段共用 5 秒总期限。
+	// 参考 gxg myspeed.go：请求阶段和下载阶段共用 5 秒总期限；并发由固定 worker 池调度。
 	const (
 		testDuration     = 5 * time.Second
 		idleTimeout      = 3 * time.Second
