@@ -105,7 +105,7 @@ jobs:
                       self.in_script = False
           parser = ScriptExtractor()
           parser.feed(Path("combined_refactor/index.html").read_text(encoding="utf-8"))
-          Path("/tmp/cfdata-inline.js").write_text("\\n".join(parser.parts), encoding="utf-8")
+          Path("/tmp/cfdata-inline.js").write_text("\n".join(parser.parts), encoding="utf-8")
           PY
           node --check /tmp/cfdata-inline.js
 
