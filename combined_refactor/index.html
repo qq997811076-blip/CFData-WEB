@@ -2583,6 +2583,21 @@ table td,
         }
 
         if (cfdataModeNamespace === 'nsb') {
+            // Keep saved settings, theme, and account preferences private to this isolated workspace.
+            const nsbStoragePrefix = 'cfdata-nsb:';
+            const nsbStorageGet = Storage.prototype.getItem;
+            const nsbStorageSet = Storage.prototype.setItem;
+            const nsbStorageRemove = Storage.prototype.removeItem;
+            const nsbStorageClear = Storage.prototype.clear;
+            Storage.prototype.getItem = function(key) { return nsbStorageGet.call(this, nsbStoragePrefix + String(key)); };
+            Storage.prototype.setItem = function(key, value) { return nsbStorageSet.call(this, nsbStoragePrefix + String(key), value); };
+            Storage.prototype.removeItem = function(key) { return nsbStorageRemove.call(this, nsbStoragePrefix + String(key)); };
+            Storage.prototype.clear = function() {
+                for (let i = this.length - 1; i >= 0; i--) {
+                    const key = this.key(i);
+                    if (key && key.startsWith(nsbStoragePrefix)) nsbStorageRemove.call(this, key);
+                }
+            };
             document.title = 'CFData-WEB - 非标优选';
             const modeButton = document.getElementById('btnOfficial');
             if (modeButton) modeButton.textContent = '🧪 非标优选';
@@ -2590,6 +2605,8 @@ table td,
             if (nsbButton) nsbButton.style.display = 'none';
             const controlsTitle = document.querySelector('#officialControls .control-title span:first-child');
             if (controlsTitle) controlsTitle.textContent = '非标参数';
+            const startLabel = document.getElementById('btnStartLabel');
+            if (startLabel) startLabel.textContent = '🧪 开始非标扫描与测试';
         }
 
         function connect() {
