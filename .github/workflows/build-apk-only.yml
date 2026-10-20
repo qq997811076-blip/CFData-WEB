@@ -17,6 +17,7 @@ on:
       - "combined_refactor/protocol.go"
       - "combined_refactor/server.go"
       - "combined_refactor/tasks_speed.go"
+      - "combined_refactor/cli.go"
 
 permissions:
   contents: read
