@@ -31,7 +31,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session := &appSession{ws: ws}
+	session := &appSession{ws: ws, modeNamespace: normalizeTaskNamespace(r.URL.Query().Get("mode"))}
 	defer func() {
 		if session.shouldCancelOnDisconnect() {
 			session.cancelTaskSilently()
