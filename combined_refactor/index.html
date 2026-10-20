@@ -5993,14 +5993,15 @@
                     log('配置文件已从服务器加载');
                     break;
                 case 'scan_progress':
-                    if (isStoppingTask) break;
+                    if (isStoppingTask || runningTaskMode !== 'official') break;
                     updateProgress(msg.data.current || 0, msg.data.total || 0, '扫描中');
                     break;
                 case 'scan_result':
-                    if (isStoppingTask) break;
-                    addScanResult(msg.data, currentMode === 'official' && runningTaskMode !== 'nsb');
+                    if (isStoppingTask || runningTaskMode !== 'official') break;
+                    addScanResult(msg.data, currentMode === 'official');
                     break;
                 case 'scan_complete_wait_dc':
+                    if (runningTaskMode !== 'official') break;
                     const wasStoppingScan = isStoppingTask;
                     finishRunningTask('✨ 重新开始扫描');
                     if (currentMode === 'official') {
@@ -6012,16 +6013,17 @@
                     }
                     break;
                 case 'test_progress':
-                    if (isStoppingTask) break;
+                    if (isStoppingTask || runningTaskMode !== 'official') break;
                     if (currentMode === 'official') {
                         updateProgress(msg.data.current || 0, msg.data.total || 0, '测试中');
                     }
                     break;
                 case 'test_result':
-                    if (isStoppingTask) break;
+                    if (isStoppingTask || runningTaskMode !== 'official') break;
                     addTestResult(msg.data, currentMode === 'official' && document.getElementById('test').classList.contains('active'));
                     break;
                 case 'test_complete':
+                    if (runningTaskMode !== 'official') break;
                     if (isStoppingTask) {
                         resetStoppedTaskUI('已手动终止');
                         log('任务已手动终止');
@@ -6044,17 +6046,18 @@
                     }
                     break;
                 case 'speed_test_result':
-                    if (isStoppingTask) break;
+                    if (isStoppingTask || runningTaskMode !== 'official') break;
                     updateSpeedResult(msg.data);
                     break;
                 case 'official_speed_progress':
-                    if (isStoppingTask) break;
+                    if (isStoppingTask || runningTaskMode !== 'official') break;
                     {
                         const p = msg.data || {};
                         updateQualifiedSpeedProgress(p.qualified || 0, p.limit || 1);
                     }
                     break;
                 case 'official_speed_complete':
+                    if (runningTaskMode !== 'official') break;
                     if (isStoppingTask) {
                         resetStoppedTaskUI('已手动终止');
                         log('任务已手动终止');
@@ -6125,7 +6128,7 @@
                     break;
 
                 case 'nsb_progress':
-                    if (currentMode === 'nsb') {
+                    if (runningTaskMode === 'nsb' || (backgroundTaskFollowing && currentMode === 'nsb')) {
                         const p = msg.data || {};
                         const percent = parseFloat(p.percent || 0);
                         const txt = p.text || '处理中';
@@ -6137,6 +6140,7 @@
                     }
                     break;
                 case 'nsb_scan_result':
+                    if (runningTaskMode !== 'nsb' && !(backgroundTaskFollowing && currentMode === 'nsb')) break;
                     if (nsbBatchSpeedRunning) {
                         updateNSBDisplayedResult(msg.data || {});
                     } else {
@@ -6144,6 +6148,7 @@
                     }
                     break;
                 case 'nsb_scan_sorted':
+                    if (runningTaskMode !== 'nsb' && !(backgroundTaskFollowing && currentMode === 'nsb')) break;
                     nsbLiveRows = [];
                     nsbLiveIndex = {};
                     nsbLiveRowElements = {};
@@ -6151,6 +6156,7 @@
                     if (currentMode === 'nsb') renderAllNSBLiveRows();
                     break;
                 case 'nsb_speed_complete':
+                    if (runningTaskMode !== 'nsb' && !(backgroundTaskFollowing && currentMode === 'nsb')) break;
                     if (isStoppingTask) {
                         resetStoppedTaskUI('已手动终止');
                         log('任务已手动终止');
@@ -6167,6 +6173,7 @@
                     break;
 
                 case 'nsb_csv_ready':
+                    if (runningTaskMode !== 'nsb' && !(backgroundTaskFollowing && currentMode === 'nsb')) break;
                     finishRunningTask('✨ 开始扫描与测试');
                     nsbStopHandledByComplete = true;
                     progressBar.style.background = 'var(--warning-color)';
@@ -6177,6 +6184,7 @@
                     break;
 
                 case 'nsb_csv_complete':
+                    if (runningTaskMode !== 'nsb' && !(backgroundTaskFollowing && currentMode === 'nsb')) break;
                     const wasStoppingNSB = isStoppingTask;
                     finishRunningTask('✨ 开始扫描与测试');
                     nsbStopHandledByComplete = wasStoppingNSB;
