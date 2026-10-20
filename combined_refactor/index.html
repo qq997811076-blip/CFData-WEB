@@ -5489,7 +5489,7 @@
         function getCopyRowsBeforeRange() {
             const filter = document.getElementById('copyIPTypeFilter')?.value || 'all';
             const qualified = document.getElementById('copyQualifiedFilter')?.value || 'all';
-            if (currentMode === 'nsb') {
+            if (copyModalMode === 'nsb') {
                 return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
             }
             const rows = getCurrentResultRows(copyModalMode);
@@ -5624,7 +5624,7 @@
         }
 
         function getCurrentResultRows(mode) {
-            if (currentMode === 'nsb') return getNSBResultObjects();
+            if (mode === 'nsb') return getNSBResultObjects();
             if (mode === 'test') return testData.map(testResultToObject);
             return scanData.map(scanResultToObject).slice().sort(compareOfficialResultObjects);
         }
@@ -5633,14 +5633,14 @@
             const rows = getCurrentResultRows(mode);
             const filter = document.getElementById('resultIPTypeFilter')?.value || 'all';
             const qualified = document.getElementById('resultQualifiedFilter')?.value || 'all';
-            if (currentMode === 'nsb') {
+            if (mode === 'nsb') {
                 return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
             }
             return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
         }
 
         function getDisplayedResultRows(mode) {
-            if (currentMode === 'nsb') {
+            if (mode === 'nsb') {
                 return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, nsbTableIPTypeFilter) && matchesQualifiedFilter(row, nsbTableQualifiedFilter));
             }
             if (mode === 'test') {
