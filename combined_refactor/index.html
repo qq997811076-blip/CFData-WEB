@@ -2507,46 +2507,15 @@
         }
 
         function readFormValues() {
-            function val(id) {
-                const el = document.getElementById(id);
-                return el ? el.value : '';
-            }
-            function selVal(id) {
-                const el = document.getElementById(id);
-                return el ? el.value : 'off';
-            }
-            return {
-                official: {
-                    scanMode: selVal('officialScanMode'),
-                    ipType: selVal('officialIpType'),
-                    port: selVal('officialTestPort'),
-                    threads: val('officialThreads'),
-                    delay: val('officialDelay'),
-                    speedMin: val('officialSpeedMin'),
-                    speedLimit: val('officialSpeedLimit'),
-                    speedConcurrency: val('officialSpeedTest'),
-                    autoSpeed: selVal('officialAutoSpeed'),
-                    targetDC: val('officialTargetDC'),
-                    speedUrl: resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset'),
-                },
-                nsb: {
-                    scanMode: selVal('nsbScanMode'),
-                    threads: val('nsbThreads'),
-                    delay: val('nsbDelay'),
-                    resultLimit: val('nsbResultLimit'),
-                    fallbackPort: val('nsbFallbackPort'),
-                    speedMin: val('nsbSpeedMin'),
-                    speedLimit: val('nsbSpeedLimit'),
-                    speedTest: val('nsbSpeedTest'),
-                    enableSpeed: selVal('nsbEnableSpeed'),
-                    targetDC: val('nsbTargetDC'),
-                    tls: selVal('nsbTls'),
-                    compactView: selVal('nsbCompactView'),
-                    outFile: val('nsbOutFile'),
-                    speedUrl: resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset'),
-                    sourceUrl: val('nsbSourceUrl'),
-                },
-            };
+            function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+            function selVal(id) { const el = document.getElementById(id); return el ? el.value : 'off'; }
+            return { official: {
+                scanMode: selVal('officialScanMode'), ipType: selVal('officialIpType'),
+                port: val('officialTestPort'), threads: val('officialThreads'), delay: val('officialDelay'),
+                speedMin: val('officialSpeedMin'), speedLimit: val('officialSpeedLimit'),
+                speedConcurrency: val('officialSpeedTest'), autoSpeed: selVal('officialAutoSpeed'),
+                targetDC: val('officialTargetDC'), speedUrl: resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset')
+            }};
         }
 
         function setValue(id, value) {
@@ -2557,38 +2526,13 @@
 
         function applyConfigValues(config) {
             const o = config.official || {};
-            const n = config.nsb || {};
-            setValue('officialScanMode', o.scanMode);
-            setValue('officialIpType', o.ipType);
-            setValue('officialTestPort', o.port);
-            setValue('officialThreads', o.threads);
-            setValue('officialDelay', o.delay);
-            setValue('officialSpeedMin', o.speedMin);
-            setValue('officialSpeedLimit', o.speedLimit);
-            setValue('officialSpeedTest', o.speedConcurrency);
-            setValue('officialAutoSpeed', o.autoSpeed);
-            setValue('officialTargetDC', o.targetDC);
-            setValue('nsbScanMode', n.scanMode);
-            setValue('nsbThreads', n.threads);
-            setValue('nsbDelay', n.delay);
-            setValue('nsbResultLimit', n.resultLimit);
-            setValue('nsbFallbackPort', n.fallbackPort);
-            setValue('nsbSpeedMin', n.speedMin);
-            setValue('nsbSpeedLimit', n.speedLimit);
-            setValue('nsbSpeedTest', n.speedTest);
-            setValue('nsbEnableSpeed', n.enableSpeed);
-            setValue('nsbTargetDC', n.targetDC);
-            if (n.tls) setValue('nsbTls', n.tls);
-            if (n.compactView) setValue('nsbCompactView', n.compactView);
-            setValue('nsbOutFile', n.outFile);
-            setValue('nsbSourceUrl', n.sourceUrl);
+            setValue('officialScanMode', o.scanMode); setValue('officialIpType', o.ipType);
+            setValue('officialTestPort', o.port); setValue('officialThreads', o.threads);
+            setValue('officialDelay', o.delay); setValue('officialSpeedMin', o.speedMin);
+            setValue('officialSpeedLimit', o.speedLimit); setValue('officialSpeedTest', o.speedConcurrency);
+            setValue('officialAutoSpeed', o.autoSpeed); setValue('officialTargetDC', o.targetDC);
             if (o.speedUrl) applySpeedUrlConfig('officialSpeedUrl', 'officialSpeedUrlPreset', o.speedUrl);
-            if (n.speedUrl) applySpeedUrlConfig('nsbSpeedUrl', 'nsbSpeedUrlPreset', n.speedUrl);
-            syncOfficialSpeedConfigState();
-            
-            updateOfficialAutoSpeedControls();
-            updateNSBSpeedControls();
-            
+            syncOfficialSpeedConfigState(); updateOfficialAutoSpeedControls();
         }
 
         function saveConfigToLS() {
@@ -2625,38 +2569,21 @@
 
         function mapCLIConfigToForm(cliCfg) {
             function pick(map, keys) {
-                for (const k of keys) {
-                    if (map[k] !== undefined && map[k] !== null && map[k] !== '') return map[k];
-                }
+                for (const k of keys) if (map[k] !== undefined && map[k] !== null && map[k] !== '') return map[k];
                 return undefined;
             }
             const c = cliCfg.config || cliCfg;
-            const result = { official: {}, nsb: {} };
+            const result = { official: {} };
             const sm = pick(c, ['scanmode', 'scanMode']);
-            if (sm !== undefined) { result.official.scanMode = sm; result.nsb.scanMode = sm; }
+            if (sm !== undefined) result.official.scanMode = sm;
             result.official.ipType = pick(c, ['offiptype', 'iptype', 'ipType']);
             result.official.port = pick(c, ['offport', 'testport', 'port']);
             result.official.threads = pick(c, ['offthreads', 'threads']);
-            result.nsb.threads = pick(c, ['nsbthreads']);
             result.official.delay = pick(c, ['offdelay', 'delay']);
-            result.nsb.delay = pick(c, ['nsbdelay']);
             result.official.speedMin = pick(c, ['offspeedmin', 'speedmin']);
-            result.nsb.speedMin = pick(c, ['nsbspeedmin']);
             result.official.speedLimit = pick(c, ['offspeedlimit', 'speedlimit']);
-            result.nsb.speedLimit = pick(c, ['nsbspeedlimit']);
             result.official.targetDC = pick(c, ['offdc', 'dc']);
-            result.nsb.targetDC = pick(c, ['nsbdc']);
             result.official.speedUrl = pick(c, ['offurl', 'url']);
-            result.nsb.speedUrl = pick(c, ['nsburl']);
-            result.nsb.resultLimit = pick(c, ['nsbresultlimit', 'resultlimit']);
-            result.nsb.fallbackPort = pick(c, ['nsbfallbackport']);
-            result.nsb.speedTest = pick(c, ['nsbspeedtest', 'speedtest']);
-            const tls = pick(c, ['nsbtls', 'tls']);
-            if (tls !== undefined) result.nsb.tls = tls === true || String(tls).toLowerCase() === 'true' || String(tls) === '1' ? 'on' : 'off';
-            const compact = pick(c, ['nsbcompact', 'compact']);
-            if (compact !== undefined) result.nsb.compactView = compact === true || String(compact).toLowerCase() === 'true' || String(compact) === '1' ? 'compact' : 'full';
-            result.nsb.outFile = pick(c, ['out', 'nsbout', 'offout']);
-            result.nsb.sourceUrl = pick(c, ['nsbsourceurl', 'sourceurl']);
             return result;
         }
 
@@ -3009,21 +2936,12 @@
         }
 
         function getScanMode() {
-            if (currentMode === 'official') {
-                const el = document.getElementById('officialScanMode');
-                return el ? el.value : 'tcping';
-            }
-            const el = document.getElementById('nsbScanMode');
+            const el = document.getElementById('officialScanMode');
             return el ? el.value : 'tcping';
         }
 
         function getScanModeHint() {
-            if (currentMode === 'official') {
-                const el = document.getElementById('officialScanModeHint');
-                return el || null;
-            }
-            const el = document.getElementById('nsbScanModeHint');
-            return el || null;
+            return document.getElementById('officialScanModeHint') || null;
         }
 
         function getScanModeLabel() {
@@ -3043,71 +2961,35 @@
 
         function switchMode(mode) {
             const selectedMode = mode === 'nsb' ? 'nsb' : 'official';
-            // Both tabs now use the same unchanged official controls and engine.
             currentMode = 'official';
             modeOfficial.classList.toggle('active', selectedMode === 'official');
             modeNSB.classList.toggle('active', selectedMode === 'nsb');
             officialControls.classList.remove('hidden');
-            
-            document.querySelector('.tabs .tab:last-child').style.display = 'block';
             document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
             if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
-            updateNSBCompactToggle();
-            if (isTaskRunning && runningTaskMode === 'official') {
-                showRunningTaskView();
-            } else if (!isTaskRunning) {
-                switchTab('scan');
-                renderCurrentScanResults();
-            }
-            if (!isTaskRunning) resetProgress();
+            if (isTaskRunning && runningTaskMode === 'official') showRunningTaskView();
+            else if (!isTaskRunning) { switchTab('scan'); renderCurrentScanResults(); resetProgress(); }
             updateScanModeHint();
-            log(`切换至：${selectedMode === 'official' ? '官方优选' : '非标优选（使用官方优选引擎）'}`);
+            log('切换至：' + (selectedMode === 'official' ? '官方优选' : '非标优选（使用官方优选引擎）'));
         }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
-
             const tabs = document.querySelectorAll('.tab');
-            const first = tabs[0];
-            const second = tabs[1];
-
-            if (tabId === 'scan') {
-                first.classList.add('active');
-            } else {
-                if (second.style.display !== 'none') second.classList.add('active');
-                else first.classList.add('active');
-            }
+            const first = tabs[0], second = tabs[1];
+            if (tabId === 'scan') first.classList.add('active');
+            else if (second.style.display !== 'none') second.classList.add('active');
             const target = document.getElementById(tabId);
             if (target) target.classList.add('active');
-
-            if (tabId === 'test' && currentMode === 'nsb') {
-                switchTab('scan');
-                return;
-            }
-
-            if (currentMode === 'official' && tabId === 'test') {
-                renderAllTestResults();
-            } else if (currentMode === 'official' && tabId === 'scan' && scanData.length) {
-                renderCurrentScanResults();
-            } else if (currentMode === 'nsb' && tabId === 'scan') {
-                renderCurrentScanResults();
-            }
+            if (currentMode === 'official' && tabId === 'test') renderAllTestResults();
+            else if (currentMode === 'official' && tabId === 'scan' && scanData.length) renderCurrentScanResults();
         }
 
         function renderCurrentScanResults() {
-            if (currentMode === 'official') {
-                renderScanHeaders('official');
-                if (scanData.length) sortAndRenderScanResults();
-                else updateBadge('scanCount', 0);
-                return;
-            }
-            if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-                return;
-            }
-            renderScanHeaders('nsb');
-            renderAllNSBLiveRows();
+            renderScanHeaders('official');
+            if (scanData.length) sortAndRenderScanResults();
+            else updateBadge('scanCount', 0);
         }
 
         function updateProgress(current, total, text) {
@@ -3336,20 +3218,7 @@
             setValue('officialSpeedLimit', params.speedLimit);
             setValue('officialSpeedMin', params.speedMin);
             setValue('officialTargetDC', params.dc);
-            setValue('nsbThreads', params.maxThreads);
-            setValue('nsbFallbackPort', params.fallbackPort);
-            setValue('nsbResultLimit', params.resultLimit);
-            setValue('nsbSpeedLimit', params.speedLimit);
-            setValue('nsbSpeedMin', params.speedMin);
-            setValue('nsbSpeedTest', params.speedTest);
-            setValue('nsbTargetDC', params.dc);
-            setValue('nsbOutFile', params.outFile);
-            if (params.enableTLS !== undefined) setValue('nsbTls', params.enableTLS ? 'on' : 'off');
-            syncOfficialSpeedConfigState();
-            syncNSBSpeedConfigState();
-            updateOfficialAutoSpeedControls();
-            updateNSBSpeedControls();
-            updateNSBCompactToggle();
+            syncOfficialSpeedConfigState(); updateOfficialAutoSpeedControls();
         }
 
         function getRunningButtonText() {
@@ -3367,23 +3236,9 @@
         }
 
         function showRunningTaskView() {
-            if (!runningTaskMode || currentMode !== runningTaskMode) return;
-            if (runningTaskTab === 'test') {
-                switchTab('test');
-                renderAllTestResults();
-                return;
-            }
-            switchTab('scan');
-            if (runningTaskMode === 'official') {
-                renderScanHeaders('official');
-                sortAndRenderScanResults();
-            } else if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-            } else {
-                renderScanHeaders('nsb');
-                renderAllNSBLiveRows();
-                    updateBadge('scanCount', nsbLiveRows.length);
-            }
+            if (!runningTaskMode || currentMode !== 'official') return;
+            if (runningTaskTab === 'test') { switchTab('test'); renderAllTestResults(); return; }
+            switchTab('scan'); renderScanHeaders('official'); sortAndRenderScanResults();
         }
 
         function finishRunningTask(buttonText = '✨ 开始扫描与测试') {
@@ -3468,14 +3323,7 @@
             const thead = document.querySelector('#scanTable thead');
             const tbody = document.querySelector('#scanTable tbody');
             tbody.innerHTML = '';
-
-            if (mode === 'official') {
-                thead.innerHTML = '<tr><th>IP</th><th>端口</th><th>数据中心</th><th>落地区域</th><th>地区</th><th>城市</th><th>扫描方式</th><th>延迟</th></tr>';
-            } else {
-                const headers = getVisibleNSBHeaders();
-                const headerRow = headers.map(h => `<th>${h}</th>`).join('');
-                thead.innerHTML = `<tr>${headerRow}</tr>`;
-            }
+            thead.innerHTML = '<tr><th>IP</th><th>端口</th><th>数据中心</th><th>落地区域</th><th>地区</th><th>城市</th><th>扫描方式</th><th>延迟</th></tr>';
         }
 
         function renderScanRowOfficial(row) {
@@ -3937,9 +3785,7 @@
                 showConfirmCard(getStopConfirmText(), confirmStopCurrentTask, '终止当前任务');
                 return;
             }
-
             if (requireProxyWarning(() => startTask())) return;
-
             startOfficialTask();
         }
 
@@ -4072,25 +3918,24 @@
         ];
 
         function openResultModal(mode) {
-            resultModalMode = currentMode === 'nsb' ? 'nsb' : mode;
+            resultModalMode = mode;
             const rows = getCurrentResultRows(resultModalMode);
             if (!rows.length) return showNoticeCard('暂无可操作结果');
             document.getElementById('resultModalTitle').textContent = '结果操作';
             const formatSelect = document.getElementById('resultFormat');
             if (formatSelect && !formatSelect.value) formatSelect.value = 'txt';
             const nameInput = document.getElementById('resultFileName');
-            if (nameInput && !nameInput.value.trim()) nameInput.value = resultModalMode === 'nsb' ? 'Cloudflare_NSB_Results' : (resultModalMode === 'test' ? 'Cloudflare_SpeedTest_Results' : 'Cloudflare_Scan_Results');
+            if (nameInput && !nameInput.value.trim()) nameInput.value = resultModalMode === 'test' ? 'Cloudflare_SpeedTest_Results' : 'Cloudflare_Scan_Results';
             const filterField = document.getElementById('resultIPTypeFilterField');
-            if (filterField) filterField.style.display = resultModalMode === 'nsb' ? '' : 'none';
+            if (filterField) filterField.style.display = '';
             const filterSelect = document.getElementById('resultIPTypeFilter');
-            if (filterSelect && resultModalMode !== 'nsb') filterSelect.value = 'all';
+            if (filterSelect) filterSelect.value = 'all';
             const qualifiedField = document.getElementById('resultQualifiedFilterField');
             if (qualifiedField) qualifiedField.style.display = '';
             const qualifiedSelect = document.getElementById('resultQualifiedFilter');
             if (qualifiedSelect) qualifiedSelect.value = 'all';
             if (!resultFieldOrder.length) resultFieldOrder = getDefaultResultFieldOrder(document.getElementById('resultFormat').value);
-            renderGitHubAccounts();
-            renderResultFieldOptions();
+            renderGitHubAccounts(); renderResultFieldOptions();
             document.getElementById('resultModalMask').classList.add('active');
         }
 
@@ -4099,10 +3944,9 @@
         }
 
         function openSortModal(mode) {
-            sortModalMode = mode === 'nsb' ? 'nsb' : 'official';
-            const count = sortModalMode === 'nsb' ? (nsbRows.length || nsbLiveRows.length) : testData.length;
-            if (!count) return showNoticeCard('暂无可排序结果');
-            document.getElementById('sortModalTitle').textContent = sortModalMode === 'nsb' ? '非标测速一键排序' : '官方详细测试一键排序';
+            sortModalMode = 'official';
+            if (!testData.length) return showNoticeCard('暂无可排序结果');
+            document.getElementById('sortModalTitle').textContent = '官方详细测试一键排序';
             document.getElementById('sortModalMask').classList.add('active');
         }
 
@@ -4172,8 +4016,7 @@
         function applySortModal() {
             const priorities = getSortPriorities();
             if (!priorities.length) return showNoticeCard('请选择排序优先级');
-            if (sortModalMode === 'nsb') applyNSBSort(priorities);
-            else applyOfficialTestSort(priorities);
+            applyOfficialTestSort(priorities);
             closeSortModal();
         }
 
@@ -4198,7 +4041,7 @@
         }
 
         function getDefaultResultFieldOrderFor(mode, format) {
-            if (format === 'txt') return mode === 'nsb' ? ['ipport', 'dc', 'loc'] : ['ipport', 'dc', 'dcCountry'];
+            if (format === 'txt') return ['ipport', 'dc', 'dcCountry'];
             if (format === 'csv') return getCompactResultFieldOrderFor(mode);
             const rows = getCurrentResultRows(mode);
             if (!rows.length) return ['ipport'];
@@ -4208,10 +4051,7 @@
         function getAllResultFieldOrder() {
             const rows = getCurrentResultRows(resultModalMode);
             if (!rows.length) return ['ipport'];
-            if (resultModalMode !== 'nsb') {
-                return getOfficialResultFieldOrder().filter((key) => rows.some((r) => String(r[key] ?? '').trim() !== ''));
-            }
-            return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
+            return getOfficialResultFieldOrder().filter((key) => rows.some((r) => String(r[key] ?? '').trim() !== ''));
         }
 
         function getCompactResultFieldOrder() {
@@ -4219,7 +4059,6 @@
         }
 
         function getCompactResultFieldOrderFor(mode) {
-            if (mode === 'nsb') return ['ip', 'port', 'tls', 'lossRate', 'latency', 'speed', 'outboundIP', 'ipType', 'originalInput', 'dc', 'loc', 'region', 'city', 'asnNumber', 'asnOrg'];
             return getOfficialResultFieldOrder(mode);
         }
 
@@ -4660,12 +4499,12 @@
         }
 
         function openCopyModal(mode) {
-            copyModalMode = currentMode === 'nsb' ? 'nsb' : mode;
-            document.getElementById('copyModalTitle').textContent = copyModalMode === 'nsb' ? '非标结果一键复制' : (copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制');
+            copyModalMode = mode;
+            document.getElementById('copyModalTitle').textContent = copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制';
             const filterField = document.getElementById('copyIPTypeFilterField');
-            if (filterField) filterField.style.display = copyModalMode === 'nsb' ? '' : 'none';
+            if (filterField) filterField.style.display = '';
             const filterSelect = document.getElementById('copyIPTypeFilter');
-            if (filterSelect && copyModalMode !== 'nsb') filterSelect.value = 'all';
+            if (filterSelect) filterSelect.value = 'all';
             const qualifiedField = document.getElementById('copyQualifiedFilterField');
             if (qualifiedField) qualifiedField.style.display = '';
             const qualifiedSelect = document.getElementById('copyQualifiedFilter');
@@ -4684,9 +4523,6 @@
         function getCopyRowsBeforeRange() {
             const filter = document.getElementById('copyIPTypeFilter')?.value || 'all';
             const qualified = document.getElementById('copyQualifiedFilter')?.value || 'all';
-            if (currentMode === 'nsb') {
-                return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
-            }
             const rows = getCurrentResultRows(copyModalMode);
             return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
         }
@@ -4819,7 +4655,6 @@
         }
 
         function getCurrentResultRows(mode) {
-            if (currentMode === 'nsb') return getNSBResultObjects();
             if (mode === 'test') return testData.map(testResultToObject);
             return scanData.map(scanResultToObject).slice().sort(compareOfficialResultObjects);
         }
@@ -4828,19 +4663,11 @@
             const rows = getCurrentResultRows(mode);
             const filter = document.getElementById('resultIPTypeFilter')?.value || 'all';
             const qualified = document.getElementById('resultQualifiedFilter')?.value || 'all';
-            if (currentMode === 'nsb') {
-                return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
-            }
             return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
         }
 
         function getDisplayedResultRows(mode) {
-            if (currentMode === 'nsb') {
-                return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, nsbTableIPTypeFilter) && matchesQualifiedFilter(row, nsbTableQualifiedFilter));
-            }
-            if (mode === 'test') {
-                return getFilteredOfficialTestData().map(testResultToObject);
-            }
+            if (mode === 'test') return getFilteredOfficialTestData().map(testResultToObject);
             return getFilteredOfficialScanData().map(scanResultToObject);
         }
 
