@@ -11,12 +11,15 @@ on:
   push:
     branches:
       - main
+      - replace-nsb-with-independent-official
     paths:
       - ".github/workflows/build-apk-only.yml"
       - "combined_refactor/index.html"
       - "combined_refactor/protocol.go"
       - "combined_refactor/server.go"
       - "combined_refactor/tasks_speed.go"
+      - "combined_refactor/tasks_official.go"
+      - "combined_refactor/types.go"
       - "combined_refactor/cli.go"
 
 permissions:

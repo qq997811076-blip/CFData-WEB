@@ -4705,101 +4705,22 @@
         }
 
         function startNSBTask() {
-            syncNSBInputMode();
-            const sourceURL = nsbSourceUrlInput ? nsbSourceUrlInput.value.trim() : '';
-            const hasFile = !!uploadedFileContent.trim();
-            const hasURL = !!sourceURL;
-            if (hasFile === hasURL) {
-                showNoticeCard('请选择本地文件或填写网络 URL（二选一）');
-                return;
-            }
-
-            const maxThreads = parseInt(document.getElementById('nsbThreads').value) || 100;
-            const fallbackPort = parseInt(document.getElementById('nsbFallbackPort').value) || 0;
-            const speedEnabled = String(document.getElementById('nsbEnableSpeed').value || 'off').toLowerCase() === 'on';
-            const speedTestInput = parseInt(document.getElementById('nsbSpeedTest').value) || 0;
+            const threads = parseInt(document.getElementById('nsbThreads')?.value) || 100;
+            const port = parseInt(document.getElementById('nsbFallbackPort')?.value) || 443;
+            const delay = parseInt(document.getElementById('nsbDelay')?.value) || 0;
+            const scanMode = document.getElementById('nsbScanMode')?.value || 'tcping';
+            const speedMin = parseFloat(document.getElementById('nsbSpeedMin')?.value) || 0.1;
+            const speedLimit = parseInt(document.getElementById('nsbSpeedLimit')?.value) || 0;
+            const speedEnabled = String(document.getElementById('nsbEnableSpeed')?.value || 'off').toLowerCase() === 'on';
             const speedURL = resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset');
-            const outFile = document.getElementById('nsbOutFile').value.trim() || 'ip.csv';
-            const speedTest = speedEnabled ? speedTestInput : 0;
-            nsbSpeedEnabledForResults = speedTest > 0 && (parseInt(document.getElementById('nsbSpeedLimit').value) || 0) > 0;
-            nsbContinueSpeedUnlocked = false;
-            const tlsMode = String(document.getElementById('nsbTls').value || 'on').toLowerCase();
-            const enableTLS = tlsMode !== 'off';
-            const delay = parseInt(document.getElementById('nsbDelay').value) || 0;
-            const resultLimit = parseInt(document.getElementById('nsbResultLimit').value) || 0;
-            const targetDC = document.getElementById('nsbTargetDC').value.trim();
-            const speedMin = parseFloat(document.getElementById('nsbSpeedMin').value) || 0;
-            const speedLimit = parseInt(document.getElementById('nsbSpeedLimit').value) || 0;
-            nsbSpeedMinValue = speedMin;
-            nsbCompactView = document.getElementById('nsbCompactView')?.value !== 'full';
-            const compact = nsbCompactView;
-            nsbTableQualifiedFilter = 'all';
-            setNSBTableQualifiedFilter('all');
-
-            if (isNaN(speedTestInput) || speedTestInput < 0) {
-                showNoticeCard('测速线程必须为非负整数');
-                return;
-            }
-            if (resultLimit <= 0) {
-                showNoticeCard('延迟结果上限必须填写非 0 正整数');
-                return;
-            }
-            if (fallbackPort <= 0 || fallbackPort > 65535) {
-                showNoticeCard('备用端口必须为 1-65535');
-                return;
-            }
-
-            isTaskRunning = true;
-            isStoppingTask = false;
-            runningTaskLabel = '非标优选';
-            runningTaskMode = 'nsb';
-            runningTaskTab = 'scan';
-            
-            backgroundTaskActive = false;
-            backgroundTaskFollowing = false;
-            const card = document.getElementById('backgroundStatusCard');
-            if (card) card.classList.remove('active');
-            
-            updateNSBCompactToggle();
-            setStartLoading(getRunningButtonText(), 'linear-gradient(135deg, var(--error-color), #dc2626)', '0 4px 12px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255,255,255,0.2)');
-            renderScanHeaders('nsb');
-            resetProgress();
-            progressBox.style.display = 'block';
-            document.querySelector('#scanTable tbody').innerHTML = '';
-            document.getElementById('dcSection').style.display = 'none';
-            document.querySelector('#testTable tbody').innerHTML = '';
-
-            nsbHeaders = [];
-            nsbRows = [];
-            nsbLiveRows = [];
-            nsbLiveIndex = {};
-            nsbLiveRowElements = {};
-            updateBadge('scanCount', 0);
-            autoUploadKeys = new Set();
-
-            if (!wsSend({
-                type: 'start_nsb_task',
-                data: {
-                    fileName: uploadedFileName,
-                    fileContent: hasFile ? uploadedFileContent : '',
-                    sourceURL: hasURL ? sourceURL : '',
-                    outFile,
-                    maxThreads,
-                    fallbackPort,
-                    speedTest,
-                    speedURL,
-                    enableTLS,
-                    delay,
-                    resultLimit,
-                    dc: targetDC,
-                    speedMin,
-                    speedLimit,
-                    compact,
-                    scanMode: getScanMode(),
-                }
-            })) {
-                finishRunningTask('✨ 开始扫描与测试');
-                showNoticeCard('连接未就绪，请等待重连后再试');
+            if (threads < 1 || port < 1 || port > 65535 || delay < 0) { showNoticeCard('请检查并发、端口和延迟参数'); return; }
+            nsbSpeedEnabledForResults = speedEnabled && speedLimit > 0; nsbSpeedMinValue = speedMin; nsbContinueSpeedUnlocked = false;
+            nsbLiveRows = []; nsbLiveIndex = {}; nsbLiveRowElements = {};
+            document.querySelector('#scanTable tbody').innerHTML = ''; updateBadge('scanCount', 0);
+            isTaskRunning = true; isStoppingTask = false; runningTaskLabel = '非标优选'; runningTaskMode = 'nsb'; runningTaskTab = 'scan';
+            setStartLoading(getRunningButtonText()); resetProgress(); progressBox.style.display = 'block';
+            if (!wsSend({type:'start_nsb_task', data:{ipType:4,threads,port,delay,scanMode,autoSpeed:speedEnabled,officialTargetDC:document.getElementById('nsbTargetDC')?.value.trim() || '',officialSpeedPort:port,officialSpeedURL:speedURL,officialSpeedMin:speedMin,officialSpeedLimit:speedLimit,officialSpeedConcurrency:Math.max(1,parseInt(document.getElementById('nsbSpeedTest')?.value)||1)}})) {
+                finishRunningTask('✨ 开始扫描与测试'); showNoticeCard('连接未就绪，无法启动任务');
             }
         }
 

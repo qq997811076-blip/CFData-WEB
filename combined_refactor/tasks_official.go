@@ -608,3 +608,243 @@ func sortOfficialTestResults(results []TestResult) {
 func latencyDisplayMilliseconds(value time.Duration) int64 {
 	return int64((value + time.Millisecond/2) / time.Millisecond)
 }
+
+
+func runNSBOfficialTask(ctx context.Context, session *appSession, ipType int, scanMaxThreads int, port int, delay int, scanMode string) {
+	filename := "ips-v4.txt"
+	apiURL := "https://www.baipiao.eu.org/cloudflare/ips-v4"
+	if ipType == 6 {
+		filename = "ips-v6.txt"
+		apiURL = "https://www.baipiao.eu.org/cloudflare/ips-v6"
+	}
+
+	content, err := getIPListContent(filename, apiURL)
+	if err != nil {
+		session.sendWSMessage("error", err.Error())
+		return
+	}
+
+	ipList, err := parseIPList(content)
+	if err != nil {
+		session.sendWSMessage("error", "解析 IP 列表失败: "+err.Error())
+		return
+	}
+	if ipType == 6 {
+		ipList = getRandomIPv6s(ipList)
+	} else {
+		ipList = getRandomIPv4s(ipList)
+	}
+	session.sendWSMessage("log", fmt.Sprintf("开始扫描：%d 条记录", len(ipList)))
+
+	session.scanMutex.Lock()
+	session.nsbOfficialScanResults = []ScanResult{}
+	session.scanMutex.Unlock()
+
+	total := len(ipList)
+	failureCounts := map[string]int{}
+	failureSamples := map[string]string{}
+	failureMutex := sync.Mutex{}
+	recordFailure := func(category, detail string) {
+		if category == "" {
+			return
+		}
+		failureMutex.Lock()
+		defer failureMutex.Unlock()
+		failureCounts[category]++
+		if failureSamples[category] == "" && strings.TrimSpace(detail) != "" {
+			failureSamples[category] = detail
+		}
+	}
+	session.sendWSMessage("nsb_progress", map[string]interface{}{
+		"current": 0,
+		"total":   total,
+	})
+	wasCanceled := runBoundedWorkers(ctx, total, scanMaxThreads, 10, func(current, total int) {
+		session.sendWSMessage("nsb_progress", map[string]interface{}{
+			"current": current,
+			"total":   total,
+		})
+	}, func(idx int) {
+		ip := ipList[idx]
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		var res *ScanResult
+		var failureCategory, failureDetail string
+		if scanMode == scanModeHTTPing {
+			res, failureCategory, failureDetail = scanOfficialHTTP(ctx, ip, port, delay)
+		} else {
+			res, failureCategory, failureDetail = scanOfficialIP(ctx, ip, port, delay)
+		}
+		if res == nil {
+			recordFailure(failureCategory, failureDetail)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		session.scanMutex.Lock()
+		session.nsbOfficialScanResults = append(session.nsbOfficialScanResults, *res)
+		session.scanMutex.Unlock()
+
+		session.sendWSMessage("nsb_scan_result", nsbOfficialScanMessage(*res))
+	})
+
+	if wasCanceled || ctx.Err() != nil {
+		session.sendWSMessage("log", "扫描任务已终止，正在整理已扫描到的数据...")
+	}
+
+	session.scanMutex.Lock()
+	resultsCount := len(session.nsbOfficialScanResults)
+	session.scanMutex.Unlock()
+
+	if resultsCount == 0 {
+		if wasCanceled || ctx.Err() != nil {
+			session.sendWSMessage("log", "扫描任务已终止，当前没有可整理的有效 IP。")
+			return
+		}
+		session.sendWSMessage("error", "扫描结束或被终止，但未发现任何有效IP。")
+		return
+	}
+
+	session.scanMutex.Lock()
+	sort.Slice(session.nsbOfficialScanResults, func(i, j int) bool {
+		return session.nsbOfficialScanResults[i].TCPDuration < session.nsbOfficialScanResults[j].TCPDuration
+	})
+	scanCopy := append([]ScanResult(nil), session.nsbOfficialScanResults...)
+	session.scanMutex.Unlock()
+
+	dcMap := make(map[string]*DataCenterInfo)
+	for _, res := range scanCopy {
+		if _, ok := dcMap[res.DataCenter]; !ok {
+			dcMap[res.DataCenter] = &DataCenterInfo{
+				DataCenter: res.DataCenter,
+				DCCountry:  res.DCCountry,
+				City:       res.City,
+				IPCount:    0,
+				MinLatency: 999999,
+			}
+		}
+		info := dcMap[res.DataCenter]
+		info.IPCount++
+		lat := int(res.TCPDuration / time.Millisecond)
+		if lat < info.MinLatency {
+			info.MinLatency = lat
+		}
+	}
+
+	var dcList []DataCenterInfo
+	for _, info := range dcMap {
+		dcList = append(dcList, *info)
+	}
+	sort.Slice(dcList, func(i, j int) bool {
+		return dcList[i].MinLatency < dcList[j].MinLatency
+	})
+
+	session.sendWSMessage("nsb_scan_sorted", nsbOfficialScanRows(scanCopy))
+}
+
+func runNSBOfficialDetailedTest(ctx context.Context, session *appSession, selectedDC string, port int, delay int, scanMode string) {
+	var testIPList []string
+	scanByIP := make(map[string]ScanResult)
+	session.scanMutex.Lock()
+	for _, res := range session.nsbOfficialScanResults {
+		if selectedDC == "" || res.DataCenter == selectedDC {
+			testIPList = append(testIPList, res.IP)
+			scanByIP[res.IP] = res
+		}
+	}
+	session.scanMutex.Unlock()
+
+	if len(testIPList) == 0 {
+		if strings.TrimSpace(selectedDC) == "" {
+			session.sendWSMessage("error", "没有找到可测试的 IP 地址")
+		} else {
+			session.sendWSMessage("error", fmt.Sprintf("数据中心 %s 未找到可测试的 IP 地址", selectedDC))
+		}
+		return
+	}
+
+	session.sendWSMessage("log", fmt.Sprintf("开始测试：%s，%d 个 IP", selectedDC, len(testIPList)))
+
+	var results []TestResult
+	var resMutex sync.Mutex
+	failureCounts := map[string]int{}
+	failureSamples := map[string]string{}
+	failureMutex := sync.Mutex{}
+	recordFailure := func(category, detail string) {
+		if category == "" {
+			return
+		}
+		failureMutex.Lock()
+		defer failureMutex.Unlock()
+		failureCounts[category]++
+		if failureSamples[category] == "" && strings.TrimSpace(detail) != "" {
+			failureSamples[category] = detail
+		}
+	}
+
+	total := len(testIPList)
+	session.sendWSMessage("nsb_progress", map[string]interface{}{
+		"current": 0,
+		"total":   total,
+	})
+	wasCanceled := runBoundedWorkers(ctx, total, 50, 5, func(current, total int) {
+		session.sendWSMessage("nsb_progress", map[string]interface{}{
+			"current": current,
+			"total":   total,
+		})
+	}, func(idx int) {
+		ip := testIPList[idx]
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		res, failureCategory, failureDetail := testIPLatency(ctx, ip, port, delay, scanMode)
+		if res == nil {
+			recordFailure(failureCategory, failureDetail)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if scan, ok := scanByIP[ip]; ok {
+			res.DataCenter = scan.DataCenter
+			res.DCCountry = scan.DCCountry
+			res.Region = scan.Region
+			res.City = scan.City
+		}
+		session.sendWSMessage("nsb_scan_result", nsbOfficialTestMessage(*res))
+
+		resMutex.Lock()
+		results = append(results, *res)
+		resMutex.Unlock()
+	})
+
+	if wasCanceled || ctx.Err() != nil {
+		session.sendWSMessage("log", "详细测试已被终止，正在呈现当前可用测试结果...")
+		return
+	}
+	if len(results) == 0 {
+		session.sendWSMessage("error", "详细测试完成，但没有任何 IP 通过延迟测试。")
+		return
+	}
+
+	sortOfficialTestResults(results)
+
+	session.testMutex.Lock()
+	session.nsbOfficialTestResults = append([]TestResult(nil), results...)
+	session.testMutex.Unlock()
+
+	session.sendWSMessage("nsb_scan_sorted", nsbOfficialTestRows(results))
+}
