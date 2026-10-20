@@ -88,36 +88,6 @@ type TestResult struct {
 	Speed      string
 }
 
-type iptestResult struct {
-	ipAddr         string
-	originalInput  string
-	port           int
-	dataCenter     string
-	locCode        string
-	region         string
-	city           string
-	latency        string
-	lossRate       float64
-	tcpDuration    time.Duration
-	outboundIP     string
-	ipType         string
-	asnNumber      string
-	asnOrg         string
-	visitScheme    string
-	tlsVersion     string
-	sni            string
-	httpVersion    string
-	warp           string
-	gateway        string
-	rbi            string
-	kex            string
-	timestamp      string
-	downloadSpeed  float64
-	speedText      string
-	speedTested    bool
-	speedQualified bool
-}
-
 type csvHeaderPayload struct {
 	Headers []string   `json:"headers"`
 	Rows    [][]string `json:"rows"`
