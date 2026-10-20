@@ -824,11 +824,7 @@
             grid-template-columns: auto minmax(92px, auto) minmax(92px, auto) auto auto auto;
         }
 
-.nsb-scan-actions.official-scan-actions {
-            grid-template-columns: minmax(92px, auto) minmax(92px, auto);
-        }
-
-        .official-test-actions .action-btn,
+.official-test-actions .action-btn,
         .official-test-actions .table-filter-select,
 #btnBatchSpeed,
         #btnContinueBatchSpeed,
@@ -1437,24 +1433,13 @@
                 width: 100%;
             }
 
-#nsbTableQualifiedFilter {
-                width: 100%;
-            }
-
-            #test .section-box h3 .table-actions {
+#test .section-box h3 .table-actions {
                 display: grid;
                 grid-template-columns: 1fr;
             }
 
             #test .section-box h3 .table-actions .official-test-actions,
-            #scan .section-box h3 .table-actions .nsb-scan-actions {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr);
-                gap: 8px;
-                width: 100%;
-            }
-
-            #officialTestQualifiedFilter {
+#officialTestQualifiedFilter {
                 align-self: stretch;
                 width: 100%;
             }
@@ -3555,12 +3540,8 @@
 
         function getLatencyColorFactor() {
             if (getScanMode() !== 'httping') return 1;
-            if (currentMode === 'official') {
-                const port = parseInt(document.getElementById('officialTestPort')?.value) || 443;
-                return [443, 2053, 2083, 2087, 2096, 8443].includes(port) ? 4.0 : 1.3;
-            }
-            const tls = String(document.getElementById('nsbTls')?.value || 'on').toLowerCase();
-            return tls !== 'off' ? 4.0 : 1.3;
+            const port = parseInt(document.getElementById('officialTestPort')?.value) || 443;
+            return [443, 2053, 2083, 2087, 2096, 8443].includes(port) ? 4.0 : 1.3;
         }
 
         function getLatencyColor(val, factor) {
@@ -5078,57 +5059,6 @@
                         setEdgetunnelUploadStatus(msg.data.message || 'edgetunnel 上传失败', 'error');
                     }
                     log(msg.data.message || 'edgetunnel 上传失败');
-                    break;
-
-                case 'nsb_progress':
-                    if (currentMode === 'nsb') {
-                        const p = msg.data || {};
-                        const percent = parseFloat(p.percent || 0);
-                        const txt = p.text || '处理中';
-                        if (p.phase === 'speed') {
-                            updateQualifiedSpeedProgress(p.current || 0, p.total || 1);
-                        } else {
-                            updateProgress(p.current || 0, p.total || 1, `${txt}`);
-                        }
-                    }
-                    break;
-                case 'nsb_scan_result':
-                    if (nsbBatchSpeedRunning) {
-                        updateNSBDisplayedResult(msg.data || {});
-                    } else {
-                        addNSBLiveResult(msg.data || {}, currentMode === 'nsb');
-                    }
-                    break;
-                case 'nsb_scan_sorted':
-                    nsbLiveRows = [];
-                    nsbLiveIndex = {};
-                    nsbLiveRowElements = {};
-                    (msg.data || []).forEach((row) => addNSBLiveResult(row || {}, false));
-                    if (currentMode === 'nsb') renderAllNSBLiveRows();
-                    break;
-                case 'nsb_speed_complete':
-                    if (isStoppingTask) {
-                        resetStoppedTaskUI('已手动终止');
-                        log('任务已手动终止');
-                        break;
-                    }
-                    nsbBatchSpeedRunning = false;
-                    nsbSpeedEnabledForResults = ((msg.data?.totalQualified ?? msg.data?.qualified) || 0) > 0;
-                    nsbContinueSpeedUnlocked = true;
-                    finishRunningTask('✨ 开始扫描与测试');
-                        if (nsbSpeedEnabledForResults) setNSBTableQualifiedFilter('qualified');
-                    updateProgress(msg.data?.qualified || 0, msg.data?.limit || 1, '测速完成');
-                    autoUploadNSBResults();
-                    break;
-
-                case 'nsb_csv_ready':
-                    finishRunningTask('✨ 开始扫描与测试');
-                    nsbStopHandledByComplete = true;
-                    progressBar.style.background = 'var(--warning-color)';
-                    progressBar.style.width = '100%';
-                    progressBar.style.animation = 'none';
-                    progressBar.textContent = '任务已停止，结果已整理，正在回传表格';
-                    log(`任务已停止: ${msg.data?.message || '已整理当前可用结果'}${msg.data?.file ? '，结果文件: ' + msg.data.file : ''}`);
                     break;
 
                 case 'background_task_enabled':
