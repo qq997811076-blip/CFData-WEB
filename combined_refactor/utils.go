@@ -2,11 +2,9 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
-	"os"
 	"path/filepath"
 	"strings"
 )
