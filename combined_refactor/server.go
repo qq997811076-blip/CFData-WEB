@@ -229,48 +229,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				runOfficialSpeedBatch(ctx, session, params.Port, params.URL, params.SpeedLimit, params.SpeedConcurrency, params.SpeedMin, params.Results, params.SkipTested)
 			})
 		},
-		"start_nsb_task": func(data json.RawMessage) {
-			var params startNSBTaskRequest
-			if err := json.Unmarshal(data, &params); err != nil {
-				session.sendWSMessage("error", "非标优选参数解析失败")
-				return
-			}
-			threads := params.MaxThreads
-			if threads <= 0 { threads = 100 }
-			port := params.FallbackPort
-			if port <= 0 { port = 443 }
-			delay := params.Delay
-			if delay < 0 { delay = 0 }
-			scanMode := params.ScanMode
-			if scanMode == "" { scanMode = scanModeTCPing }
-			autoSpeed := params.SpeedTest > 0 && params.SpeedLimit > 0
-			session.startTaskNamed("非标优选", "official", map[string]interface{}{
-				"ipType": 4, "threads": threads, "port": port, "delay": delay, "scanMode": scanMode,
-				"autoSpeed": autoSpeed, "dc": params.DC, "speedLimit": params.SpeedLimit,
-				"speedMin": params.SpeedMin, "speedConcurrency": params.SpeedTest, "speedURL": params.SpeedURL,
-			}, func(ctx context.Context, session *appSession) {
-				runOfficialTask(ctx, session, 4, threads, port, delay, scanMode)
-				if ctx.Err() != nil || !autoSpeed || !session.isBackgroundTask() { return }
-				dc := strings.TrimSpace(params.DC)
-				if dc == "" {
-					session.scanMutex.Lock()
-					copy := append([]ScanResult(nil), session.scanResults...)
-					session.scanMutex.Unlock()
-					dc = pickBestDataCenter(copy)
-				}
-				if dc == "" || ctx.Err() != nil { return }
-				runDetailedTest(ctx, session, dc, port, delay, scanMode)
-				if ctx.Err() != nil || !session.isBackgroundTask() || params.SpeedLimit <= 0 { return }
-				speedURL := strings.TrimSpace(params.SpeedURL)
-				if speedURL == "" || isAutoSpeedURL(speedURL) { speedURL = speedTestURL }
-				session.testMutex.Lock()
-				results := append([]TestResult(nil), session.testResults...)
-				session.testMutex.Unlock()
-				if len(results) > 0 {
-					runOfficialSpeedBatch(ctx, session, port, speedURL, params.SpeedLimit, params.SpeedTest, params.SpeedMin, results, false)
-				}
-			})
-		},
 		"stop_task": func(data json.RawMessage) {
 			if backgroundSession := currentBackgroundTaskSession(); backgroundSession != nil {
 				if session != backgroundSession {
@@ -319,14 +277,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			if !snapshot.Running && snapshot.Phase == "完成" {
-				backgroundSession.nsbMutex.Lock()
-				payload := backgroundSession.nsbCompletePayload
-				backgroundSession.nsbMutex.Unlock()
-				if payload != nil {
-					backgroundSession.sendWSMessage("nsb_csv_complete", *payload)
-				}
-			}
 		},
 		"get_background_task_status": func(data json.RawMessage) {
 			backgroundSession := currentBackgroundTaskSession()
