@@ -61,10 +61,6 @@ func parseIPList(content string) ([]string, error) {
 	return lines, nil
 }
 
-func readIPs(filename string, enableTLS bool) ([]string, error) {
-	return readIPsWithFallbackPort(filename, defaultNSBPort(enableTLS))
-}
-
 func looksLikeIPv4Literal(host string) bool {
 	parts := strings.Split(host, ".")
 	if len(parts) != 4 {
@@ -106,7 +102,7 @@ func isValidDomain(host string) bool {
 }
 
 func parsePort(value string) (int, bool) {
-	value = cleanNSBToken(value)
+	value = strings.TrimSpace(value)
 	port, err := strconv.Atoi(value)
 	if err != nil || !isValidPort(port) {
 		return 0, false
