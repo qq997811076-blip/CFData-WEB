@@ -6394,23 +6394,35 @@
                     if (msg.data && (msg.data.toLowerCase().includes('cancel') || msg.data.toLowerCase().includes('stop'))) {
                         resetStoppedTaskUI('已手动终止');
                     } else {
-                        officialAutoSpeedPending = false;
-                        officialAutoStage = '';
-                        officialBatchSpeedRunning = false;
-                        nsbBatchSpeedRunning = false;
-                        officialTestCompletePending = false;
-                        officialSpeedEndedByRateLimit = false;
-                        if (currentSpeedTestingIP) {
-                            resetCurrentSpeedButton();
+                        const failedTaskMode = runningTaskMode;
+                        if (failedTaskMode === 'nsb') {
+                            nsbBatchSpeedRunning = false;
+                        } else if (failedTaskMode === 'official') {
+                            officialAutoSpeedPending = false;
+                            officialAutoStage = '';
+                            officialBatchSpeedRunning = false;
+                            officialTestCompletePending = false;
+                            officialSpeedEndedByRateLimit = false;
+                            if (currentSpeedTestingIP) resetCurrentSpeedButton();
+                        } else {
+                            officialAutoSpeedPending = false;
+                            officialAutoStage = '';
+                            officialBatchSpeedRunning = false;
+                            nsbBatchSpeedRunning = false;
+                            officialTestCompletePending = false;
+                            officialSpeedEndedByRateLimit = false;
                         }
                         finishRunningTask('✨ 开始扫描与测试');
                         updateBatchSpeedButton();
                         updateNSBSpeedButtons();
                         finishCompactIPv4();
-                        progressBar.style.background = 'var(--error-color)';
-                        progressBar.style.width = '100%';
-                        progressBar.style.animation = 'none';
-                        progressBar.textContent = '任务失败';
+                        if (!failedTaskMode || currentMode === failedTaskMode) {
+                            progressBar.style.background = 'var(--error-color)';
+                            progressBar.style.width = '100%';
+                            progressBar.style.animation = 'none';
+                            progressBar.textContent = '任务失败';
+                            if (failedTaskMode) captureProgressSnapshot(failedTaskMode);
+                        }
                     }
                     log('错误: ' + msg.data);
                     break;
