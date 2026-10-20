@@ -2370,7 +2370,8 @@ table td,
 
         }
 
-        function saveConfigToLS() {
+        function saveConfigToLS(syncOtherMode = true) {
+            if (syncOtherMode) requestConfigActionInOtherMode('save');
             const config = readFormValues();
             try {
                 localStorage.setItem('cfdata-config', JSON.stringify(config));
@@ -2381,7 +2382,8 @@ table td,
             log('当前配置已保存到 localStorage');
         }
 
-        function loadConfigFromLS() {
+        function loadConfigFromLS(syncOtherMode = true) {
+            if (syncOtherMode) requestConfigActionInOtherMode('load');
             let raw;
             try {
                 raw = localStorage.getItem('cfdata-config');
@@ -2563,10 +2565,57 @@ table td,
 
         const cfdataModeNamespace = new URLSearchParams(window.location.search).get('mode') === 'nsb' ? 'nsb' : 'official';
 
+        function watchNSBFrameLoad(frame) {
+            if (!frame || frame.dataset.syncLoadListener) return;
+            frame.dataset.syncLoadListener = '1';
+            frame.addEventListener('load', () => {
+                frame.dataset.ready = '1';
+                const pendingAction = frame.dataset.pendingConfigAction;
+                if (pendingAction && frame.contentWindow) {
+                    delete frame.dataset.pendingConfigAction;
+                    frame.contentWindow.postMessage({ type: 'cfdata-config-action', action: pendingAction }, window.location.origin);
+                }
+            });
+        }
+
+        function requestConfigActionInOtherMode(action) {
+            if (cfdataModeNamespace === 'nsb') {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'cfdata-config-action', action }, window.location.origin);
+                }
+                return;
+            }
+
+            const frame = document.getElementById('nsbFrame');
+            if (!frame) return;
+            watchNSBFrameLoad(frame);
+            if (!frame.dataset.loaded) {
+                frame.dataset.pendingConfigAction = action;
+                frame.src = window.location.pathname + '?mode=nsb&isolated=1';
+                frame.dataset.loaded = '1';
+                return;
+            }
+            if (frame.contentDocument && frame.contentDocument.readyState === 'complete') {
+                frame.dataset.ready = '1';
+            }
+            if (frame.dataset.ready && frame.contentWindow) {
+                frame.contentWindow.postMessage({ type: 'cfdata-config-action', action }, window.location.origin);
+            } else {
+                frame.dataset.pendingConfigAction = action;
+            }
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin || event.source !== window.parent || !event.data || event.data.type !== 'cfdata-config-action') return;
+            if (event.data.action === 'save') saveConfigToLS(false);
+            if (event.data.action === 'load') loadConfigFromLS(false);
+        });
+
         function openNSBPanel() {
             const overlay = document.getElementById('nsbOverlay');
             const frame = document.getElementById('nsbFrame');
             if (!overlay || !frame) return;
+            watchNSBFrameLoad(frame);
             if (!frame.dataset.loaded) {
                 frame.src = window.location.pathname + '?mode=nsb&isolated=1';
                 frame.dataset.loaded = '1';
