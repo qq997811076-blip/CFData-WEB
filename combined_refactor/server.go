@@ -249,32 +249,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				} else if ctx.Err()==nil { session.sendWSMessage("nsb_speed_complete", map[string]interface{}{"qualified":0,"totalQualified":0,"limit":0,"rateLimited":false}) }
 			})
 		},
-		"start_nsb_speed_batch": func(data json.RawMessage) {
-			var params startNSBSpeedBatchRequest
-			if err := json.Unmarshal(data, &params); err != nil {
-				session.sendWSMessage("error", "start_nsb_speed_batch 参数解析失败")
-				return
-			}
-			if params.SpeedTest < 0 {
-				params.SpeedTest = 0
-			}
-			if params.SpeedLimit < 0 {
-				params.SpeedLimit = 0
-			}
-			if params.SpeedMin <= 0 {
-				params.SpeedMin = 0.1
-			}
-			if strings.TrimSpace(params.SpeedURL) == "" {
-				params.SpeedURL = speedTestURL
-			}
-			if len(params.Results) == 0 {
-				session.sendWSMessage("error", "没有可测速的非标结果")
-				return
-			}
-			session.startTaskNamed("非标批量测速", "nsb", map[string]interface{}{"speedTest": params.SpeedTest, "speedURL": params.SpeedURL, "enableTLS": params.EnableTLS, "speedMin": params.SpeedMin, "speedLimit": params.SpeedLimit, "skipTested": params.SkipTested, "compact": params.Compact}, func(ctx context.Context, session *appSession) {
-				runNSBSpeedBatch(ctx, session, params.Results, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.SpeedMin, params.SpeedLimit, params.SkipTested, params.Compact)
-			})
-		},
 		"stop_task": func(data json.RawMessage) {
 			if backgroundSession := currentBackgroundTaskSession(); backgroundSession != nil {
 				if session != backgroundSession {
