@@ -3246,10 +3246,8 @@ function showRunningTaskView() {
             if (normalized === 'unqualified' || normalized === '不合格') return 'unqualified';
             return 'all';
         }
-        function matchesQualifiedFilter(row, filter) {
-            filter = normalizeQualifiedFilter(filter);
-            if (filter === 'all') return true;
-            return status === filter;
+function matchesQualifiedFilter(row, filter) {
+            return matchesOfficialQualifiedFilter(row, filter);
         }
         function addScanResult(row, render = true) {
             scanResultsCount++;
@@ -3868,13 +3866,11 @@ if (format === 'txt') return ['ipport', 'dc', 'dcCountry'];
             if (!rows.length) return ['ipport'];
             return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
         }
-
-        function getAllResultFieldOrder() {
+function getAllResultFieldOrder() {
             const rows = getCurrentResultRows(resultModalMode);
             if (!rows.length) return ['ipport'];
-
-                return getOfficialResultFieldOrder().filter((key) => rows.some((r) => String(r[key] ?? '').trim() !== ''));
-            }
+            return getOfficialResultFieldOrder().filter((key) => rows.some((r) => String(r[key] ?? '').trim() !== ''));
+        }
             return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
         }
 
