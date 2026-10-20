@@ -813,13 +813,10 @@ func applyCLIFileConfig(cfg *cliConfig, fileCfg cliFileConfig, provided map[stri
 	genericURL := speedTestURL
 	cfg.threads = cfg.offThreads
 	cfg.delay = cfg.offDelay
-	if isAutoSpeedURL(cfg.offURL) && provided["url"] && strings.TrimSpace(speedTestURL) != "" {
-		speedTestURL = speedTestURL
+	if isAutoSpeedURL(cfg.offURL) && provided["url"] && strings.TrimSpace(genericURL) != "" {
+		speedTestURL = genericURL
 	} else {
 		speedTestURL = cfg.offURL
-	} else {
-			speedTestURL = cfg.offURL
-		}
 	}
 }
 
