@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -232,93 +231,43 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		"start_nsb_task": func(data json.RawMessage) {
 			var params startNSBTaskRequest
 			if err := json.Unmarshal(data, &params); err != nil {
-				session.sendWSMessage("error", "start_nsb_task 参数解析失败")
+				session.sendWSMessage("error", "非标优选参数解析失败")
 				return
 			}
-			if params.MaxThreads <= 0 {
-				params.MaxThreads = speedTestWorkers
-			}
-			if params.SpeedTest < 0 {
-				params.SpeedTest = 0
-			}
-			if params.Delay < 0 {
-				params.Delay = 0
-			}
-			if params.ResultLimit < 0 {
-				params.ResultLimit = 0
-			}
-			if params.SpeedLimit < 0 {
-				params.SpeedLimit = 0
-			}
-			if params.SpeedMin < 0 {
-				params.SpeedMin = 0
-			}
-			if strings.TrimSpace(params.SpeedURL) == "" {
-				params.SpeedURL = speedTestURL
-			}
-			if strings.TrimSpace(params.OutFile) == "" {
-				params.OutFile = "ip.csv"
-			}
-			hasFileContent := strings.TrimSpace(params.FileContent) != ""
-			hasSourceURL := strings.TrimSpace(params.SourceURL) != ""
-			if hasFileContent == hasSourceURL {
-				session.sendWSMessage("error", "请选择本地文件或网络URL（二选一）")
-				return
-			}
-			if hasSourceURL {
-				parsedURL, err := url.Parse(params.SourceURL)
-				if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
-					session.sendWSMessage("error", "网络URL必须是有效的 http/https 地址")
-					return
-				}
-			}
+			threads := params.MaxThreads
+			if threads <= 0 { threads = 100 }
+			port := params.FallbackPort
+			if port <= 0 { port = 443 }
+			delay := params.Delay
+			if delay < 0 { delay = 0 }
 			scanMode := params.ScanMode
-			if scanMode == "" {
-				scanMode = scanModeTCPing
-			}
-			session.startTaskNamed("非标优选", "nsb", map[string]interface{}{"fileName": params.FileName, "sourceURL": params.SourceURL, "outFile": params.OutFile, "maxThreads": params.MaxThreads, "fallbackPort": params.FallbackPort, "speedTest": params.SpeedTest, "speedURL": params.SpeedURL, "enableTLS": params.EnableTLS, "delay": params.Delay, "resultLimit": params.ResultLimit, "dc": params.DC, "speedMin": params.SpeedMin, "speedLimit": params.SpeedLimit, "compact": params.Compact, "scanMode": scanMode}, func(ctx context.Context, session *appSession) {
-				fileName := params.FileName
-				fileContent := params.FileContent
-				if hasSourceURL {
-					session.sendWSMessage("log", "正在获取非标网络输入: "+params.SourceURL)
-					content, err := getURLContentWithContext(ctx, params.SourceURL)
-					if err != nil {
-						if ctx.Err() != nil {
-							return
-						}
-						session.sendWSMessage("error", "获取非标网络输入失败: "+err.Error())
-						return
-					}
-					fileName = params.SourceURL
-					fileContent = content
+			if scanMode == "" { scanMode = scanModeTCPing }
+			autoSpeed := params.SpeedTest > 0 && params.SpeedLimit > 0
+			session.startTaskNamed("非标优选", "official", map[string]interface{}{
+				"ipType": 4, "threads": threads, "port": port, "delay": delay, "scanMode": scanMode,
+				"autoSpeed": autoSpeed, "dc": params.DC, "speedLimit": params.SpeedLimit,
+				"speedMin": params.SpeedMin, "speedConcurrency": params.SpeedTest, "speedURL": params.SpeedURL,
+			}, func(ctx context.Context, session *appSession) {
+				runOfficialTask(ctx, session, 4, threads, port, delay, scanMode)
+				if ctx.Err() != nil || !autoSpeed || !session.isBackgroundTask() { return }
+				dc := strings.TrimSpace(params.DC)
+				if dc == "" {
+					session.scanMutex.Lock()
+					copy := append([]ScanResult(nil), session.scanResults...)
+					session.scanMutex.Unlock()
+					dc = pickBestDataCenter(copy)
 				}
-				runNSBTask(ctx, session, fileName, fileContent, params.OutFile, params.MaxThreads, params.FallbackPort, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.Delay, params.ResultLimit, params.DC, params.SpeedMin, params.SpeedLimit, params.Compact, scanMode)
-			})
-		},
-		"start_nsb_speed_batch": func(data json.RawMessage) {
-			var params startNSBSpeedBatchRequest
-			if err := json.Unmarshal(data, &params); err != nil {
-				session.sendWSMessage("error", "start_nsb_speed_batch 参数解析失败")
-				return
-			}
-			if params.SpeedTest < 0 {
-				params.SpeedTest = 0
-			}
-			if params.SpeedLimit < 0 {
-				params.SpeedLimit = 0
-			}
-			if params.SpeedMin <= 0 {
-				params.SpeedMin = 0.1
-			}
-			if strings.TrimSpace(params.SpeedURL) == "" {
-				params.SpeedURL = speedTestURL
-			}
-			if len(params.Results) == 0 {
-				session.sendWSMessage("error", "没有可测速的非标结果")
-				return
-			}
-			session.startTaskNamed("非标批量测速", "nsb", map[string]interface{}{"speedTest": params.SpeedTest, "speedURL": params.SpeedURL, "enableTLS": params.EnableTLS, "speedMin": params.SpeedMin, "speedLimit": params.SpeedLimit, "skipTested": params.SkipTested, "compact": params.Compact}, func(ctx context.Context, session *appSession) {
-				runNSBSpeedBatch(ctx, session, params.Results, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.SpeedMin, params.SpeedLimit, params.SkipTested, params.Compact)
+				if dc == "" || ctx.Err() != nil { return }
+				runDetailedTest(ctx, session, dc, port, delay, scanMode)
+				if ctx.Err() != nil || !session.isBackgroundTask() || params.SpeedLimit <= 0 { return }
+				speedURL := strings.TrimSpace(params.SpeedURL)
+				if speedURL == "" || isAutoSpeedURL(speedURL) { speedURL = speedTestURL }
+				session.testMutex.Lock()
+				results := append([]TestResult(nil), session.testResults...)
+				session.testMutex.Unlock()
+				if len(results) > 0 {
+					runOfficialSpeedBatch(ctx, session, port, speedURL, params.SpeedLimit, params.SpeedTest, params.SpeedMin, results, false)
+				}
 			})
 		},
 		"stop_task": func(data json.RawMessage) {
