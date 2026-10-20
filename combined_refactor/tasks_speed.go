@@ -162,65 +162,88 @@ func isSpeedRateLimited(speedErr string) bool {
 	return strings.Contains(speedErr, "速率限制")
 }
 
-func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port int, limit int, speedMinMB float64, customURL string, onResult func(current, total, qualified int, result TestResult), onRateLimited func()) ([]TestResult, []TestResult) {
+func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port int, limit int, concurrency int, speedMinMB float64, customURL string, onResult func(current, total, qualified int, result TestResult), onRateLimited func()) ([]TestResult, []TestResult) {
 	capacity := len(results)
 	if limit > 0 && limit < capacity {
 		capacity = limit
 	}
 	qualified := make([]TestResult, 0, capacity)
-	interSpeedPause := func() bool {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(1200 * time.Millisecond):
-			return true
-		}
+	if concurrency <= 0 {
+		concurrency = 1
 	}
-	consecutiveRateLimited := 0
-	for i := range results {
+	if concurrency > 100 {
+		concurrency = 100
+	}
+	if len(results) == 0 {
+		return results, qualified
+	}
+
+	type speedDone struct {
+		idx     int
+		speedMB float64
+		err     string
+	}
+	done := make(chan speedDone, concurrency)
+	next, inFlight, completed := 0, 0, 0
+	rateLimitedCount := 0
+	stopped := false
+	ctxDone := ctx.Done()
+
+	for next < len(results) || inFlight > 0 {
+		for !stopped && ctx.Err() == nil && next < len(results) && inFlight < concurrency && (limit <= 0 || len(qualified)+inFlight < limit) {
+			idx := next
+			next++
+			inFlight++
+			go func(idx int) {
+				speedMB, speedErr := runWindowedSpeedTest(ctx, results[idx].IP, port, customURL)
+				done <- speedDone{idx: idx, speedMB: speedMB, err: speedErr}
+			}(idx)
+		}
+
+		if ctx.Err() != nil {
+			stopped = true
+			ctxDone = nil
+		}
+		if inFlight == 0 {
+			break
+		}
+
 		select {
-		case <-ctx.Done():
-			return results, qualified
-		default:
-		}
-		if limit > 0 && len(qualified) >= limit {
-			break
-		}
-		speedMB, speedErr := runWindowedSpeedTest(ctx, results[i].IP, port, customURL)
-		if speedErr != "" {
-			results[i].Speed = speedErr
-			if isSpeedRateLimited(speedErr) {
-				consecutiveRateLimited++
-			} else {
-				consecutiveRateLimited = 0
-			}
-		} else {
-			consecutiveRateLimited = 0
-			results[i].Speed = fmt.Sprintf("%.2fMB/s", speedMB)
-			if speedMB >= speedMinMB {
-				qualified = append(qualified, results[i])
-			}
-		}
-		if onResult != nil {
+		case <-ctxDone:
+			stopped = true
+			ctxDone = nil
+		case item := <-done:
+			inFlight--
+			completed++
 			if ctx.Err() != nil {
-				return results, qualified
+				continue
 			}
-			onResult(i+1, len(results), len(qualified), results[i])
-		}
-		if !interSpeedPause() {
-			return results, qualified
-		}
-		if consecutiveRateLimited >= 3 {
-			if onRateLimited != nil {
-				onRateLimited()
+			if item.err != "" {
+				results[item.idx].Speed = item.err
+				if isSpeedRateLimited(item.err) {
+					rateLimitedCount++
+					if rateLimitedCount >= 3 {
+						stopped = true
+						if onRateLimited != nil {
+							onRateLimited()
+						}
+					}
+				}
+			} else {
+				results[item.idx].Speed = fmt.Sprintf("%.2fMB/s", item.speedMB)
+				if item.speedMB >= speedMinMB {
+					qualified = append(qualified, results[item.idx])
+				}
 			}
-			break
+			if onResult != nil {
+				onResult(completed, len(results), len(qualified), results[item.idx])
+			}
 		}
 	}
 	return results, qualified
 }
 
-func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, customURL string, speedLimit int, speedMin float64, fallbackResults []TestResult, skipTested bool) {
+func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, customURL string, speedLimit int, speedConcurrency int, speedMin float64, fallbackResults []TestResult, skipTested bool) {
 	if port <= 0 {
 		port = 443
 	}
@@ -264,10 +287,11 @@ func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, c
 	}
 	sortOfficialTestResults(results)
 
-	session.sendWSMessage("log", fmt.Sprintf("开始测速：%d 条记录，目标上限=%d，测速阈值=%.2fMB/s", len(results), speedLimit, speedMin))
+	if speedConcurrency <= 0 { speedConcurrency = 1 }; if speedConcurrency > 100 { speedConcurrency = 100 }
+	session.sendWSMessage("log", fmt.Sprintf("开始测速：%d 条记录，并发=%d，目标上限=%d，测速阈值=%.2fMB/s", len(results), speedConcurrency, speedLimit, speedMin))
 	session.sendWSMessage("official_speed_progress", map[string]interface{}{"current": 0, "total": len(results), "qualified": 0, "limit": speedLimit})
 	rateLimited := false
-	updated, qualified := runOfficialSpeedTestsCore(ctx, results, port, speedLimit, speedMin, customURL, func(current, total, qualified int, result TestResult) {
+	updated, qualified := runOfficialSpeedTestsCore(ctx, results, port, speedLimit, speedConcurrency, speedMin, customURL, func(current, total, qualified int, result TestResult) {
 		session.sendWSMessage("speed_test_result", map[string]string{"ip": result.IP, "speed": result.Speed})
 		session.sendWSMessage("official_speed_progress", map[string]interface{}{"current": current, "total": total, "qualified": qualified, "limit": speedLimit})
 	}, func() {
