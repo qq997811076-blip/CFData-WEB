@@ -2394,6 +2394,7 @@ table td,
                 return undefined;
             }
             const c = cliCfg.config || cliCfg;
+            const result = { official: {} };
             const sm = pick(c, ['scanmode', 'scanMode']);
             if (sm !== undefined) result.official.scanMode = sm;
             result.official.ipType = pick(c, ['offiptype', 'iptype', 'ipType']);
