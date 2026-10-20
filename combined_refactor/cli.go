@@ -1211,102 +1211,35 @@ func printCLIConfig(cfg *cliConfig) {
 	fmt.Printf("%s %s\n", colorize("CFData-WEB 版本:", ansiBold+ansiGreen), appVersion)
 	fmt.Printf("%s %s\n", colorize("调试等级:", ansiBold+ansiGreen), debugFlagValue{}.String())
 	checkAndPrintUpdate("")
-
-	line := func(label, value string) {
-		fmt.Printf("  %s：%s\n", label, value)
-	}
-	boolLabel := func(v bool) string {
-		if v {
-			return "开启"
-		}
-		return "关闭"
-	}
-	isNSB := strings.EqualFold(strings.TrimSpace(cfg.mode), "nsb")
-
+	line := func(label, value string) { fmt.Printf("  %s：%s\n", label, value) }
+	boolLabel := func(v bool) string { if v { return "开启" }; return "关闭" }
 	scanLabel := "TCPing"
-	if strings.EqualFold(strings.TrimSpace(cfg.scanMode), "httping") {
-		scanLabel = "HTTPing"
-	}
+	if strings.EqualFold(strings.TrimSpace(cfg.scanMode), "httping") { scanLabel = "HTTPing" }
 	speedURLLabel := speedTestURL
-	if isAutoSpeedURL(speedTestURL) {
-		speedURLLabel = "自动选择"
-	}
+	if isAutoSpeedURL(speedTestURL) { speedURLLabel = "自动选择" }
 	dnsLabel := "系统默认"
-	if customDNSForced {
-		dnsLabel = customDNSServer
-	} else if strings.TrimSpace(customDNSServer) != "" && customDNSServer != defaultDNSServers {
-		dnsLabel = "系统默认（回退 " + customDNSServer + "）"
-	}
+	if customDNSForced { dnsLabel = customDNSServer } else if strings.TrimSpace(customDNSServer) != "" && customDNSServer != defaultDNSServers { dnsLabel = "系统默认（回退 " + customDNSServer + "）" }
 	ipVersionLabel := "IPv4"
-	if cfg.ipType == 6 {
-		ipVersionLabel = "IPv6"
-	}
-	outputRows := func() {
-		line("开始行", strconv.Itoa(cfg.startRow))
-		if cfg.endRow > 0 {
-			line("结束行", strconv.Itoa(cfg.endRow))
-			line("输出总量", fmt.Sprintf("%d行", cfg.endRow-cfg.startRow+1))
-		} else {
-			line("结束行", "不限")
-			line("输出总量", "不限")
-		}
-	}
-
+	if cfg.ipType == 6 { ipVersionLabel = "IPv6" }
 	fmt.Println(colorize("----------------------------------------", ansiCyan))
 	fmt.Println(colorize("当前配置", ansiBold+ansiCyan))
-	if isNSB {
-		line("模式", "非标优选")
-		line("扫描方式", scanLabel)
-		line("输出文件名", cfg.outFile)
-		line("文件格式", cfg.export.Format)
-		line("CSV 精简", boolLabel(cfg.compactNSB))
-		outputRows()
-		if strings.TrimSpace(cfg.file) != "" {
-			line("输入文件", cfg.file)
-		} else {
-			line("网络URL", cfg.sourceURL)
-		}
-		if cfg.nsbFallbackPort > 0 {
-			line("备用端口", strconv.Itoa(cfg.nsbFallbackPort))
-		} else {
-			line("备用端口", "自动")
-		}
-		line("并发数量", strconv.Itoa(cfg.threads))
-		line("扫描合格延迟", fmt.Sprintf("%dms", cfg.delay))
-		line("扫描合格数量", strconv.Itoa(cfg.resultLimit))
-		line("DNS", dnsLabel)
-		dcLabel := strings.TrimSpace(cfg.nsbDC)
-		if dcLabel == "" {
-			dcLabel = "不限"
-		}
-		line("数据中心", dcLabel)
-		line("TLS 模式", boolLabel(cfg.enableTLS))
-		line("测速网址", speedURLLabel)
-		line("自动测速", boolLabel(cfg.speedTest > 0 && cfg.nsbSpeedLimit > 0))
-		line("测速并发", strconv.Itoa(cfg.speedTest))
-		line("测速结果数量", strconv.Itoa(cfg.nsbSpeedLimit))
-		line("测试合格速度", fmt.Sprintf("%.2fMB/s", cfg.nsbSpeedMin))
-	} else {
-		line("模式", "官方优选")
-		line("扫描方式", scanLabel)
-		line("IP类型", ipVersionLabel)
-		line("输出文件名", cfg.outFile)
-		line("文件格式", cfg.export.Format)
-		outputRows()
-		line("并发数量", strconv.Itoa(cfg.threads))
-		line("扫描合格延迟", fmt.Sprintf("%dms", cfg.delay))
-		line("DNS", dnsLabel)
-		line("测试端口", strconv.Itoa(cfg.port))
-		dcLabel := strings.TrimSpace(cfg.dc)
-		if dcLabel == "" {
-			dcLabel = "自动"
-		}
-		line("数据中心", dcLabel)
-		line("测速网址", speedURLLabel)
-		line("自动测速", boolLabel(cfg.speedLimit > 0))
-		line("测速结果数量", strconv.Itoa(cfg.speedLimit))
-		line("测试合格速度", fmt.Sprintf("%.2fMB/s", cfg.speedMin))
-	}
+	line("模式", "官方优选")
+	line("扫描方式", scanLabel)
+	line("IP类型", ipVersionLabel)
+	line("输出文件名", cfg.outFile)
+	line("文件格式", cfg.export.Format)
+	line("开始行", strconv.Itoa(cfg.startRow))
+	if cfg.endRow > 0 { line("结束行", strconv.Itoa(cfg.endRow)); line("输出总量", fmt.Sprintf("%d行", cfg.endRow-cfg.startRow+1)) } else { line("结束行", "不限"); line("输出总量", "不限") }
+	line("并发数量", strconv.Itoa(cfg.threads))
+	line("扫描合格延迟", fmt.Sprintf("%dms", cfg.delay))
+	line("DNS", dnsLabel)
+	line("测试端口", strconv.Itoa(cfg.port))
+	dcLabel := strings.TrimSpace(cfg.dc); if dcLabel == "" { dcLabel = "自动" }
+	line("数据中心", dcLabel)
+	line("测速网址", speedURLLabel)
+	line("自动测速", boolLabel(cfg.speedLimit > 0))
+	line("测速结果数量", strconv.Itoa(cfg.speedLimit))
+	line("测试合格速度", fmt.Sprintf("%.2fMB/s", cfg.speedMin))
 	fmt.Println(colorize("----------------------------------------", ansiCyan))
 }
 
