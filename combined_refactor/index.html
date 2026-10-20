@@ -304,14 +304,7 @@
         }
 
         #officialControls,
-        #nsbControls {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-            min-width: 0;
-        }
-
-        .controls button {
+.controls button {
             display: block;
             width: 100%;
             margin-top: 15px;
@@ -827,39 +820,19 @@
         }
 
         .official-test-actions,
-        .nsb-scan-actions {
-            display: grid;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .official-test-actions {
+.official-test-actions {
             grid-template-columns: auto minmax(92px, auto) minmax(92px, auto) auto auto auto;
         }
 
-        .nsb-scan-actions {
-            grid-template-columns: auto auto auto minmax(92px, auto) minmax(92px, auto) auto auto;
-        }
-
-        .nsb-scan-actions.official-scan-actions {
+.nsb-scan-actions.official-scan-actions {
             grid-template-columns: minmax(92px, auto) minmax(92px, auto);
         }
 
         .official-test-actions .action-btn,
         .official-test-actions .table-filter-select,
-        .nsb-scan-actions .action-btn,
-        .nsb-scan-actions .table-filter-select {
-            white-space: nowrap;
-        }
-
-        #btnBatchSpeed,
+#btnBatchSpeed,
         #btnContinueBatchSpeed,
-        #btnNSBBatchSpeed,
-        #btnNSBContinueSpeed {
-            min-width: 92px;
-        }
-
-        .table-filter-select {
+.table-filter-select {
             display: none;
             width: auto;
             height: 34px;
@@ -1464,11 +1437,7 @@
                 width: 100%;
             }
 
-            #nsbTableIPTypeFilter {
-                width: 100%;
-            }
-
-            #nsbTableQualifiedFilter {
+#nsbTableQualifiedFilter {
                 width: 100%;
             }
 
@@ -1506,11 +1475,7 @@
                 width: 100%;
             }
 
-            #btnNSBBatchSpeed {
-                width: 100%;
-            }
-
-            #btnNSBContinueSpeed {
+#btnNSBContinueSpeed {
                 width: 100%;
             }
 
@@ -1529,11 +1494,7 @@
             }
 
             #officialControls,
-            #nsbControls {
-                grid-template-columns: 1fr;
-            }
-
-            .background-status-grid {
+.background-status-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -1784,8 +1745,7 @@
                 </div>
             </div>
 
-            <div id="nsbControls" class="hidden"></div>
-
+    
             <button id="btnStart class="btn" onclick="startTask()"><span id="btnStartSpinner"
                     class="hidden"></span><span id="btnStartLabel">✨ 开始扫描与测试</span></button>
             <button id="btnRunInBackground" class="action-btn export-btn" onclick="runTaskInBackground()" style="display:none;margin-top:10px;">🕘 转入后台运行</button>
@@ -3129,7 +3089,7 @@
                 resetButton('✨ 开始扫描与测试');
                 updateBackgroundButton();
                 stopBackgroundStatusPolling();
-                if (snapshot.mode === 'official' || snapshot.mode === 'nsb') {
+                if (snapshot.mode === 'official') {
                     if (currentMode !== snapshot.mode) switchMode(snapshot.mode);
                     runningTaskMode = snapshot.mode;
                     runningTaskLabel = snapshot.label || '后台任务';
@@ -3137,12 +3097,12 @@
                 }
                 return;
             }
-            if ((snapshot.mode === 'official' || snapshot.mode === 'nsb') && !backgroundTaskFocusedOnce) {
+            if (snapshot.mode === 'official' && !backgroundTaskFocusedOnce) {
                 backgroundTaskFocusedOnce = true;
                 if (currentMode !== snapshot.mode) switchMode(snapshot.mode);
                 runningTaskMode = snapshot.mode;
             }
-            if (snapshot.mode === 'official' || snapshot.mode === 'nsb') runningTaskMode = snapshot.mode;
+            if (snapshot.mode === 'official') runningTaskMode = snapshot.mode;
             runningTaskLabel = snapshot.label || '后台任务';
             runningTaskTab = 'scan';
             applyBackgroundParams(snapshot.params || {});
@@ -3259,7 +3219,6 @@
                 const card = document.getElementById('backgroundStatusCard');
                 if (card) card.classList.remove('active');
             }
-            updateNSBCompactToggle();
         }
 
         function clearStopWatchdog() {
@@ -3294,7 +3253,7 @@
             finishCompactIPv4();
             showDCSelection(dcList);
             const status = document.getElementById('currentTestDC');
-            if (status && runningTaskMode !== 'nsb') status.textContent = message;
+            if (status) status.textContent = message;
             if (currentMode === 'official' && document.getElementById('test').classList.contains('active')) {
                 renderAllTestResults();
             } else {
@@ -3415,13 +3374,6 @@
             if (normalized === 'qualified' || normalized === '合格') return 'qualified';
             if (normalized === 'unqualified' || normalized === '不合格') return 'unqualified';
             return 'all';
-        }
-
-        function matchesQualifiedFilter(row, filter) {
-            filter = normalizeQualifiedFilter(filter);
-            if (filter === 'all') return true;
-            const status = getSpeedStatus(row.speed, isNSBSpeedQualified(row.speed));
-            return status === filter;
         }
 
         function addScanResult(row, render = true) {
@@ -4114,8 +4066,6 @@
             const accounts = getGitHubAccounts();
             const accountOptions = '<option value="">新账户/不使用保存配置</option>' + accounts.map((a, i) => `<option value="${i}">${escapeHTML(a.name || a.repo || 'GitHub账户')} ${a.tokenHash ? '(' + escapeHTML(a.tokenHash.slice(0, 10)) + ')' : ''}</option>`).join('');
             if (select) select.innerHTML = accountOptions;
-            const autoSelect = document.getElementById('nsbAutoUploadAccount');
-            if (autoSelect) autoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option><option value="${i}:csv">${escapeHTML(a.name || a.repo || 'GitHub账户')} - CSV</option>`).join('');
             const officialAutoSelect = document.getElementById('officialAutoUploadAccount');
             if (officialAutoSelect) officialAutoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option><option value="${i}:csv">${escapeHTML(a.name || a.repo || 'GitHub账户')} - CSV</option>`).join('');
         }
@@ -5166,8 +5116,7 @@
                     nsbSpeedEnabledForResults = ((msg.data?.totalQualified ?? msg.data?.qualified) || 0) > 0;
                     nsbContinueSpeedUnlocked = true;
                     finishRunningTask('✨ 开始扫描与测试');
-                    updateNSBSpeedButtons();
-                    if (nsbSpeedEnabledForResults) setNSBTableQualifiedFilter('qualified');
+                        if (nsbSpeedEnabledForResults) setNSBTableQualifiedFilter('qualified');
                     updateProgress(msg.data?.qualified || 0, msg.data?.limit || 1, '测速完成');
                     autoUploadNSBResults();
                     break;
@@ -5180,37 +5129,6 @@
                     progressBar.style.animation = 'none';
                     progressBar.textContent = '任务已停止，结果已整理，正在回传表格';
                     log(`任务已停止: ${msg.data?.message || '已整理当前可用结果'}${msg.data?.file ? '，结果文件: ' + msg.data.file : ''}`);
-                    break;
-
-                case 'nsb_csv_complete':
-                    const wasStoppingNSB = isStoppingTask;
-                    finishRunningTask('✨ 开始扫描与测试');
-                    nsbStopHandledByComplete = wasStoppingNSB;
-                    nsbHeaders = msg.data.headers || [];
-                    nsbRows = msg.data.rows || [];
-                    nsbLiveRows = [];
-                    nsbLiveIndex = {};
-                    nsbLiveRowElements = {};
-                    nsbContinueSpeedUnlocked = nsbSpeedEnabledForResults;
-                    if (nsbSpeedEnabledForResults) {
-                        setNSBTableQualifiedFilter((msg.data.qualifiedCount || 0) > 0 ? 'qualified' : 'all');
-                    }
-                    renderScanRowsCSV(nsbHeaders, nsbRows);
-                    const nsbStatus = msg.data.status || 'complete';
-                    const nsbMessage = msg.data.message || '测试完成';
-                    updateProgress(nsbRows.length, Math.max(nsbRows.length, 1), nsbStatus === 'failed' ? '任务失败' : '完成');
-                    progressBar.style.background = nsbStatus === 'failed' ? 'var(--error-color)' : (nsbStatus === 'partial' ? 'var(--warning-color)' : 'linear-gradient(to right, #10b981, #34d399)');
-                    progressBar.style.animation = 'none';
-                    if (nsbStatus === 'failed') {
-                        progressBar.textContent = '任务失败';
-                        log(`任务失败: 测试${nsbMessage}`);
-                    } else if (nsbStatus === 'partial') {
-                        progressBar.textContent = '任务结束';
-                        log(`任务结束: ${nsbMessage}`);
-                    } else {
-                        log(`非标优选完成，已生成: ${msg.data.file}`);
-                    }
-                    autoUploadNSBResults();
                     break;
 
                 case 'background_task_enabled':
@@ -5235,10 +5153,6 @@
                     break;
 
                 case 'task_stopped':
-                    if (nsbStopHandledByComplete) {
-                        nsbStopHandledByComplete = false;
-                        break;
-                    }
                     resetStoppedTaskUI('已手动终止');
                     log('任务已手动终止');
                     break;
@@ -5256,13 +5170,9 @@
                 } else if (officialBatchSpeedRunning) {
                     officialBatchSpeedRunning = false;
                     finishRunningTask('✨ 开始扫描与测试');
-                } else if (nsbBatchSpeedRunning) {
-                    nsbBatchSpeedRunning = false;
-                    finishRunningTask('✨ 开始扫描与测试');
                 }
                 resetCurrentSpeedButton();
                 updateBatchSpeedButton();
-                updateNSBSpeedButtons();
                 log('错误: ' + msg.data);
                 break;
             }
@@ -5275,7 +5185,6 @@
                         officialAutoSpeedPending = false;
                         officialAutoStage = '';
                         officialBatchSpeedRunning = false;
-                        nsbBatchSpeedRunning = false;
                         officialTestCompletePending = false;
                         officialSpeedEndedByRateLimit = false;
                         if (currentSpeedTestingIP) {
@@ -5283,8 +5192,7 @@
                         }
                         finishRunningTask('✨ 开始扫描与测试');
                         updateBatchSpeedButton();
-                        updateNSBSpeedButtons();
-                        finishCompactIPv4();
+                                finishCompactIPv4();
                         progressBar.style.background = 'var(--error-color)';
                         progressBar.style.width = '100%';
                         progressBar.style.animation = 'none';
