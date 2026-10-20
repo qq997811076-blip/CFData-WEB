@@ -242,7 +242,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				dc := strings.TrimSpace(params.OfficialTargetDC); if dc=="" { dc=pickBestDataCenter(scanCopy) }
 				testPort := params.OfficialSpeedPort; if testPort <= 0 { testPort=params.Port }
 				if dc!="" && ctx.Err()==nil { runNSBOfficialDetailedTest(ctx, session, dc, testPort, params.Delay, scanMode) }
-				if ctx.Err()==nil { session.sendWSMessage("nsb_speed_complete", map[string]interface{}{"qualified":0,"totalQualified":0,"limit":0,"rateLimited":false}) }
+				if ctx.Err()==nil && params.AutoSpeed && params.OfficialSpeedLimit>0 {
+					session.testMutex.Lock(); speedResults := append([]TestResult(nil), session.nsbOfficialTestResults...); session.testMutex.Unlock()
+					speedURL := strings.TrimSpace(params.OfficialSpeedURL); if speedURL=="" || isAutoSpeedURL(speedURL) { speedURL=speedTestURL }
+					runNSBOfficialSpeedBatch(ctx, session, testPort, speedURL, params.OfficialSpeedLimit, params.OfficialSpeedConcurrency, params.OfficialSpeedMin, speedResults, false)
+				} else if ctx.Err()==nil { session.sendWSMessage("nsb_speed_complete", map[string]interface{}{"qualified":0,"totalQualified":0,"limit":0,"rateLimited":false}) }
 			})
 		},
 		"start_nsb_speed_batch": func(data json.RawMessage) {
