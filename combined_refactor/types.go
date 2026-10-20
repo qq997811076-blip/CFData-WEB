@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"embed"
-	"fmt"
 	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
