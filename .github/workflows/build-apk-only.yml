@@ -8,6 +8,16 @@ on:
         required: false
         default: "v1.0"
         type: string
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-apk-only.yml"
+      - "combined_refactor/**"
+      - "app/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle/**"
   push:
     branches:
       - main
