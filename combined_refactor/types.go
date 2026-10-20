@@ -167,6 +167,13 @@ func nsbOfficialTestRows(results []TestResult) []nsbScanMessage {
 	rows:=make([]nsbScanMessage,0,len(results)); for _,r:=range results { rows=append(rows,nsbOfficialTestMessage(r)) }; return rows
 }
 
+func nsbOfficialSpeedMessage(r TestResult) nsbScanMessage {
+	tls := "false"; if isTLSPort(r.Port) { tls = "true" }
+	ipType := "IPv4"; if strings.Contains(r.IP, ":") { ipType = "IPv6" }
+	speed, ok := parseSpeedMBForSort(r.Speed)
+	return nsbScanMessage{IP:r.IP, Port:strconv.Itoa(r.Port), TLS:tls, DC:r.DataCenter, Region:r.Region, City:r.City, Latency:r.AvgLatency.Round(time.Millisecond).String(), LossRate:fmt.Sprintf("%.0f%%",r.LossRate), Speed:r.Speed, SpeedQualified:ok && speed >= 0.1, IPType:ipType, VisitScheme:"https"}
+}
+
 type nsbCSVCompletePayload struct {
 	Headers        []string   `json:"headers"`
 	Rows           [][]string `json:"rows"`
