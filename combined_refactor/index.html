@@ -1460,9 +1460,6 @@
                 width: 100%;
             }
 
-#btnNSBContinueSpeed {
-                width: 100%;
-            }
 
             .section-box h3 .table-actions .export-btn {
                 align-self: center;
@@ -1620,7 +1617,7 @@
 
         <div class="mode-switch">
             <button class="mode-btn active" id="btnOfficial" onclick="switchMode('official')">☁️ 官方优选</button>
-            <button class="mode-btn" id="btnNSB" onclick="switchMode('nsb')">📂 非标优选</button>
+            <button class="mode-btn" id="btnOfficialAlias" onclick="switchMode('official-copy')">📂 非标优选</button>
         </div>
 
         <div class="section-box controls">
@@ -2262,7 +2259,7 @@
         const progressBar = document.getElementById('progressBar');
 
         const modeOfficial = document.getElementById('btnOfficial');
-        const modeNSB = document.getElementById('btnNSB');
+        const modeOfficialAlias = document.getElementById('btnOfficialAlias');
         const officialControls = document.getElementById('officialControls');
 
         function applyTheme(theme) {
@@ -2905,10 +2902,10 @@
         }
 
         function switchMode(mode) {
-            const selectedMode = mode === 'nsb' ? 'nsb' : 'official';
+            const selectedMode = mode === 'official-copy' ? 'official-copy' : 'official';
             currentMode = 'official';
             modeOfficial.classList.toggle('active', selectedMode === 'official');
-            modeNSB.classList.toggle('active', selectedMode === 'nsb');
+            modeOfficialAlias.classList.toggle('active', selectedMode === 'official-copy');
             officialControls.classList.remove('hidden');
             document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
             if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
