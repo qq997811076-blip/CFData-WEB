@@ -85,16 +85,3 @@ func runBoundedWorkers(ctx context.Context, total, maxWorkers, progressEvery int
 	return wasCanceled
 }
 
-func reportNSBProgress(session *appSession, phase string, current, total int, text string) {
-	percentage := 0.0
-	if total > 0 {
-		percentage = float64(current) / float64(total) * 100
-	}
-	session.sendWSMessage("nsb_progress", map[string]interface{}{
-		"phase":   phase,
-		"current": current,
-		"total":   total,
-		"percent": fmt.Sprintf("%.2f", percentage),
-		"text":    text,
-	})
-}
