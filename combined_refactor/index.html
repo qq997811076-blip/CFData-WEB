@@ -3289,7 +3289,6 @@
                 } else {
                     switchTab('scan');
                     renderCurrentScanResults();
-                    resetProgress();
                 }
             } else {
                 officialControls.classList.add('hidden');
@@ -3308,11 +3307,10 @@
                     renderCurrentScanResults();
                 } else {
                     renderCurrentScanResults();
-                    resetProgress();
                 }
             }
             if (!isTaskRunning) resetProgress();
-            else if (runningTaskMode !== mode) restoreProgressSnapshot(mode);
+            else if (runningTaskMode !== mode && !restoreProgressSnapshot(mode)) resetProgress();
             updateScanModeHint();
             log(`切换至：${mode === 'official' ? '官方优选' : '非标优选'}`);
         }
@@ -3372,6 +3370,7 @@
             const displayCurrent = p >= 100 ? total : (current || 0);
             progressBar.textContent = `${text || ''} ${displayCurrent}/${total} (${Math.round(p)}%)`;
             progressBar.style.animation = p >= 100 ? 'none' : 'stripe 1s linear infinite';
+            if (runningTaskMode && currentMode === runningTaskMode) captureProgressSnapshot(runningTaskMode);
         }
 
         function completeProgressWithCurrentCount(text = '完成') {
@@ -3394,6 +3393,7 @@
             progressBar.style.width = `${Math.round(p)}%`;
             progressBar.textContent = `测速中 ${safeCurrent}/${safeTotal} (${Math.round(p)}%)`;
             progressBar.style.animation = p >= 100 ? 'none' : 'stripe 1s linear infinite';
+            if (runningTaskMode && currentMode === runningTaskMode) captureProgressSnapshot(runningTaskMode);
         }
 
         function showStoppingProgress() {
