@@ -1886,109 +1886,6 @@
                     <span class="label">⬆ 自动上传</span>
                     <select id="nsbOfficialAutoUploadAccount"></select>
                 </div>
-            </div><div id="nsbLegacyControls" class="hidden" class="hidden">
-                <div class="control-title">
-                    <span>非标参数</span>
-                    <span style="font-size:12px;color:var(--text-secondary);">支持上传 txt/csv 文件或填写网络
-                        URL（二选一）；若识别失败，请整理为每行一个目标，格式：IP 空格 端口，例如 1.2.3.4 443</span>
-                </div>
-                <div class="option-item full-width">
-                    <span class="label" title="支持 txt/csv 格式">📄 IP 文件</span>
-                    <input id="nsbFileInput" type="file" accept=".txt,.csv,text/plain,text/csv"
-                        onchange="syncNSBInputMode('file')">
-                </div>
-                <div class="option-item full-width">
-                    <span class="label" title="从网络地址获取 IP 列表">🌐 网络 URL</span>
-                    <input id="nsbSourceUrl" type="url" placeholder="https://example.com/ip-list.txt"
-                        oninput="syncNSBInputMode('url')">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="未指定端口时使用的默认端口">🚪 备用端口</span>
-                    <input id="nsbFallbackPort" type="number" value="443" placeholder="关闭 TLS 默认 80，开启 TLS 默认 443">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="同时扫描的线程数">🚀 并发数量</span>
-                    <input id="nsbThreads" type="number" value="100" placeholder="默认 100">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="超过此值的连接将被过滤，单位毫秒">⏱️ 扫描合格延迟</span>
-                    <input id="nsbDelay" type="number" value="0" placeholder="默认 0ms">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="延迟测试通过的结果数量上限">🎯 扫描合格数量</span>
-                    <input id="nsbResultLimit" type="number" value="1000" placeholder="非 0 正整数">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="测速达标下限，单位 MB/s">📉 测试合格速度</span>
-                    <input id="nsbSpeedMin" type="number" value="0.1" step="0.01" placeholder="默认 0.1MB/s" oninput="syncNSBSpeedConfigState()">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="测速达标结果的最大数量，关闭测速填 0">🏁 测速结果数量</span>
-                    <input id="nsbSpeedLimit" type="number" value="5" placeholder="0 关闭测速">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="扫描完成后自动进行测速">🧪 自动测速</span>
-                    <select id="nsbEnableSpeed" onchange="updateNSBSpeedControls()">
-                        <option value="on">开启</option>
-                        <option value="off" selected>关闭</option>
-                    </select>
-                </div>
-                <div class="option-item">
-                    <span class="label" title="同时测速的 IP 数量，设为 1 可获得准确速度">⚡ 测速并发</span>
-                    <input id="nsbSpeedTest" type="number" value="0" placeholder="0 关闭测速">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="按数据中心筛选结果">🏢 数据中心</span>
-                    <input id="nsbTargetDC" type="text" value="" placeholder="留空不限制，如 NRT">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="表格列数精简或完整">🧾 精简表格</span>
-                    <select id="nsbCompactView" onchange="setNSBCompactView(this.value === 'compact')">
-                        <option value="compact" selected>精简表格</option>
-                        <option value="full">完整表格</option>
-                    </select>
-                </div>
-                <div class="option-item">
-                    <span class="label" title="启用 HTTPS 进行测试">🔗 TLS 模式</span>
-                    <select id="nsbTls" onchange="updateNSBFallbackPortDefault()">
-                        <option value="on" selected>开启</option>
-                        <option value="off">关闭</option>
-                    </select>
-                </div>
-                <div class="option-item">
-                    <span class="label" title="CSV 导出文件名">🛠️ 输出文件名</span>
-                    <input id="nsbOutFile" type="text" value="ip.csv" placeholder="ip.csv">
-                </div>
-                <div class="option-item full-width">
-                    <span class="label">📡 扫描方式</span>
-                    <div class="field-with-action">
-                        <select id="nsbScanMode" class="speed-url-select" onchange="updateScanModeHint()">
-                            <option value="tcping" selected>TCPing（默认）</option>
-                            <option value="httping">HTTPing</option>
-                        </select>
-                        <input id="nsbScanModeHint" type="text" value="仅测量 TCP 握手延迟" readonly style="flex:1;min-width:0;">
-                    </div>
-                </div>
-                <div class="option-item full-width">
-                    <span class="label">🔗 测速网址</span>
-                    <div class="field-with-action">
-                        <select id="nsbSpeedUrlPreset" class="speed-url-select" onchange="applySpeedUrlPreset('nsbSpeedUrl', this.value)">
-                            <option value="auto" selected>自动选择</option>
-                            <option value="speed.cloudflare.com/__down?bytes=99999999">Cloudflare</option>
-                            <option value="cf.090227.xyz/__down?bytes=99999999">CM提供</option>
-                            <option value="speed.okl.abrdns.com">移动专属</option>
-                            <option value="custom">手动输入</option>
-                        </select>
-                        <input id="nsbSpeedUrl" type="text" value="自动选择"
-                            placeholder="speed.okl.abrdns.com" oninput="markSpeedUrlCustom('nsbSpeedUrlPreset')">
-                        <button class="mini-action-btn" title="恢复自动选择测速网站"
-                            onclick="resetDefaultSpeedUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset')">↺</button>
-                    </div>
-                </div>
-                <div class="option-item full-width">
-                    <span class="label">⬆ 自动上传</span>
-                    <select id="nsbAutoUploadAccount"></select>
-                </div>
             </div>
 
             <button id="btnStart" class="btn" onclick="startTask()"><span id="btnStartSpinner"
@@ -2475,13 +2372,6 @@
         let scanResultsCount = 0;
         let testResultsCount = 0;
         let currentMode = 'official';
-        let uploadedFileName = '';
-        let uploadedFileContent = '';
-        let nsbHeaders = [];
-        let nsbRows = [];
-        let nsbLiveRows = [];
-        let nsbLiveIndex = {};
-        let nsbLiveRowElements = {};
         let nsbStopHandledByComplete = false;
         let nsbCompactView = true;
         let nsbTableIPTypeFilter = 'all';
@@ -2554,40 +2444,6 @@
         const modeNSB = document.getElementById('btnNSB');
         const officialControls = document.getElementById('officialControls');
         const nsbControls = document.getElementById('nsbControls');
-        const fileInput = document.getElementById('nsbFileInput');
-        const nsbSourceUrlInput = document.getElementById('nsbSourceUrl');
-
-        document.getElementById('nsbFileInput').addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) {
-                uploadedFileName = '';
-                uploadedFileContent = '';
-                syncNSBInputMode();
-                return;
-            }
-            uploadedFileName = file.name || 'upload.txt';
-            const reader = new FileReader();
-            reader.onload = () => {
-                uploadedFileContent = String(reader.result || '');
-                syncNSBInputMode('file');
-                log(`已选择文件: ${uploadedFileName}`);
-            };
-            reader.onerror = () => log('读取文件失败');
-            reader.readAsText(file);
-        });
-
-        function syncNSBInputMode(preferred) {
-            const hasFile = !!(fileInput && fileInput.files && fileInput.files.length);
-            const hasURL = !!(nsbSourceUrlInput && nsbSourceUrlInput.value.trim());
-            if (preferred === 'file' && hasFile && nsbSourceUrlInput) {
-                nsbSourceUrlInput.value = '';
-            } else if (preferred === 'url' && hasURL && fileInput) {
-                fileInput.value = '';
-                uploadedFileName = '';
-                uploadedFileContent = '';
-            }
-        }
-
         function applyTheme(theme) {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             let androidDark = false;
