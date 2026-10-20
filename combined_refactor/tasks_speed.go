@@ -205,37 +205,51 @@ func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port i
 	if len(results) == 0 {
 		return results, qualified
 	}
+	if concurrency > len(results) {
+		concurrency = len(results)
+	}
 
+	// 采用 gxg 的固定 worker 池并发模型；结果回调仍由协调 goroutine 顺序执行，
+	// 避免 WebSocket 进度、合格数量及速率限制状态发生并发竞争。
 	type speedDone struct {
 		idx     int
 		speedMB float64
 		err     string
 	}
+	jobs := make(chan int, concurrency)
 	done := make(chan speedDone, concurrency)
+	var workers sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for idx := range jobs {
+				speedMB, speedErr := runWindowedSpeedTest(ctx, results[idx].IP, port, customURL)
+				done <- speedDone{idx: idx, speedMB: speedMB, err: speedErr}
+			}
+		}()
+	}
+
 	next, inFlight, completed := 0, 0, 0
 	rateLimitedCount := 0
 	stopped := false
 	ctxDone := ctx.Done()
 
-	for next < len(results) || inFlight > 0 {
-		for !stopped && ctx.Err() == nil && next < len(results) && inFlight < concurrency && (limit <= 0 || len(qualified)+inFlight < limit) {
-			idx := next
+	schedule := func() {
+		for !stopped && ctx.Err() == nil && next < len(results) &&
+			inFlight < concurrency && (limit <= 0 || len(qualified)+inFlight < limit) {
+			jobs <- next
 			next++
 			inFlight++
-			go func(idx int) {
-				speedMB, speedErr := runWindowedSpeedTest(ctx, results[idx].IP, port, customURL)
-				done <- speedDone{idx: idx, speedMB: speedMB, err: speedErr}
-			}(idx)
 		}
+	}
+	schedule()
 
+	for inFlight > 0 {
 		if ctx.Err() != nil {
 			stopped = true
 			ctxDone = nil
 		}
-		if inFlight == 0 {
-			break
-		}
-
 		select {
 		case <-ctxDone:
 			stopped = true
@@ -250,7 +264,7 @@ func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port i
 				results[item.idx].Speed = item.err
 				if isSpeedRateLimited(item.err) {
 					rateLimitedCount++
-					if rateLimitedCount >= 3 {
+					if rateLimitedCount >= 3 && !stopped {
 						stopped = true
 						if onRateLimited != nil {
 							onRateLimited()
@@ -266,8 +280,12 @@ func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port i
 			if onResult != nil {
 				onResult(completed, len(results), len(qualified), results[item.idx])
 			}
+			schedule()
 		}
 	}
+
+	close(jobs)
+	workers.Wait()
 	return results, qualified
 }
 
