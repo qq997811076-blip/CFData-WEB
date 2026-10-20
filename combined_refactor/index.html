@@ -4970,15 +4970,17 @@ copyModalMode = mode;
                             isTaskRunning = false;
                             showDCSelection(dcList);
                             window.setTimeout(maybeStartOfficialAutoTest, 300);
-                } else if (officialBatchSpeedRunning) {
-                    officialBatchSpeedRunning = false;
-                    finishRunningTask('✨ 开始扫描与测试');
-                resetCurrentSpeedButton();
-                updateBatchSpeedButton();
-
-                log('错误: ' + msg.data);
-                break;
-            }
+                            break;
+                        }
+                        if (officialBatchSpeedRunning) {
+                            officialBatchSpeedRunning = false;
+                            finishRunningTask('✨ 开始扫描与测试');
+                            resetCurrentSpeedButton();
+                            updateBatchSpeedButton();
+                            log('错误: ' + msg.data);
+                            break;
+                        }
+                    }
                     if (String(msg.data || '').includes('上传 GitHub')) {
                         setGitHubUploadStatus(String(msg.data), 'error');
                     }
@@ -4988,15 +4990,11 @@ copyModalMode = mode;
                         officialAutoSpeedPending = false;
                         officialAutoStage = '';
                         officialBatchSpeedRunning = false;
-
                         officialTestCompletePending = false;
                         officialSpeedEndedByRateLimit = false;
-                        if (currentSpeedTestingIP) {
-                            resetCurrentSpeedButton();
-                        }
+                        if (currentSpeedTestingIP) resetCurrentSpeedButton();
                         finishRunningTask('✨ 开始扫描与测试');
                         updateBatchSpeedButton();
-
                         finishCompactIPv4();
                         progressBar.style.background = 'var(--error-color)';
                         progressBar.style.width = '100%';
