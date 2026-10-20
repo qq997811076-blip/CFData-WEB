@@ -355,20 +355,6 @@ func (s *appSession) updateBackgroundSpeedStatsLocked(data interface{}) {
 		speedText = value["speed"]
 	case map[string]interface{}:
 		speedText = fmt.Sprint(value["speed"])
-	case nsbScanMessage:
-		speedText = value.Speed
-		if value.SpeedQualified {
-			s.backgroundSnapshot.SpeedQualified++
-			return
-		}
-	case *nsbScanMessage:
-		if value != nil {
-			speedText = value.Speed
-			if value.SpeedQualified {
-				s.backgroundSnapshot.SpeedQualified++
-				return
-			}
-		}
 	}
 	if speedMB, ok := parseSpeedMBForSort(speedText); ok {
 		if speedMB >= s.backgroundSpeedMinLocked() {
