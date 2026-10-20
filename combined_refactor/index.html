@@ -6031,20 +6031,18 @@
                         log('任务已手动终止');
                         break;
                     }
+                    testData = msg.data;
+                    officialTestCompletePending = true;
                     if (currentMode === 'official') {
-                        testData = msg.data;
                         renderAllTestResults();
                         onTestComplete();
-                        officialTestCompletePending = true;
                         updateProgress(msg.data.length, msg.data.length, '测试完成');
-                        if (backgroundTaskFollowing) {
-                            switchTab('test');
-                        }
-                        if (officialAutoSpeedPending && officialAutoStage === 'test') {
-                            officialAutoStage = 'speed';
-                        } else {
-                            autoUploadOfficialResults();
-                        }
+                        if (backgroundTaskFollowing) switchTab('test');
+                    }
+                    if (officialAutoSpeedPending && officialAutoStage === 'test') {
+                        officialAutoStage = 'speed';
+                    } else {
+                        autoUploadOfficialResults();
                     }
                     break;
                 case 'speed_test_result':
@@ -6174,7 +6172,7 @@
                     finishRunningTask('✨ 开始扫描与测试');
                     updateNSBSpeedButtons();
                     if (nsbSpeedEnabledForResults) setNSBTableQualifiedFilter('qualified');
-                    updateProgress(msg.data?.qualified || 0, msg.data?.limit || 1, '测速完成');
+                    if (currentMode === 'nsb') updateProgress(msg.data?.qualified || 0, msg.data?.limit || 1, '测速完成');
                     autoUploadNSBResults();
                     break;
 
@@ -6182,10 +6180,12 @@
                     if (runningTaskMode !== 'nsb' && !(backgroundTaskFollowing && currentMode === 'nsb')) break;
                     finishRunningTask('✨ 开始扫描与测试');
                     nsbStopHandledByComplete = true;
-                    progressBar.style.background = 'var(--warning-color)';
-                    progressBar.style.width = '100%';
-                    progressBar.style.animation = 'none';
-                    progressBar.textContent = '任务已停止，结果已整理，正在回传表格';
+                    if (currentMode === 'nsb') {
+                        progressBar.style.background = 'var(--warning-color)';
+                        progressBar.style.width = '100%';
+                        progressBar.style.animation = 'none';
+                        progressBar.textContent = '任务已停止，结果已整理，正在回传表格';
+                    }
                     log(`任务已停止: ${msg.data?.message || '已整理当前可用结果'}${msg.data?.file ? '，结果文件: ' + msg.data.file : ''}`);
                     break;
 
