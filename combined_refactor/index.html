@@ -2422,6 +2422,7 @@
         let resultModalMode = 'scan';
         let copyModalMode = 'scan';
         let sortModalMode = 'official';
+        const sortPrioritiesByMode = Object.create(null);
         const progressSnapshotsByMode = { official: null, nsb: null };
         let resultFieldOrder = [];
         let resultCustomFields = [];
@@ -4970,8 +4971,24 @@
             document.getElementById('resultModalMask').classList.remove('active');
         }
 
+        function captureSortPriorities(mode) {
+            if (!mode) return;
+            sortPrioritiesByMode[mode] = ['sortPriority1', 'sortPriority2', 'sortPriority3'].map((id) => document.getElementById(id)?.value || '');
+        }
+
+        function restoreSortPriorities(mode) {
+            const values = sortPrioritiesByMode[mode];
+            const defaults = ['loss', 'speed', 'latency'];
+            ['sortPriority1', 'sortPriority2', 'sortPriority3'].forEach((id, index) => {
+                const el = document.getElementById(id);
+                if (el) el.value = values?.[index] || defaults[index];
+            });
+        }
+
         function openSortModal(mode) {
+            captureSortPriorities(sortModalMode);
             sortModalMode = mode === 'nsb' ? 'nsb' : 'official';
+            restoreSortPriorities(sortModalMode);
             const count = sortModalMode === 'nsb' ? (nsbRows.length || nsbLiveRows.length) : testData.length;
             if (!count) return showNoticeCard('暂无可排序结果');
             document.getElementById('sortModalTitle').textContent = sortModalMode === 'nsb' ? '非标测速一键排序' : '官方详细测试一键排序';
