@@ -22,6 +22,7 @@ on:
       - "combined_refactor/tasks_nsb.go"
       - "combined_refactor/types.go"
       - "combined_refactor/cli.go"
+      - "combined_refactor/menu.go"
 
 permissions:
   contents: read
