@@ -448,7 +448,7 @@ func defaultCLIExportConfig() cliExportConfig {
 }
 
 func defaultCLIFileConfig() cliFileConfig {
-	return cliFileConfig{CLI: false, Mode: "official", ScanMode: "tcping", IPType: 4, Threads: 100, NSBThreads: 100, Out: "cfdata-results", SpeedTest: 0, Progress: true, NoColor: false, URL: autoSpeedURLValue, NSBURL: autoSpeedURLValue, DNS: defaultDNSServers, Debug: false, CompactIPv4: false, TestPort: 443, Delay: 500, NSBDelay: 0, DC: "", SpeedLimit: 5, SpeedMin: 0.1, File: "", SourceURL: "", NSBFallbackPort: 0, OutIPType: "all", OutQualified: "all", NSBDC: "", TLS: true, Compact: true, ResultLimit: 1000, NSBSpeedMin: 0.1, NSBSpeedLimit: 5, Format: "txt", Fields: "compact", Custom: "", V6Bracket: true, Separator: "-", OutStartRow: 1, OutEndRow: 20, GitHub: false, GHBranch: "main", GHPath: "", GHMessage: "update cfdata results", EdgeTunnel: false, ETMode: "overwrite"}
+	return cliFileConfig{CLI: false, Mode: "official", ScanMode: "tcping", IPType: 4, Threads: 100, Out: "cfdata-results", Progress: true, NoColor: false, URL: autoSpeedURLValue, NSBURL: autoSpeedURLValue, DNS: defaultDNSServers, Debug: false, CompactIPv4: false, TestPort: 443, Delay: 500, NSBDelay: 0, DC: "", SpeedLimit: 5, SpeedMin: 0.1, File: "", SourceURL: "", NSBFallbackPort: 0, OutIPType: "all", OutQualified: "all", NSBDC: "", TLS: true, Compact: true, ResultLimit: 1000, NSBSpeedMin: 0.1, NSBSpeedLimit: 5, Format: "txt", Fields: "compact", Custom: "", V6Bracket: true, Separator: "-", OutStartRow: 1, OutEndRow: 20, GitHub: false, GHBranch: "main", GHPath: "", GHMessage: "update cfdata results", EdgeTunnel: false, ETMode: "overwrite"}
 }
 
 func (c cliFileConfig) Export() cliExportConfig {
