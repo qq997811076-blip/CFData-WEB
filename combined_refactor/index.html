@@ -2427,6 +2427,8 @@
         let resultCustomFields = [];
         let copyFieldOrder = [];
         let copyCustomFields = [];
+        const resultSettingsByMode = Object.create(null);
+        const copySettingsByMode = Object.create(null);
         let officialAutoUploadKeys = new Set();
         let nsbAutoUploadKeys = new Set();
         let noticeConfirmAction = null;
@@ -4876,8 +4878,73 @@
             { key: 'timestamp', label: '时间戳' },
         ];
 
+        function exportSettingsKey(mode) {
+            return mode === 'nsb' ? 'nsb' : 'official';
+        }
+
+        function captureExportControls(prefix, mode, order, customFields) {
+            const ids = prefix === 'result'
+                ? ['resultFormat', 'resultFileName', 'resultStartRow', 'resultEndRow', 'resultIPTypeFilter', 'resultQualifiedFilter', 'resultCustomFields', 'resultTextSeparatorPreset', 'resultTextSeparatorCustom', 'resultIPv6Brackets']
+                : ['copyStartRow', 'copyEndRow', 'copyIPTypeFilter', 'copyQualifiedFilter', 'copyCustomFields', 'copyTextSeparatorPreset', 'copyTextSeparatorCustom', 'copyIPv6Brackets'];
+            const values = {};
+            for (const id of ids) {
+                const el = document.getElementById(id);
+                if (el) values[id] = el.type === 'checkbox' ? el.checked : el.value;
+            }
+            const store = prefix === 'result' ? resultSettingsByMode : copySettingsByMode;
+            store[exportSettingsKey(mode)] = { values, order: [...order], customFields: customFields.map((field) => ({ ...field })) };
+        }
+
+        function restoreExportControls(prefix, mode) {
+            const store = prefix === 'result' ? resultSettingsByMode : copySettingsByMode;
+            const snapshot = store[exportSettingsKey(mode)];
+            const ids = prefix === 'result'
+                ? ['resultFormat', 'resultFileName', 'resultStartRow', 'resultEndRow', 'resultIPTypeFilter', 'resultQualifiedFilter', 'resultCustomFields', 'resultTextSeparatorPreset', 'resultTextSeparatorCustom', 'resultIPv6Brackets']
+                : ['copyStartRow', 'copyEndRow', 'copyIPTypeFilter', 'copyQualifiedFilter', 'copyCustomFields', 'copyTextSeparatorPreset', 'copyTextSeparatorCustom', 'copyIPv6Brackets'];
+            if (snapshot) {
+                for (const [id, value] of Object.entries(snapshot.values)) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        if (el.type === 'checkbox') el.checked = !!value;
+                        else el.value = value;
+                    }
+                }
+                if (prefix === 'result') {
+                    resultFieldOrder = [...snapshot.order];
+                    resultCustomFields = snapshot.customFields.map((field) => ({ ...field }));
+                } else {
+                    copyFieldOrder = [...snapshot.order];
+                    copyCustomFields = snapshot.customFields.map((field) => ({ ...field }));
+                }
+                return true;
+            }
+            for (const id of ids) {
+                const el = document.getElementById(id);
+                if (!el) continue;
+                if (el.type === 'checkbox') el.checked = true;
+                else if (id.endsWith('StartRow')) el.value = '1';
+                else if (id.endsWith('EndRow')) el.value = '20';
+                else if (id.endsWith('IPTypeFilter') || id.endsWith('QualifiedFilter')) el.value = 'all';
+                else if (id.endsWith('Format')) el.value = 'txt';
+                else if (id.endsWith('FileName')) el.value = mode === 'nsb' ? 'Cloudflare_NSB_Results' : 'Cloudflare_Scan_Results';
+                else if (id.endsWith('CustomFields')) el.value = '';
+                else if (id.endsWith('SeparatorPreset')) el.value = '-';
+                else if (id.endsWith('SeparatorCustom')) el.value = '-';
+            }
+            if (prefix === 'result') {
+                resultFieldOrder = [];
+                resultCustomFields = [];
+            } else {
+                copyFieldOrder = [];
+                copyCustomFields = [];
+            }
+            return false;
+        }
+
         function openResultModal(mode) {
+            captureExportControls('result', resultModalMode, resultFieldOrder, resultCustomFields);
             resultModalMode = currentMode === 'nsb' ? 'nsb' : mode;
+            restoreExportControls('result', resultModalMode);
             const rows = getCurrentResultRows(resultModalMode);
             if (!rows.length) return showNoticeCard('暂无可操作结果');
             document.getElementById('resultModalTitle').textContent = '结果操作';
@@ -5492,7 +5559,9 @@
         }
 
         function openCopyModal(mode) {
+            captureExportControls('copy', copyModalMode, copyFieldOrder, copyCustomFields);
             copyModalMode = currentMode === 'nsb' ? 'nsb' : mode;
+            restoreExportControls('copy', copyModalMode);
             document.getElementById('copyModalTitle').textContent = copyModalMode === 'nsb' ? '非标结果一键复制' : (copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制');
             const filterField = document.getElementById('copyIPTypeFilterField');
             if (filterField) filterField.style.display = copyModalMode === 'nsb' ? '' : 'none';
