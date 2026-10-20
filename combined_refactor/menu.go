@@ -319,9 +319,10 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	fmt.Println(colorize("========== 参数设置向导 ==========", ansiBold+ansiCyan))
 	fmt.Println("逐项设置参数：每项显示当前值与格式说明，直接回车保持不变，输入 b 返回菜单。")
 	var o int
+	var idx int
 
 	sectionHeader("基本设置")
-    fileCfg.Mode = "official"
+	fileCfg.Mode = "official"
 
 	scanIdx := 0
 	if strings.EqualFold(strings.TrimSpace(fileCfg.ScanMode), "httping") {
