@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloudflare IP Data (Combined)</title>
     <link rel="icon" type="image/png" href="favicon.png">
-    <style>
-        :root {
+    <style>:root
+{
             --primary-color: #3b82f6;
             --primary-hover: #2563eb;
             --success-color: #10b981;
@@ -20,10 +20,9 @@
             --border-color: #dbe2ea;
             --radius: 16px;
             --shadow: 0 18px 24px -8px rgba(30, 41, 59, .08), 0 8px 10px -8px rgba(30, 41, 59, .06), 0 0 0 1px rgba(30, 41, 59, .03);
-        }
-
-        :root.dark-theme,
-        body.dark-theme {
+        }:root.dark-theme,
+body.dark-theme
+{
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-main: #f1f5f9;
@@ -31,23 +30,20 @@
             --border-color: #334155;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        }
-
-        .no-transition,
-        .no-transition * {
+        }.no-transition,
+.no-transition *
+{
             transition: none !important;
-        }
-
-        .copy-hint {
+        }.copy-hint
+{
             position: fixed;
             z-index: 9999;
             pointer-events: none;
             font-size: 13px;
             font-weight: bold;
             animation: copyFadeUp 0.8s ease-out forwards;
-        }
-
-        @keyframes copyFadeUp {
+        }@keyframes copyFadeUp
+{
             0% {
                 opacity: 0;
                 transform: translateY(0);
@@ -67,21 +63,18 @@
                 opacity: 0;
                 transform: translateY(-20px);
             }
-        }
-
-        * {
+        }*
+{
             box-sizing: border-box;
-        }
-
-        body {
+        }body
+{
             margin: 0;
             padding: 15px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #eef2f6 0%, #e3e8ef 100%);
             color: var(--text-main);
-        }
-
-        .container {
+        }.container
+{
             position: relative;
             max-width: 1200px;
             margin: 0 auto;
@@ -90,19 +83,17 @@
             padding: 20px;
             border: 1px solid rgba(148, 163, 184, 0.28);
             box-shadow: var(--shadow);
-        }
-
-        .top-actions {
+        }.top-actions
+{
             position: absolute;
             right: 20px;
             top: 20px;
             display: flex;
             gap: 8px;
             z-index: 100;
-        }
-
-        .settings-toggle,
-        .github-link {
+        }.settings-toggle,
+.github-link
+{
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 10px;
@@ -118,15 +109,13 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             color: var(--text-main);
             text-decoration: none;
-        }
-
-        .settings-toggle:hover,
-        .github-link:hover {
+        }.settings-toggle:hover,
+.github-link:hover
+{
             transform: scale(1.1);
             border-color: var(--primary-color);
-        }
-
-        .settings-menu {
+        }.settings-menu
+{
             position: absolute;
             right: 20px;
             top: 68px;
@@ -137,27 +126,23 @@
             box-shadow: 0 12px 24px rgba(0, 0, 0, .12);
             padding: 12px;
             z-index: 30;
-        }
-
-        .settings-menu.hidden {
+        }.settings-menu.hidden
+{
             display: none;
-        }
-
-        .settings-title {
+        }.settings-title
+{
             font-size: 13px;
             color: var(--text-secondary);
             margin-bottom: 8px;
             font-weight: 700;
-        }
-
-        .theme-options {
+        }.theme-options
+{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 6px;
             margin-bottom: 12px;
-        }
-
-        .menu-btn {
+        }.menu-btn
+{
             border: 1px solid var(--border-color);
             background: var(--bg-color);
             color: var(--text-main);
@@ -165,19 +150,16 @@
             padding: 8px 6px;
             font-size: 12px;
             cursor: pointer;
-        }
-
-        .menu-btn.active {
+        }.menu-btn.active
+{
             border-color: var(--primary-color);
             color: #fff;
             background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
-        }
-
-        .menu-btn:hover {
+        }.menu-btn:hover
+{
             border-color: var(--primary-color);
-        }
-
-        .danger-btn {
+        }.danger-btn
+{
             width: 100%;
             border: 1px solid #fca5a5;
             background: #fff1f2;
@@ -187,40 +169,34 @@
             font-size: 13px;
             font-weight: 700;
             cursor: pointer;
-        }
-
-        .danger-btn:hover {
+        }.danger-btn:hover
+{
             border-color: #ef4444;
             background: #ffe4e6;
-        }
-
-        body.dark-theme .danger-btn {
+        }body.dark-theme .danger-btn
+{
             background: #3f1f2b;
             color: #fecdd3;
             border-color: #be123c;
-        }
-
-        h1 {
+        }h1
+{
             margin: 0 96px 16px;
             text-align: center;
             font-size: 1.75rem;
-        }
-
-        .version-line {
+        }.version-line
+{
             margin: -8px 96px 16px;
             text-align: center;
             color: var(--text-secondary);
             font-size: 12px;
-        }
-
-        .version-line a {
+        }.version-line a
+{
             color: var(--warning-color);
             font-weight: 700;
             text-decoration: none;
             margin-left: 8px;
-        }
-
-        .status-bar {
+        }.status-bar
+{
             margin-bottom: 16px;
             padding: 12px 16px;
             border-left: 4px solid var(--success-color);
@@ -231,21 +207,18 @@
             align-items: center;
             gap: 10px;
             font-size: 14px;
-        }
-
-        .status-bar.error {
+        }.status-bar.error
+{
             border-left-color: var(--error-color);
             background: linear-gradient(to right, #fbefef, #f8e3e3);
             color: #991b1b;
-        }
-
-        .mode-switch {
+        }.mode-switch
+{
             display: flex;
             gap: 10px;
             margin-bottom: 16px;
-        }
-
-        .mode-btn {
+        }.mode-btn
+{
             flex: 1;
             border: 1px solid var(--border-color);
             border-radius: 10px;
@@ -255,24 +228,21 @@
             color: var(--text-main);
             font-weight: 700;
             transition: all .2s ease;
-        }
-
-        .mode-btn.active {
+        }.mode-btn.active
+{
             background: linear-gradient(135deg, var(--primary-color), #2563eb);
             color: #fff;
             border-color: var(--primary-hover);
-        }
-
-        .section-box {
+        }.section-box
+{
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             margin-bottom: 16px;
             padding: 20px;
-        }
-
-        @media (max-width: 768px) {
+        }@media (max-width: 768px)
+{
             h1 {
                 margin: 56px 0 16px;
                 font-size: 1.5rem;
@@ -289,54 +259,45 @@
                 width: calc(100vw - 24px);
                 max-width: 260px;
             }
-        }
-
-        .controls {
+        }.controls
+{
             background: linear-gradient(135deg, var(--card-bg), var(--bg-color));
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 15px;
-        }
-
-        .controls .control-title {
+        }.controls .control-title
+{
             display: block;
             margin-bottom: 10px;
-        }
-
-        #officialControls,
-        #nsbControls {
+        }#officialControls
+{
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 16px;
             min-width: 0;
-        }
-
-        .controls button {
+        }.controls button
+{
             display: block;
             width: 100%;
             margin-top: 15px;
-        }
-
-        .form-group {
+        }.form-group
+{
             display: flex;
             flex-direction: column;
             min-width: 0;
-        }
-
-        .form-group label {
+        }.form-group label
+{
             font-size: 13px;
             color: var(--text-secondary);
             margin-bottom: 6px;
-        }
-
-        .checkbox-inline {
+        }.checkbox-inline
+{
             display: flex;
             justify-content: space-between;
             align-items: center;
             min-height: 44px;
-        }
-
-        .checkbox-inline label {
+        }.checkbox-inline label
+{
             margin-bottom: 0;
             display: flex;
             align-items: center;
@@ -344,9 +305,8 @@
             color: var(--text-main);
             font-size: 14px;
             min-height: 44px;
-        }
-
-        .option-item {
+        }.option-item
+{
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 14px 16px;
@@ -359,41 +319,35 @@
             box-sizing: border-box;
             height: 100%;
             min-width: 0;
-        }
-
-        .option-item .label {
+        }.option-item .label
+{
             color: var(--text-secondary);
             font-size: 13px;
             width: 120px;
             flex-shrink: 0;
-        }
-
-        .option-item input,
-        .option-item select {
+        }.option-item input,
+.option-item select
+{
             flex: 1;
             min-width: 0;
             box-sizing: border-box;
-        }
-
-        .option-item .field-with-action {
+        }.option-item .field-with-action
+{
             display: flex;
             align-items: center;
             gap: 8px;
             flex: 1;
             min-width: 0;
             max-width: 100%;
-        }
-
-        .option-item .field-with-action:has(.speed-url-select) {
+        }.option-item .field-with-action:has(.speed-url-select)
+{
             flex-wrap: wrap;
-        }
-
-        .option-item .field-with-action .speed-url-select + input {
+        }.option-item .field-with-action .speed-url-select + input
+{
             flex: 1 1 260px;
             min-width: 0;
-        }
-
-        .mini-action-btn {
+        }.mini-action-btn
+{
             width: 34px;
             height: 34px;
             flex-shrink: 0;
@@ -407,32 +361,27 @@
             justify-content: center;
             font-size: 16px;
             padding: 0;
-        }
-
-        .controls .mini-action-btn {
+        }.controls .mini-action-btn
+{
             width: 34px !important;
             margin-top: 0 !important;
-        }
-
-        .mini-action-btn:hover {
+        }.mini-action-btn:hover
+{
             border-color: var(--primary-color);
             color: var(--primary-color);
-        }
-
-        .speed-url-select {
+        }.speed-url-select
+{
             width: min(170px, 100%);
             max-width: 170px;
             flex: 1 1 140px !important;
             min-height: 44px;
             font-size: 12px;
-        }
-
-        .option-item.full-width {
+        }.option-item.full-width
+{
             grid-column: 1 / -1;
-        }
-
-        input,
-        select {
+        }input,
+select
+{
             border: 1px solid var(--border-color);
             border-radius: 10px;
             background: var(--bg-color);
@@ -443,9 +392,8 @@
             line-height: 20px;
             max-width: 100%;
             min-width: 0;
-        }
-
-        select {
+        }select
+{
             appearance: none;
             -webkit-appearance: none;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -453,9 +401,8 @@
             background-position: right 14px center;
             background-size: 16px;
             padding-right: 36px;
-        }
-
-        .control-title {
+        }.control-title
+{
             grid-column: 1 / -1;
             font-weight: 700;
             color: var(--text-main);
@@ -463,31 +410,27 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .file-hint {
+        }.file-hint
+{
             color: var(--text-secondary);
             margin-top: 6px;
             font-size: 12px;
-        }
-
-        .file-field {
+        }.file-field
+{
             flex: 1;
             min-width: 0;
             display: flex;
             flex-direction: column;
             gap: 6px;
             align-items: flex-start;
-        }
-
-        .btn {
+        }.btn
+{
             border: none;
             border-radius: 10px;
             cursor: pointer;
             font-weight: 700;
-        }
-
-        #btnStart {
+        }#btnStart
+{
             width: 100%;
             padding: 14px;
             font-size: 16px;
@@ -500,9 +443,8 @@
             gap: 10px;
             margin-top: 8px;
             box-sizing: border-box;
-        }
-
-        .btn-spinner {
+        }.btn-spinner
+{
             width: 14px;
             height: 14px;
             border: 2px solid rgba(255, 255, 255, .45);
@@ -511,9 +453,8 @@
             display: inline-block;
             animation: spin 0.9s linear infinite;
             vertical-align: text-bottom;
-        }
-
-        .tabs {
+        }.tabs
+{
             display: flex;
             border: 1px solid var(--border-color);
             background: var(--bg-color);
@@ -521,9 +462,8 @@
             padding: 4px;
             gap: 4px;
             margin-bottom: 14px;
-        }
-
-        .tab {
+        }.tab
+{
             flex: 1;
             padding: 10px 12px;
             text-align: center;
@@ -531,27 +471,22 @@
             border-radius: 8px;
             color: var(--text-secondary);
             font-weight: 700;
-        }
-
-        .tab.active {
+        }.tab.active
+{
             color: var(--primary-color);
             background: rgba(59, 130, 246, .1);
-        }
-
-        .tab[style*='display: none'] {
+        }.tab[style*='display: none']
+{
             display: none !important;
-        }
-
-        .tab-content {
+        }.tab-content
+{
             display: none;
             animation: fade .25s;
-        }
-
-        .tab-content.active {
+        }.tab-content.active
+{
             display: block;
-        }
-
-        @keyframes fade {
+        }@keyframes fade
+{
             from {
                 opacity: 0;
                 transform: translateY(8px);
@@ -561,9 +496,8 @@
                 opacity: 1;
                 transform: translateY(0);
             }
-        }
-
-        .progress-container {
+        }.progress-container
+{
             display: none;
             width: 100%;
             background: var(--border-color);
@@ -571,9 +505,8 @@
             height: 24px;
             overflow: hidden;
             margin-bottom: 14px;
-        }
-
-        .progress-bar {
+        }.progress-bar
+{
             height: 100%;
             width: 0%;
             background: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent), linear-gradient(to right, var(--primary-color), #60a5fa);
@@ -584,9 +517,8 @@
             font-size: 12px;
             line-height: 24px;
             font-weight: 700;
-        }
-
-        .background-status-card {
+        }.background-status-card
+{
             display: none;
             border: 1px solid rgba(59, 130, 246, 0.28);
             border-radius: 12px;
@@ -594,56 +526,47 @@
             padding: 14px;
             margin-bottom: 14px;
             box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-        }
-
-        .background-status-card.active {
+        }.background-status-card.active
+{
             display: block;
-        }
-
-        .background-confirm-card {
+        }.background-confirm-card
+{
             display: none;
             margin-top: 10px;
             margin-bottom: 0;
             border-color: rgba(245, 158, 11, 0.45);
             background: color-mix(in srgb, var(--bg-color), var(--warning-color) 10%);
-        }
-
-        .background-confirm-card.active {
+        }.background-confirm-card.active
+{
             display: block;
-        }
-
-        .background-confirm-text {
+        }.background-confirm-text
+{
             color: var(--text-secondary);
             line-height: 1.7;
             margin: 8px 0 12px;
-        }
-
-        .background-confirm-actions {
+        }.background-confirm-actions
+{
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-        }
-
-        .background-status-head {
+        }.background-status-head
+{
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 12px;
             margin-bottom: 10px;
-        }
-
-        .background-status-title {
+        }.background-status-title
+{
             font-weight: 800;
             color: var(--text-main);
-        }
-
-        .background-status-grid {
+        }.background-status-grid
+{
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 10px;
-        }
-
-        .background-status-item {
+        }.background-status-item
+{
             border: 1px solid var(--border-color);
             border-radius: 10px;
             padding: 10px;
@@ -654,69 +577,58 @@
             flex-direction: column;
             justify-content: center;
             gap: 6px;
-        }
-
-        .background-status-label {
+        }.background-status-label
+{
             display: block;
             font-size: 12px;
             color: var(--text-secondary);
             margin-bottom: 4px;
-        }
-
-        .background-status-value {
+        }.background-status-value
+{
             font-weight: 700;
             color: var(--text-main);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-        }
-
-        .background-status-wide {
+        }.background-status-wide
+{
             grid-column: span 2;
-        }
-
-        .background-status-wide .background-status-value {
+        }.background-status-wide .background-status-value
+{
             white-space: normal;
             line-height: 1.55;
-        }
-
-        .background-stat-line {
+        }.background-stat-line
+{
             font-size: 13px;
             word-break: keep-all;
-        }
-
-        .background-status-wide-full {
+        }.background-status-wide-full
+{
             grid-column: 1 / -1;
-        }
-
-        .background-stat-grid {
+        }.background-stat-grid
+{
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 8px;
-        }
-
-        .background-stat-cell {
+        }.background-stat-cell
+{
             display: grid;
             grid-template-columns: 54px minmax(54px, 1fr);
             align-items: baseline;
             column-gap: 6px;
             min-width: 0;
             font-size: 13px;
-        }
-
-        .background-stat-name {
+        }.background-stat-name
+{
             color: var(--text-secondary);
             text-align: right;
             white-space: nowrap;
-        }
-
-        .background-stat-number {
+        }.background-stat-number
+{
             font-variant-numeric: tabular-nums;
             text-align: left;
             white-space: nowrap;
-        }
-
-        @keyframes stripe {
+        }@keyframes stripe
+{
             from {
                 background-position: 0 0, 0 0;
             }
@@ -724,50 +636,43 @@
             to {
                 background-position: 20px 20px, 0 0;
             }
-        }
-
-        .scroll-table {
+        }.scroll-table
+{
             overflow-x: auto;
             border: 1px solid var(--border-color);
             border-radius: 10px;
-        }
-
-        table {
+        }table
+{
             width: 100%;
             border-collapse: collapse;
             min-width: 700px;
             font-size: 14px;
-        }
-
-        th,
-        td {
+        }th,
+td
+{
             padding: 12px;
             border-bottom: 1px solid var(--border-color);
             text-align: left;
             white-space: nowrap;
-        }
-
-        th {
+        }th
+{
             background: var(--bg-color);
             color: var(--text-secondary);
             position: sticky;
             top: 0;
             z-index: 10;
-        }
-
-        tr:hover {
+        }tr:hover
+{
             background: color-mix(in srgb, var(--bg-color), var(--primary-color) 6%);
-        }
-
-        .badge {
+        }.badge
+{
             background: linear-gradient(135deg, var(--primary-color), #60a5fa);
             color: #fff;
             border-radius: 20px;
             padding: 3px 10px;
             font-size: 12px;
-        }
-
-        .action-btn {
+        }.action-btn
+{
             padding: 7px 11px;
             border: 0;
             border-radius: 6px;
@@ -779,18 +684,16 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .speed-btn {
+        }.speed-btn
+{
             min-width: 78px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             white-space: nowrap;
             flex-shrink: 0;
-        }
-
-        .speed-result {
+        }.speed-result
+{
             min-width: 136px;
             display: inline-grid;
             grid-template-columns: minmax(74px, auto) 48px;
@@ -799,92 +702,66 @@
             text-align: left;
             white-space: nowrap;
             flex-shrink: 0;
-        }
-
-        .speed-cell-content {
+        }.speed-cell-content
+{
             display: inline-grid;
             grid-template-columns: minmax(74px, auto) 48px;
             align-items: center;
             column-gap: 6px;
             white-space: nowrap;
-        }
-
-        .export-btn {
+        }.export-btn
+{
             background: linear-gradient(135deg, var(--success-color), #059669) !important;
             box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2) !important;
             border: none;
-        }
-
-        .export-btn:hover {
+        }.export-btn:hover
+{
             box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4) !important;
-        }
-
-        .table-actions {
+        }.table-actions
+{
             display: flex;
             align-items: center;
             gap: 10px;
             flex-wrap: wrap;
-        }
-
-        .official-test-actions,
-        .nsb-scan-actions {
+        }.official-test-actions
+{
             display: grid;
             align-items: center;
             gap: 10px;
-        }
-
-        .official-test-actions {
+        }.official-test-actions
+{
             grid-template-columns: auto minmax(92px, auto) minmax(92px, auto) auto auto auto;
-        }
-
-        .nsb-scan-actions {
-            grid-template-columns: auto auto auto minmax(92px, auto) minmax(92px, auto) auto auto;
-        }
-
-        .nsb-scan-actions.official-scan-actions {
-            grid-template-columns: minmax(92px, auto) minmax(92px, auto);
-        }
-
-        .official-test-actions .action-btn,
-        .official-test-actions .table-filter-select,
-        .nsb-scan-actions .action-btn,
-        .nsb-scan-actions .table-filter-select {
+        }.official-test-actions .action-btn,
+.official-test-actions .table-filter-select
+{
             white-space: nowrap;
-        }
-
-        #btnBatchSpeed,
-        #btnContinueBatchSpeed,
-        #btnNSBBatchSpeed,
-        #btnNSBContinueSpeed {
+        }#btnBatchSpeed,
+#btnContinueBatchSpeed
+{
             min-width: 92px;
-        }
-
-        .table-filter-select {
+        }.table-filter-select
+{
             display: none;
             width: auto;
             height: 34px;
             min-height: 34px;
             padding: 6px 30px 6px 10px;
             font-size: 12px;
-        }
-
-        .speed-unqualified {
+        }.speed-unqualified
+{
             position: relative;
-        }
-
-        tr.row-unqualified td {
+        }tr.row-unqualified td
+{
             position: relative;
-        }
-
-        tr.row-unqualified td::after {
+        }tr.row-unqualified td::after
+{
             content: '';
             position: absolute;
             inset: 0;
             pointer-events: none;
             background: rgba(245, 158, 11, 0.10);
-        }
-
-        .result-status-tag {
+        }.result-status-tag
+{
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -898,39 +775,33 @@
             background: rgba(148, 163, 184, 0.16);
             color: var(--text-secondary);
             border: 1px solid rgba(148, 163, 184, 0.26);
-        }
-
-        .result-status-slot {
+        }.result-status-slot
+{
             display: inline-flex;
             width: 48px;
             justify-content: flex-start;
-        }
-
-        .result-status-tag.unqualified {
+        }.result-status-tag.unqualified
+{
             background: rgba(245, 158, 11, 0.14);
             color: #b45309;
             border-color: rgba(245, 158, 11, 0.28);
-        }
-
-        .result-status-tag.qualified {
+        }.result-status-tag.qualified
+{
             background: rgba(16, 185, 129, 0.14);
             color: #047857;
             border-color: rgba(16, 185, 129, 0.28);
-        }
-
-        tr.row-qualified td {
+        }tr.row-qualified td
+{
             position: relative;
-        }
-
-        tr.row-qualified td::after {
+        }tr.row-qualified td::after
+{
             content: '';
             position: absolute;
             inset: 0;
             pointer-events: none;
             background: rgba(16, 185, 129, 0.12);
-        }
-
-        .modal-mask {
+        }.modal-mask
+{
             position: fixed;
             inset: 0;
             display: none;
@@ -939,13 +810,11 @@
             padding: 18px;
             background: rgba(15, 23, 42, 0.58);
             z-index: 1000;
-        }
-
-        .modal-mask.active {
+        }.modal-mask.active
+{
             display: flex;
-        }
-
-        .result-modal {
+        }.result-modal
+{
             width: min(760px, 100%);
             max-height: 90vh;
             overflow: hidden;
@@ -957,47 +826,39 @@
             border-radius: 16px;
             box-shadow: 0 24px 80px rgba(15, 23, 42, 0.35);
             padding: 22px;
-        }
-
-        .proxy-warning-modal {
+        }.proxy-warning-modal
+{
             width: min(680px, 100%);
-        }
-
-        .notice-modal {
+        }.notice-modal
+{
             width: min(560px, 100%);
-        }
-
-        .notice-card {
+        }.notice-card
+{
             display: flex;
             flex-direction: column;
             gap: 14px;
-        }
-
-        .notice-card-title {
+        }.notice-card-title
+{
             margin: 0;
             color: var(--text-main);
             font-size: 20px;
-        }
-
-        .notice-card-message {
+        }.notice-card-message
+{
             white-space: pre-line;
             color: var(--text-secondary);
             line-height: 1.7;
-        }
-
-        .proxy-warning-card {
+        }.proxy-warning-card
+{
             display: flex;
             flex-direction: column;
             gap: 12px;
-        }
-
-        .proxy-warning-title {
+        }.proxy-warning-title
+{
             margin: 0;
             color: #ef4444;
             font-size: 24px;
-        }
-
-        .proxy-warning-country {
+        }.proxy-warning-country
+{
             display: inline-flex;
             align-items: center;
             width: fit-content;
@@ -1008,34 +869,29 @@
             border: 1px solid rgba(239, 68, 68, 0.22);
             font-size: 12px;
             font-weight: 800;
-        }
-
-        .proxy-warning-card p,
-        .proxy-warning-card li {
+        }.proxy-warning-card p,
+.proxy-warning-card li
+{
             color: var(--text-secondary);
             line-height: 1.7;
-        }
-
-        .proxy-warning-card ul {
+        }.proxy-warning-card ul
+{
             margin: 0;
             padding-left: 22px;
-        }
-
-        .proxy-warning-actions {
+        }.proxy-warning-actions
+{
             display: flex;
             justify-content: flex-end;
             gap: 10px;
             flex-wrap: wrap;
             padding-top: 4px;
-        }
-
-        .proxy-warning-actions .danger-btn {
+        }.proxy-warning-actions .danger-btn
+{
             background: linear-gradient(135deg, #ef4444, #dc2626) !important;
             color: #fff !important;
             box-shadow: 0 2px 4px rgba(239, 68, 68, 0.25) !important;
-        }
-
-        .modal-body {
+        }.modal-body
+{
             min-height: 0;
             flex: 1;
             overflow-y: auto;
@@ -1043,93 +899,78 @@
             padding-right: 18px;
             margin-right: -8px;
             scrollbar-gutter: stable;
-        }
-
-        .modal-body::-webkit-scrollbar {
+        }.modal-body::-webkit-scrollbar
+{
             width: 8px;
-        }
-
-        .modal-body::-webkit-scrollbar-thumb {
+        }.modal-body::-webkit-scrollbar-thumb
+{
             background: rgba(148, 163, 184, 0.55);
             border-radius: 999px;
-        }
-
-        .modal-body::-webkit-scrollbar-track {
+        }.modal-body::-webkit-scrollbar-track
+{
             background: transparent;
-        }
-
-        .modal-head {
+        }.modal-head
+{
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
             margin-bottom: 12px;
-        }
-
-        .modal-head h3 {
+        }.modal-head h3
+{
             margin: 0;
-        }
-
-        .modal-close {
+        }.modal-close
+{
             border: 0;
             background: transparent;
             color: var(--text-secondary);
             font-size: 24px;
             cursor: pointer;
-        }
-
-        .modal-grid {
+        }.modal-grid
+{
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
             max-width: 100%;
             overflow-x: hidden;
-        }
-
-        .modal-field {
+        }.modal-field
+{
             display: flex;
             flex-direction: column;
             gap: 5px;
-        }
-
-        .modal-field.full {
+        }.modal-field.full
+{
             grid-column: 1 / -1;
-        }
-
-        .modal-field label {
+        }.modal-field label
+{
             font-size: 12px;
             color: var(--text-secondary);
             font-weight: 700;
-        }
-
-        .field-head {
+        }.field-head
+{
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-        }
-
-        .field-head-actions {
+        }.field-head-actions
+{
             display: flex;
             justify-content: flex-end;
             flex-wrap: wrap;
             gap: 6px;
-        }
-
-        .field-head-actions .action-btn {
+        }.field-head-actions .action-btn
+{
             height: 28px;
             padding: 0 10px;
             font-size: 12px;
-        }
-
-        .field-picker {
+        }.field-picker
+{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 8px;
             margin-top: 8px;
-        }
-
-        .field-pill {
+        }.field-pill
+{
             display: flex;
             align-items: center;
             gap: 6px;
@@ -1137,20 +978,17 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 12px;
-        }
-
-        .field-pill input {
+        }.field-pill input
+{
             width: auto;
-        }
-
-        .order-list {
+        }.order-list
+{
             display: flex;
             flex-direction: column;
             gap: 6px;
             margin-top: 8px;
-        }
-
-        .order-item {
+        }.order-item
+{
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -1160,9 +998,8 @@
             border-radius: 8px;
             background: var(--bg-color);
             font-size: 12px;
-        }
-
-        .order-item button {
+        }.order-item button
+{
             width: auto;
             height: auto;
             padding: 3px 7px;
@@ -1171,73 +1008,62 @@
             color: #fff;
             background: var(--primary-color);
             cursor: pointer;
-        }
-
-        .modal-actions {
+        }.modal-actions
+{
             display: flex;
             justify-content: flex-end;
             flex-wrap: wrap;
             gap: 8px;
             margin-top: 14px;
-        }
-
-        .modal-actions.inline {
+        }.modal-actions.inline
+{
             grid-column: 1 / -1;
             margin-top: 0;
             padding: 10px;
             border: 1px solid var(--border-color);
             border-radius: 12px;
             background: color-mix(in srgb, var(--card-bg), var(--primary-color) 4%);
-        }
-
-        .modal-actions.footer {
+        }.modal-actions.footer
+{
             flex-shrink: 0;
             padding-top: 14px;
             border-top: 1px solid var(--border-color);
-        }
-
-        .github-account-row {
+        }.github-account-row
+{
             display: flex;
             gap: 8px;
             align-items: center;
-        }
-
-        .github-account-row select {
+        }.github-account-row select
+{
             flex: 1;
-        }
-
-        .separator-row {
+        }.separator-row
+{
             display: flex;
             gap: 8px;
             align-items: center;
-        }
-
-        .separator-row select {
+        }.separator-row select
+{
             flex: 0 0 min(170px, 45%);
-        }
-
-        .separator-row input {
+        }.separator-row input
+{
             flex: 1;
-        }
-
-        .inline-check {
+        }.inline-check
+{
             display: inline-flex;
             align-items: center;
             gap: 6px;
             font-size: 12px;
             color: var(--text-secondary);
             font-weight: 700;
-        }
-
-        .inline-check input {
+        }.inline-check input
+{
             width: auto;
             margin: 0;
             vertical-align: middle;
             flex-shrink: 0;
-        }
-
-        .result-preview,
-        .upload-status {
+        }.result-preview,
+.upload-status
+{
             border: 1px solid var(--border-color);
             border-radius: 10px;
             background: var(--bg-color);
@@ -1249,64 +1075,53 @@
             max-height: 120px;
             max-width: 100%;
             box-sizing: border-box;
-        }
-
-        .upload-status.error {
+        }.upload-status.error
+{
             color: var(--error-color);
             border-color: var(--error-color);
             font-weight: bold;
-        }
-
-        .upload-status.success {
+        }.upload-status.success
+{
             color: #059669;
             border-color: #10b981;
             font-weight: bold;
-        }
-
-        .upload-status .copy-ip {
+        }.upload-status .copy-ip
+{
             color: inherit;
-        }
-
-        .action-btn.selected {
+        }.action-btn.selected
+{
             background: linear-gradient(135deg, #10b981, #34d399);
-        }
-
-        .action-btn:disabled {
+        }.action-btn:disabled
+{
             background: #9ca3af;
             cursor: not-allowed;
-        }
-
-        .copy-ip {
+        }.copy-ip
+{
             color: var(--primary-color);
             cursor: pointer;
             border-bottom: 1px dashed var(--primary-color);
-        }
-
-        .ip-cell {
+        }.ip-cell
+{
             display: inline-flex;
             align-items: center;
             gap: 6px;
-        }
-
-        .ip-detail-link {
+        }.ip-detail-link
+{
             opacity: 0;
             text-decoration: none;
             font-size: 13px;
             line-height: 1;
             color: var(--text-secondary);
             transition: opacity 0.12s ease, color 0.12s ease;
-        }
-
-        td:hover .ip-detail-link,
-        .ip-detail-link:focus {
+        }td:hover .ip-detail-link,
+.ip-detail-link:focus
+{
             opacity: 1;
-        }
-
-        .ip-detail-link:hover {
+        }.ip-detail-link:hover
+{
             color: var(--primary-color);
-        }
-
-        .log-box {
+        }.log-box
+{
             background: #0f172a;
             color: #34d399;
             border-radius: 12px;
@@ -1318,20 +1133,17 @@
             font-size: 13px;
             margin-top: 16px;
             cursor: text;
-        }
-
-        .log-box,
-        .log-box * {
+        }.log-box,
+.log-box *
+{
             user-select: text !important;
             -webkit-user-select: text !important;
             caret-color: auto;
-        }
-
-        .hidden {
+        }.hidden
+{
             display: none !important;
-        }
-
-        @keyframes spin {
+        }@keyframes spin
+{
             from {
                 transform: rotate(0deg);
             }
@@ -1339,9 +1151,8 @@
             to {
                 transform: rotate(360deg);
             }
-        }
-
-        @media (max-width: 768px) {
+        }@media (max-width: 768px)
+{
 
             .modal-mask {
                 align-items: flex-start;
@@ -1464,13 +1275,9 @@
                 width: 100%;
             }
 
-            #nsbTableIPTypeFilter {
-                width: 100%;
-            }
+            
 
-            #nsbTableQualifiedFilter {
-                width: 100%;
-            }
+            
 
             #test .section-box h3 .table-actions {
                 display: grid;
@@ -1478,7 +1285,7 @@
             }
 
             #test .section-box h3 .table-actions .official-test-actions,
-            #scan .section-box h3 .table-actions .nsb-scan-actions {
+            #scan .section-box h3 .table-actions .table-actions-inner {
                 display: grid;
                 grid-template-columns: minmax(0, 1fr);
                 gap: 8px;
@@ -1506,13 +1313,9 @@
                 width: 100%;
             }
 
-            #btnNSBBatchSpeed {
-                width: 100%;
-            }
+            
 
-            #btnNSBContinueSpeed {
-                width: 100%;
-            }
+            
 
             .section-box h3 .table-actions .export-btn {
                 align-self: center;
@@ -1529,9 +1332,7 @@
             }
 
             #officialControls,
-            #nsbControls {
-                grid-template-columns: 1fr;
-            }
+            
 
             .background-status-grid {
                 grid-template-columns: 1fr;
@@ -1581,30 +1382,26 @@
             .option-item .field-with-action .speed-url-select + input {
                 flex: 1 1 calc(100% - 42px);
             }
-        }
-
-        body {
+        }body
+{
             user-select: none;
             -webkit-user-select: none;
             caret-color: transparent;
-        }
-
-        input,
-        textarea {
+        }input,
+textarea
+{
             user-select: text;
             -webkit-user-select: text;
             caret-color: auto;
-        }
-
-        table th,
-        table td,
-        .copy-ip {
+        }table th,
+table td,
+.copy-ip
+{
             user-select: text !important;
             -webkit-user-select: text !important;
             caret-color: auto;
-        }
-
-        *:focus {
+        }*:focus
+{
             outline: none;
         }
     </style>
@@ -1674,7 +1471,7 @@
 
         <div class="mode-switch">
             <button class="mode-btn active" id="btnOfficial" onclick="switchMode('official')">☁️ 官方优选</button>
-            <button class="mode-btn" id="btnNSB" onclick="switchMode('nsb')">📂 非标优选</button>
+
         </div>
 
         <div class="section-box controls">
@@ -1784,110 +1581,7 @@
                 </div>
             </div>
 
-            <div id="nsbControls" class="hidden">
-                <div class="control-title">
-                    <span>非标参数</span>
-                    <span style="font-size:12px;color:var(--text-secondary);">支持上传 txt/csv 文件或填写网络
-                        URL（二选一）；若识别失败，请整理为每行一个目标，格式：IP 空格 端口，例如 1.2.3.4 443</span>
-                </div>
-                <div class="option-item full-width">
-                    <span class="label" title="支持 txt/csv 格式">📄 IP 文件</span>
-                    <input id="nsbFileInput" type="file" accept=".txt,.csv,text/plain,text/csv"
-                        onchange="syncNSBInputMode('file')">
-                </div>
-                <div class="option-item full-width">
-                    <span class="label" title="从网络地址获取 IP 列表">🌐 网络 URL</span>
-                    <input id="nsbSourceUrl" type="url" placeholder="https://example.com/ip-list.txt"
-                        oninput="syncNSBInputMode('url')">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="未指定端口时使用的默认端口">🚪 备用端口</span>
-                    <input id="nsbFallbackPort" type="number" value="443" placeholder="关闭 TLS 默认 80，开启 TLS 默认 443">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="同时扫描的线程数">🚀 并发数量</span>
-                    <input id="nsbThreads" type="number" value="100" placeholder="默认 100">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="超过此值的连接将被过滤，单位毫秒">⏱️ 扫描合格延迟</span>
-                    <input id="nsbDelay" type="number" value="0" placeholder="默认 0ms">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="延迟测试通过的结果数量上限">🎯 扫描合格数量</span>
-                    <input id="nsbResultLimit" type="number" value="1000" placeholder="非 0 正整数">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="测速达标下限，单位 MB/s">📉 测试合格速度</span>
-                    <input id="nsbSpeedMin" type="number" value="0.1" step="0.01" placeholder="默认 0.1MB/s" oninput="syncNSBSpeedConfigState()">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="测速达标结果的最大数量，关闭测速填 0">🏁 测速结果数量</span>
-                    <input id="nsbSpeedLimit" type="number" value="5" placeholder="0 关闭测速">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="扫描完成后自动进行测速">🧪 自动测速</span>
-                    <select id="nsbEnableSpeed" onchange="updateNSBSpeedControls()">
-                        <option value="on">开启</option>
-                        <option value="off" selected>关闭</option>
-                    </select>
-                </div>
-                <div class="option-item">
-                    <span class="label" title="同时测速的 IP 数量，设为 1 可获得准确速度">⚡ 测速并发</span>
-                    <input id="nsbSpeedTest" type="number" value="0" placeholder="0 关闭测速">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="按数据中心筛选结果">🏢 数据中心</span>
-                    <input id="nsbTargetDC" type="text" value="" placeholder="留空不限制，如 NRT">
-                </div>
-                <div class="option-item">
-                    <span class="label" title="表格列数精简或完整">🧾 精简表格</span>
-                    <select id="nsbCompactView" onchange="setNSBCompactView(this.value === 'compact')">
-                        <option value="compact" selected>精简表格</option>
-                        <option value="full">完整表格</option>
-                    </select>
-                </div>
-                <div class="option-item">
-                    <span class="label" title="启用 HTTPS 进行测试">🔗 TLS 模式</span>
-                    <select id="nsbTls" onchange="updateNSBFallbackPortDefault()">
-                        <option value="on" selected>开启</option>
-                        <option value="off">关闭</option>
-                    </select>
-                </div>
-                <div class="option-item">
-                    <span class="label" title="CSV 导出文件名">🛠️ 输出文件名</span>
-                    <input id="nsbOutFile" type="text" value="ip.csv" placeholder="ip.csv">
-                </div>
-                <div class="option-item full-width">
-                    <span class="label">📡 扫描方式</span>
-                    <div class="field-with-action">
-                        <select id="nsbScanMode" class="speed-url-select" onchange="updateScanModeHint()">
-                            <option value="tcping" selected>TCPing（默认）</option>
-                            <option value="httping">HTTPing</option>
-                        </select>
-                        <input id="nsbScanModeHint" type="text" value="仅测量 TCP 握手延迟" readonly style="flex:1;min-width:0;">
-                    </div>
-                </div>
-                <div class="option-item full-width">
-                    <span class="label">🔗 测速网址</span>
-                    <div class="field-with-action">
-                        <select id="nsbSpeedUrlPreset" class="speed-url-select" onchange="applySpeedUrlPreset('nsbSpeedUrl', this.value)">
-                            <option value="auto" selected>自动选择</option>
-                            <option value="speed.cloudflare.com/__down?bytes=99999999">Cloudflare</option>
-                            <option value="cf.090227.xyz/__down?bytes=99999999">CM提供</option>
-                            <option value="speed.okl.abrdns.com">移动专属</option>
-                            <option value="custom">手动输入</option>
-                        </select>
-                        <input id="nsbSpeedUrl" type="text" value="自动选择"
-                            placeholder="speed.okl.abrdns.com" oninput="markSpeedUrlCustom('nsbSpeedUrlPreset')">
-                        <button class="mini-action-btn" title="恢复自动选择测速网站"
-                            onclick="resetDefaultSpeedUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset')">↺</button>
-                    </div>
-                </div>
-                <div class="option-item full-width">
-                    <span class="label">⬆ 自动上传</span>
-                    <select id="nsbAutoUploadAccount"></select>
-                </div>
-            </div>
+            
 
             <button id="btnStart" class="btn" onclick="startTask()"><span id="btnStartSpinner"
                     class="hidden"></span><span id="btnStartLabel">✨ 开始扫描与测试</span></button>
@@ -1958,23 +1652,7 @@
                 <h3 style="display:flex;justify-content:space-between;align-items:center;">
                     <span>扫描结果 <span class="badge" id="scanCount">0</span></span>
                     <span class="table-actions">
-                        <span class="nsb-scan-actions" id="nsbScanActions">
-                            <select id="nsbTableIPTypeFilter" class="table-filter-select" onchange="setNSBTableIPTypeFilter(this.value)">
-                                <option value="all" selected>展示全部类型</option>
-                                <option value="ipv4">仅展示IPV4</option>
-                                <option value="ipv6">仅展示IPV6</option>
-                            </select>
-                            <select id="nsbTableQualifiedFilter" class="table-filter-select" onchange="setNSBTableQualifiedFilter(this.value)">
-                                <option value="all" selected>展示全部结果</option>
-                                <option value="qualified">仅展示合格</option>
-                                <option value="unqualified">仅展示不合格</option>
-                            </select>
-                            <button class="action-btn export-btn" id="btnNSBBatchSpeed" onclick="startNSBBatchSpeed(false)" disabled>🚀 一键测速</button>
-                            <button class="action-btn export-btn" id="btnNSBContinueSpeed" onclick="startNSBBatchSpeed(true)" disabled>⏭️ 继续测速</button>
-                            <button class="action-btn export-btn" id="btnNSBSort" onclick="openSortModal('nsb')">↕️ 一键排序</button>
-                            <button class="action-btn export-btn" id="btnScanCopy" onclick="openCopyModal('scan')">📋 一键复制</button>
-                            <button class="action-btn export-btn" id="btnScanResultAction" onclick="openResultModal('scan')">📥 结果操作</button>
-                        </span>
+
                     </span>
                 </h3>
                 <div class="scroll-table" style="max-height:520px;">
@@ -2375,17 +2053,6 @@
         let currentMode = 'official';
         let uploadedFileName = '';
         let uploadedFileContent = '';
-        let nsbHeaders = [];
-        let nsbRows = [];
-        let nsbLiveRows = [];
-        let nsbLiveIndex = {};
-        let nsbLiveRowElements = {};
-        let nsbStopHandledByComplete = false;
-        let nsbCompactView = true;
-        let nsbTableIPTypeFilter = 'all';
-        let nsbTableQualifiedFilter = 'all';
-        let nsbSpeedMinValue = 0;
-        let nsbSpeedEnabledForResults = false;
         const AUTO_SPEED_URL_VALUE = 'auto';
         const AUTO_SPEED_URL_LABEL = '自动选择';
         let officialTestQualifiedFilter = 'all';
@@ -2394,8 +2061,6 @@
         let officialAutoSpeedPending = false;
         let officialAutoStage = '';
         let officialBatchSpeedRunning = false;
-        let nsbBatchSpeedRunning = false;
-        let nsbContinueSpeedUnlocked = false;
         let officialTestCompletePending = false;
         let officialSpeedEndedByRateLimit = false;
         let officialContinueSpeedUnlocked = false;
@@ -2449,42 +2114,7 @@
         const progressBar = document.getElementById('progressBar');
 
         const modeOfficial = document.getElementById('btnOfficial');
-        const modeNSB = document.getElementById('btnNSB');
         const officialControls = document.getElementById('officialControls');
-        const nsbControls = document.getElementById('nsbControls');
-        const fileInput = document.getElementById('nsbFileInput');
-        const nsbSourceUrlInput = document.getElementById('nsbSourceUrl');
-
-        document.getElementById('nsbFileInput').addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) {
-                uploadedFileName = '';
-                uploadedFileContent = '';
-                syncNSBInputMode();
-                return;
-            }
-            uploadedFileName = file.name || 'upload.txt';
-            const reader = new FileReader();
-            reader.onload = () => {
-                uploadedFileContent = String(reader.result || '');
-                syncNSBInputMode('file');
-                log(`已选择文件: ${uploadedFileName}`);
-            };
-            reader.onerror = () => log('读取文件失败');
-            reader.readAsText(file);
-        });
-
-        function syncNSBInputMode(preferred) {
-            const hasFile = !!(fileInput && fileInput.files && fileInput.files.length);
-            const hasURL = !!(nsbSourceUrlInput && nsbSourceUrlInput.value.trim());
-            if (preferred === 'file' && hasFile && nsbSourceUrlInput) {
-                nsbSourceUrlInput.value = '';
-            } else if (preferred === 'url' && hasURL && fileInput) {
-                fileInput.value = '';
-                uploadedFileName = '';
-                uploadedFileContent = '';
-            }
-        }
 
         function applyTheme(theme) {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -2567,7 +2197,6 @@
         }
 
         function initializeUI() {
-            updateNSBSpeedControls();
             updateOfficialAutoSpeedControls();
             updateBatchSpeedButton();
         }
@@ -2584,39 +2213,6 @@
                 speedConcurrency.value = '5';
             }
         }
-
-        function updateNSBSpeedControls() {
-            const enableSpeedTest = document.getElementById('nsbEnableSpeed');
-            const speedTestInput = document.getElementById('nsbSpeedTest');
-            if (!enableSpeedTest || !speedTestInput) return;
-
-            const speedEnabled = String(enableSpeedTest.value || 'off').toLowerCase() === 'on';
-            if (speedEnabled) {
-                speedTestInput.disabled = false;
-                if (String(speedTestInput.value).trim() === '0') {
-                    speedTestInput.value = '5';
-                }
-                updateNSBSpeedButtons();
-                return;
-            }
-
-            speedTestInput.value = '0';
-            speedTestInput.disabled = true;
-            updateNSBSpeedButtons();
-        }
-
-        function updateNSBFallbackPortDefault() {
-            const portInput = document.getElementById('nsbFallbackPort');
-            const tlsMode = String(document.getElementById('nsbTls')?.value || 'on').toLowerCase();
-            if (!portInput) return;
-            const current = parseInt(portInput.value, 10) || 0;
-            if (tlsMode === 'off' && (current <= 0 || current === 443)) {
-                portInput.value = '80';
-            } else if (tlsMode !== 'off' && (current <= 0 || current === 80)) {
-                portInput.value = '443';
-            }
-        }
-
         function applySpeedUrlPreset(targetId, value) {
             const input = document.getElementById(targetId);
             if (!input) return;
@@ -2727,23 +2323,7 @@
                     targetDC: val('officialTargetDC'),
                     speedUrl: resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset'),
                 },
-                nsb: {
-                    scanMode: selVal('nsbScanMode'),
-                    threads: val('nsbThreads'),
-                    delay: val('nsbDelay'),
-                    resultLimit: val('nsbResultLimit'),
-                    fallbackPort: val('nsbFallbackPort'),
-                    speedMin: val('nsbSpeedMin'),
-                    speedLimit: val('nsbSpeedLimit'),
-                    speedTest: val('nsbSpeedTest'),
-                    enableSpeed: selVal('nsbEnableSpeed'),
-                    targetDC: val('nsbTargetDC'),
-                    tls: selVal('nsbTls'),
-                    compactView: selVal('nsbCompactView'),
-                    outFile: val('nsbOutFile'),
-                    speedUrl: resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset'),
-                    sourceUrl: val('nsbSourceUrl'),
-                },
+
             };
         }
 
@@ -2755,7 +2335,6 @@
 
         function applyConfigValues(config) {
             const o = config.official || {};
-            const n = config.nsb || {};
             setValue('officialScanMode', o.scanMode);
             setValue('officialIpType', o.ipType);
             setValue('officialTestPort', o.port);
@@ -2766,27 +2345,13 @@
             setValue('officialSpeedTest', o.speedConcurrency);
             setValue('officialAutoSpeed', o.autoSpeed);
             setValue('officialTargetDC', o.targetDC);
-            setValue('nsbScanMode', n.scanMode);
-            setValue('nsbThreads', n.threads);
-            setValue('nsbDelay', n.delay);
-            setValue('nsbResultLimit', n.resultLimit);
-            setValue('nsbFallbackPort', n.fallbackPort);
-            setValue('nsbSpeedMin', n.speedMin);
-            setValue('nsbSpeedLimit', n.speedLimit);
-            setValue('nsbSpeedTest', n.speedTest);
-            setValue('nsbEnableSpeed', n.enableSpeed);
-            setValue('nsbTargetDC', n.targetDC);
-            if (n.tls) setValue('nsbTls', n.tls);
-            if (n.compactView) setValue('nsbCompactView', n.compactView);
-            setValue('nsbOutFile', n.outFile);
-            setValue('nsbSourceUrl', n.sourceUrl);
+
+
             if (o.speedUrl) applySpeedUrlConfig('officialSpeedUrl', 'officialSpeedUrlPreset', o.speedUrl);
-            if (n.speedUrl) applySpeedUrlConfig('nsbSpeedUrl', 'nsbSpeedUrlPreset', n.speedUrl);
             syncOfficialSpeedConfigState();
-            syncNSBSpeedConfigState();
+
             updateOfficialAutoSpeedControls();
-            updateNSBSpeedControls();
-            updateNSBCompactToggle();
+
         }
 
         function saveConfigToLS() {
@@ -2829,32 +2394,16 @@
                 return undefined;
             }
             const c = cliCfg.config || cliCfg;
-            const result = { official: {}, nsb: {} };
             const sm = pick(c, ['scanmode', 'scanMode']);
-            if (sm !== undefined) { result.official.scanMode = sm; result.nsb.scanMode = sm; }
+            if (sm !== undefined) result.official.scanMode = sm;
             result.official.ipType = pick(c, ['offiptype', 'iptype', 'ipType']);
             result.official.port = pick(c, ['offport', 'testport', 'port']);
             result.official.threads = pick(c, ['offthreads', 'threads']);
-            result.nsb.threads = pick(c, ['nsbthreads']);
             result.official.delay = pick(c, ['offdelay', 'delay']);
-            result.nsb.delay = pick(c, ['nsbdelay']);
             result.official.speedMin = pick(c, ['offspeedmin', 'speedmin']);
-            result.nsb.speedMin = pick(c, ['nsbspeedmin']);
             result.official.speedLimit = pick(c, ['offspeedlimit', 'speedlimit']);
-            result.nsb.speedLimit = pick(c, ['nsbspeedlimit']);
             result.official.targetDC = pick(c, ['offdc', 'dc']);
-            result.nsb.targetDC = pick(c, ['nsbdc']);
             result.official.speedUrl = pick(c, ['offurl', 'url']);
-            result.nsb.speedUrl = pick(c, ['nsburl']);
-            result.nsb.resultLimit = pick(c, ['nsbresultlimit', 'resultlimit']);
-            result.nsb.fallbackPort = pick(c, ['nsbfallbackport']);
-            result.nsb.speedTest = pick(c, ['nsbspeedtest', 'speedtest']);
-            const tls = pick(c, ['nsbtls', 'tls']);
-            if (tls !== undefined) result.nsb.tls = tls === true || String(tls).toLowerCase() === 'true' || String(tls) === '1' ? 'on' : 'off';
-            const compact = pick(c, ['nsbcompact', 'compact']);
-            if (compact !== undefined) result.nsb.compactView = compact === true || String(compact).toLowerCase() === 'true' || String(compact) === '1' ? 'compact' : 'full';
-            result.nsb.outFile = pick(c, ['out', 'nsbout', 'offout']);
-            result.nsb.sourceUrl = pick(c, ['nsbsourceurl', 'sourceurl']);
             return result;
         }
 
@@ -3211,7 +2760,6 @@
                 const el = document.getElementById('officialScanMode');
                 return el ? el.value : 'tcping';
             }
-            const el = document.getElementById('nsbScanMode');
             return el ? el.value : 'tcping';
         }
 
@@ -3220,7 +2768,6 @@
                 const el = document.getElementById('officialScanModeHint');
                 return el || null;
             }
-            const el = document.getElementById('nsbScanModeHint');
             return el || null;
         }
 
@@ -3238,92 +2785,26 @@
                 hint.value = '仅测量 TCP 握手延迟，不同模式数据不可互相比较';
             }
         }
-
-        function switchMode(mode) {
-            currentMode = mode;
-            modeOfficial.classList.toggle('active', mode === 'official');
-            modeNSB.classList.toggle('active', mode === 'nsb');
-
-            if (mode === 'official') {
-                officialControls.classList.remove('hidden');
-                nsbControls.classList.add('hidden');
-                document.querySelector('.tabs .tab:last-child').style.display = 'block';
-                document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
-                if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
-                updateNSBCompactToggle();
-                if (isTaskRunning && runningTaskMode === 'official') {
-                    showRunningTaskView();
-                } else if (!isTaskRunning) {
-                    switchTab('scan');
-                    renderCurrentScanResults();
-                }
-            } else {
-                officialControls.classList.add('hidden');
-                nsbControls.classList.remove('hidden');
-                const testTab = document.querySelectorAll('.tab')[1];
-                testTab.style.display = 'none';
-                if (document.querySelector('.tab.active') !== document.querySelector('.tabs .tab:first-child')) {
-                    switchTab('scan');
-                }
-                document.getElementById('dcSection').style.display = 'none';
-                if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
-                updateNSBCompactToggle();
-                if (isTaskRunning && runningTaskMode === 'nsb') {
-                    showRunningTaskView();
-                } else if (!isTaskRunning) {
-                    renderCurrentScanResults();
-                }
-            }
-            if (!isTaskRunning) resetProgress();
-            updateScanModeHint();
-            log(`切换至：${mode === 'official' ? '官方优选' : '非标优选'}`);
-        }
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
-
-            const tabs = document.querySelectorAll('.tab');
-            const first = tabs[0];
-            const second = tabs[1];
-
-            if (tabId === 'scan') {
-                first.classList.add('active');
-            } else {
-                if (second.style.display !== 'none') second.classList.add('active');
-                else first.classList.add('active');
-            }
-            const target = document.getElementById(tabId);
-            if (target) target.classList.add('active');
-
-            if (tabId === 'test' && currentMode === 'nsb') {
-                switchTab('scan');
-                return;
-            }
-
-            if (currentMode === 'official' && tabId === 'test') {
-                renderAllTestResults();
-            } else if (currentMode === 'official' && tabId === 'scan' && scanData.length) {
-                renderCurrentScanResults();
-            } else if (currentMode === 'nsb' && tabId === 'scan') {
-                renderCurrentScanResults();
-            }
-        }
-
-        function renderCurrentScanResults() {
-            if (currentMode === 'official') {
-                renderScanHeaders('official');
-                if (scanData.length) sortAndRenderScanResults();
-                else updateBadge('scanCount', 0);
-                return;
-            }
-            if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-                return;
-            }
-            renderScanHeaders('nsb');
-            renderAllNSBLiveRows();
-        }
+function switchMode(mode) {
+ currentMode='official'; modeOfficial.classList.add('active'); officialControls.classList.remove('hidden');
+ document.querySelector('.tabs .tab:last-child').style.display='block';
+ document.getElementById('dcSection').style.display=dcList.length?'block':'none';
+ if(!isTaskRunning) resetButton('✨ 开始扫描与测试');
+ if(isTaskRunning&&runningTaskMode==='official') showRunningTaskView();
+ else if(!isTaskRunning){switchTab('scan');renderCurrentScanResults();resetProgress();}
+ updateScanModeHint(); log('切换至：官方优选');
+}
+function switchTab(tabId) {
+ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+ document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+ const tabs=document.querySelectorAll('.tab'), first=tabs[0], second=tabs[1];
+ if(tabId==='scan') first.classList.add('active'); else if(second&&second.style.display!=='none') second.classList.add('active'); else first.classList.add('active');
+ const target=document.getElementById(tabId); if(target) target.classList.add('active');
+ if(tabId==='test') renderAllTestResults(); else if(scanData.length) renderCurrentScanResults();
+}
+function renderCurrentScanResults() {
+ renderScanHeaders('official'); if(scanData.length) sortAndRenderScanResults(); else updateBadge('scanCount',0);
+}
 
         function updateProgress(current, total, text) {
             if (!total) {
@@ -3462,7 +2943,7 @@
                 resetButton('✨ 开始扫描与测试');
                 updateBackgroundButton();
                 stopBackgroundStatusPolling();
-                if (snapshot.mode === 'official' || snapshot.mode === 'nsb') {
+                if (snapshot.mode === 'official') {
                     if (currentMode !== snapshot.mode) switchMode(snapshot.mode);
                     runningTaskMode = snapshot.mode;
                     runningTaskLabel = snapshot.label || '后台任务';
@@ -3470,12 +2951,12 @@
                 }
                 return;
             }
-            if ((snapshot.mode === 'official' || snapshot.mode === 'nsb') && !backgroundTaskFocusedOnce) {
+            if ((snapshot.mode === 'official') && !backgroundTaskFocusedOnce) {
                 backgroundTaskFocusedOnce = true;
                 if (currentMode !== snapshot.mode) switchMode(snapshot.mode);
                 runningTaskMode = snapshot.mode;
             }
-            if (snapshot.mode === 'official' || snapshot.mode === 'nsb') runningTaskMode = snapshot.mode;
+            if (snapshot.mode === 'official') runningTaskMode = snapshot.mode;
             runningTaskLabel = snapshot.label || '后台任务';
             runningTaskTab = 'scan';
             applyBackgroundParams(snapshot.params || {});
@@ -3551,20 +3032,10 @@
             setValue('officialSpeedLimit', params.speedLimit);
             setValue('officialSpeedMin', params.speedMin);
             setValue('officialTargetDC', params.dc);
-            setValue('nsbThreads', params.maxThreads);
-            setValue('nsbFallbackPort', params.fallbackPort);
-            setValue('nsbResultLimit', params.resultLimit);
-            setValue('nsbSpeedLimit', params.speedLimit);
-            setValue('nsbSpeedMin', params.speedMin);
-            setValue('nsbSpeedTest', params.speedTest);
-            setValue('nsbTargetDC', params.dc);
-            setValue('nsbOutFile', params.outFile);
-            if (params.enableTLS !== undefined) setValue('nsbTls', params.enableTLS ? 'on' : 'off');
             syncOfficialSpeedConfigState();
-            syncNSBSpeedConfigState();
+
             updateOfficialAutoSpeedControls();
-            updateNSBSpeedControls();
-            updateNSBCompactToggle();
+
         }
 
         function getRunningButtonText() {
@@ -3580,26 +3051,11 @@
             runningTaskMode = '';
             runningTaskTab = 'scan';
         }
-
-        function showRunningTaskView() {
-            if (!runningTaskMode || currentMode !== runningTaskMode) return;
-            if (runningTaskTab === 'test') {
-                switchTab('test');
-                renderAllTestResults();
-                return;
-            }
-            switchTab('scan');
-            if (runningTaskMode === 'official') {
-                renderScanHeaders('official');
-                sortAndRenderScanResults();
-            } else if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-            } else {
-                renderScanHeaders('nsb');
-                renderAllNSBLiveRows();
-                    updateBadge('scanCount', nsbLiveRows.length);
-            }
-        }
+function showRunningTaskView() {
+ if(!isTaskRunning)return; const status=document.getElementById('taskStatus');
+ if(status)status.textContent=runningTaskLabel||'任务运行中';
+ renderScanHeaders('official'); if(scanData.length)sortAndRenderScanResults();
+}
 
         function finishRunningTask(buttonText = '✨ 开始扫描与测试') {
             const wasBackgroundTask = backgroundTaskActive;
@@ -3619,7 +3075,7 @@
                 const card = document.getElementById('backgroundStatusCard');
                 if (card) card.classList.remove('active');
             }
-            updateNSBCompactToggle();
+
         }
 
         function clearStopWatchdog() {
@@ -3630,7 +3086,7 @@
 
         function startStopWatchdog() {
             clearStopWatchdog();
-            nsbStopHandledByComplete = false;
+
             stopWatchdogTimer = window.setTimeout(() => {
                 if (!isStoppingTask) return;
                 resetStoppedTaskUI('已手动终止，后台仍在清理；如立即重试提示已有任务，请稍后再试');
@@ -3643,18 +3099,18 @@
             officialAutoSpeedPending = false;
             officialAutoStage = '';
             officialBatchSpeedRunning = false;
-            nsbBatchSpeedRunning = false;
+
             officialTestCompletePending = false;
             officialSpeedEndedByRateLimit = false;
             currentTestingDC = '';
             resetCurrentSpeedButton();
             finishRunningTask('✨ 开始扫描与测试');
             updateBatchSpeedButton();
-            updateNSBSpeedButtons();
+
             finishCompactIPv4();
             showDCSelection(dcList);
             const status = document.getElementById('currentTestDC');
-            if (status && runningTaskMode !== 'nsb') status.textContent = message;
+            if (status && true) status.textContent = message;
             if (currentMode === 'official' && document.getElementById('test').classList.contains('active')) {
                 renderAllTestResults();
             } else {
@@ -3687,123 +3143,10 @@
             if (mode === 'official') {
                 thead.innerHTML = '<tr><th>IP</th><th>端口</th><th>数据中心</th><th>落地区域</th><th>地区</th><th>城市</th><th>扫描方式</th><th>延迟</th></tr>';
             } else {
-                const headers = getVisibleNSBHeaders();
                 const headerRow = headers.map(h => `<th>${h}</th>`).join('');
                 thead.innerHTML = `<tr>${headerRow}</tr>`;
             }
         }
-
-        function updateNSBCompactToggle() {
-            const scanActions = document.getElementById('nsbScanActions');
-            if (scanActions) {
-                scanActions.classList.toggle('official-scan-actions', currentMode !== 'nsb');
-            }
-            const compactToggle = document.getElementById('nsbCompactView');
-            if (compactToggle) {
-                compactToggle.value = nsbCompactView ? 'compact' : 'full';
-                compactToggle.disabled = isTaskRunning;
-            }
-            const filter = document.getElementById('nsbTableIPTypeFilter');
-            if (filter) {
-                filter.style.display = currentMode === 'nsb' ? 'inline-block' : 'none';
-                filter.value = nsbTableIPTypeFilter;
-            }
-            const qualifiedFilter = document.getElementById('nsbTableQualifiedFilter');
-            if (qualifiedFilter) {
-                qualifiedFilter.style.display = currentMode === 'nsb' ? 'inline-block' : 'none';
-                qualifiedFilter.value = nsbTableQualifiedFilter;
-            }
-            updateNSBSpeedButtons();
-        }
-
-        function getNSBSpeedTargetRows() {
-            if (currentMode !== 'nsb') return [];
-            return getNSBResultObjects()
-                .filter((row) => String(row.ip || '').trim() && String(row.port || '').trim());
-        }
-
-        function updateNSBSpeedButtons() {
-            const btn = document.getElementById('btnNSBBatchSpeed');
-            const continueBtn = document.getElementById('btnNSBContinueSpeed');
-            const visible = currentMode === 'nsb';
-            const rows = visible ? getNSBSpeedTargetRows() : [];
-            const disabled = !visible || isTaskRunning || nsbBatchSpeedRunning || rows.length === 0;
-            if (btn) {
-                btn.style.display = visible ? 'inline-flex' : 'none';
-                btn.disabled = disabled;
-                btn.textContent = nsbBatchSpeedRunning ? '测速中...' : '🚀 一键测速';
-            }
-            if (continueBtn) {
-                continueBtn.style.display = visible ? 'inline-flex' : 'none';
-                continueBtn.disabled = disabled || !nsbContinueSpeedUnlocked || !rows.some((row) => getSpeedStatus(row.speed, isNSBSpeedQualified(row.speed)) === 'untested');
-                continueBtn.textContent = nsbBatchSpeedRunning ? '测速中...' : '⏭️ 继续测速';
-            }
-            const sortBtn = document.getElementById('btnNSBSort');
-            if (sortBtn) sortBtn.style.display = visible ? 'inline-flex' : 'none';
-        }
-
-        function syncNSBSpeedConfigState() {
-            const speedMin = parseFloat(document.getElementById('nsbSpeedMin')?.value) || 0.1;
-            const speedLimit = parseInt(document.getElementById('nsbSpeedLimit')?.value, 10) || 0;
-            const speedTest = parseInt(document.getElementById('nsbSpeedTest')?.value, 10) || 0;
-            const tlsMode = String(document.getElementById('nsbTls')?.value || 'on').toLowerCase();
-            nsbSpeedMinValue = speedMin;
-            return {
-                speedMin,
-                speedLimit,
-                speedTest,
-                speedURL: resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset'),
-                enableTLS: tlsMode !== 'off',
-            };
-        }
-
-        function setNSBCompactView(enabled) {
-            if (isTaskRunning) {
-                const compactToggle = document.getElementById('nsbCompactView');
-                if (compactToggle) compactToggle.value = nsbCompactView ? 'compact' : 'full';
-                showNoticeCard('非标精简表格开关只能在任务开始前选择，本次任务启动后输出内容已固定。');
-                return;
-            }
-            nsbCompactView = !!enabled;
-            if (currentMode !== 'nsb') return;
-            if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-                return;
-            }
-            renderScanHeaders('nsb');
-            renderAllNSBLiveRows();
-        }
-
-        function setNSBTableIPTypeFilter(value) {
-            const normalized = normalizeIPTypeFilter(value);
-            nsbTableIPTypeFilter = normalized;
-            const filter = document.getElementById('nsbTableIPTypeFilter');
-            if (filter && filter.value !== nsbTableIPTypeFilter) filter.value = nsbTableIPTypeFilter;
-            if (currentMode === 'official') {
-                return;
-            }
-            if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-                return;
-            }
-            renderAllNSBLiveRows();
-        }
-
-        function setNSBTableQualifiedFilter(value) {
-            const normalized = normalizeQualifiedFilter(value);
-            nsbTableQualifiedFilter = normalized;
-            const filter = document.getElementById('nsbTableQualifiedFilter');
-            if (filter && filter.value !== nsbTableQualifiedFilter) filter.value = nsbTableQualifiedFilter;
-            if (currentMode === 'official') {
-                return;
-            }
-            if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-                return;
-            }
-            renderAllNSBLiveRows();
-        }
-
         function renderScanRowOfficial(row) {
             const tbody = document.querySelector('#scanTable tbody');
             const latencyVal = parseFloat(row.LatencyStr);
@@ -3873,271 +3216,17 @@
             }
             return `<span class="ip-cell"><span class="copy-ip" onclick="copyToClipboard('${jsIP}', event)">${safeIP}</span>${domainIcon}<a class="ip-detail-link" href="https://ippure.com/?ip=${hrefIP}" target="_blank" rel="noopener noreferrer" title="前往 ippure.com 查看 IP 详情" onclick="event.stopPropagation()">ⓘ</a></span>`;
         }
-
-        function renderNSBRowFromCSV(headers, r, originalInput) {
-            let ipIndex = headers.indexOf('IP地址');
-            let portIndex = headers.indexOf('端口号');
-            let latencyIndex = headers.indexOf('网络延迟');
-            let lossIndex = headers.indexOf('丢包率');
-            let speedIndex = headers.indexOf('下载速度');
-            const speedQualified = speedIndex < 0 || isNSBSpeedQualified(r[speedIndex]);
-            const speedStatus = speedIndex < 0 ? 'qualified' : getSpeedStatus(r[speedIndex], speedQualified);
-            return headers.map((_, idx) => {
-                const val = escapeHTML(r[idx] ?? '');
-                const rawVal = String(r[idx] ?? '');
-                if (idx === ipIndex && ipIndex !== -1) {
-                    return `<td>${renderIPCell(rawVal, originalInput)}</td>`;
-                } else if (idx === portIndex && portIndex !== -1) {
-                    return `<td><span class="copy-ip" onclick="copyToClipboard('${escapeJSString(rawVal)}', event)">${val}</span></td>`;
-                } else if (idx === latencyIndex && latencyIndex !== -1) {
-                    const latencyVal = parseFloat(rawVal);
-                    const lcFactor = getLatencyColorFactor();
-                    const color = getLatencyColor(latencyVal, lcFactor);
-                    return `<td style="color:${color}; font-weight:600;">${val}</td>`;
-                } else if (idx === lossIndex && lossIndex !== -1) {
-                    const lossVal = parseFloat(rawVal);
-                    const color = Number.isFinite(lossVal) && lossVal > 0 ? '#ef4444' : '#10b981';
-                    return `<td style="color:${color}; font-weight:600;">${val}</td>`;
-                } else if (idx === speedIndex && speedIndex !== -1) {
-                    const speedVal = parseFloat(rawVal);
-                    const color = speedStatus === 'untested' ? 'inherit' : (speedVal > SPEED_GREEN ? '#10b981' : (speedVal > 0 ? '#f59e0b' : '#ef4444'));
-                    const cls = speedQualified ? '' : ' class="speed-unqualified"';
-                    return `<td${cls} style="color:${color}; font-weight:600;"><span class="speed-cell-content"><span>${val}</span>${renderSpeedStatusTag(speedStatus)}</span></td>`;
-                } else {
-                    return `<td>${val}</td>`;
-                }
-            }).join('');
-        }
-
-        function nsbRowStatusFromCSV(headers, row) {
-            const speedIndex = (headers || []).map(normalizeNSBHeader).indexOf('下载速度');
-            if (speedIndex < 0) return 'qualified';
-            return getSpeedStatus(row[speedIndex], isNSBSpeedQualified(row[speedIndex]));
-        }
-
         function renderScanRowsCSV(headers, rows) {
             const tbody = document.querySelector('#scanTable tbody');
             tbody.innerHTML = '';
-            renderScanHeaders('nsb');
-            const visibleHeaders = filterNSBHeaders(headers);
-            const originalInputIndex = headers.map(normalizeNSBHeader).indexOf('原始输入');
 
-            const filteredRows = filterNSBRowsByQualified(filterNSBRowsByIPType(headers, rows, nsbTableIPTypeFilter), headers, nsbTableQualifiedFilter);
             filteredRows.forEach((r) => {
-                const visibleRow = filterNSBRow(headers, r);
                 const originalInput = originalInputIndex !== -1 ? r[originalInputIndex] : undefined;
-                const tds = renderNSBRowFromCSV(visibleHeaders, visibleRow, originalInput);
-                const rowStatus = nsbRowStatusFromCSV(headers, r);
                 tbody.insertAdjacentHTML('beforeend', `<tr class="${rowStatus === 'qualified' ? 'row-qualified' : (rowStatus === 'unqualified' ? 'row-unqualified' : '')}">${tds}</tr>`);
             });
 
             updateBadge('scanCount', filteredRows.length);
-            updateNSBSpeedButtons();
-        }
 
-        const NSB_LIVE_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织', '访问协议', 'TLS版本', 'SNI', 'HTTP版本', 'WARP', 'Gateway', 'RBI', '密钥交换', '时间戳'];
-        const NSB_COMPACT_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织'];
-
-        function normalizeNSBHeader(header) {
-            if (header === 'IP') return 'IP地址';
-            if (header === '端口') return '端口号';
-            if (header === 'OriginalInput') return '原始输入';
-            return header;
-        }
-
-        function filterNSBHeaders(headers) {
-            const normalized = (headers || []).map(normalizeNSBHeader);
-            if (!nsbCompactView) return normalized;
-            return NSB_COMPACT_HEADERS.map(normalizeNSBHeader).filter((h) => normalized.includes(h));
-        }
-
-        function filterNSBRow(headers, row) {
-            const normalized = (headers || []).map(normalizeNSBHeader);
-            if (!nsbCompactView) return row;
-            const compactNorm = NSB_COMPACT_HEADERS.map(normalizeNSBHeader);
-            return compactNorm.filter((h) => normalized.includes(h)).map((h) => {
-                const idx = normalized.indexOf(h);
-                return idx !== -1 ? row[idx] : '';
-            });
-        }
-
-        function getVisibleNSBHeaders() {
-            if (nsbHeaders.length) return filterNSBHeaders(nsbHeaders);
-            const base = nsbCompactView ? NSB_COMPACT_HEADERS : NSB_LIVE_HEADERS;
-            return base.map(normalizeNSBHeader);
-        }
-
-        function nsbRowToArray(row) {
-            return [
-                row.ip || '', row.port || '', row.tls ?? '-', row.lossRate || '0%', getScanModeLabel(), row.latency || '-', row.speed || '-',
-                row.outboundIP || '-', row.ipType || '-', row.originalInput || '', row.dc || '-', row.loc || '-',
-                row.region || '-', row.city || '-', row.asnNumber || '-', row.asnOrg || '-',
-                row.visitScheme || '-', row.tlsVersion || '-', row.sni || '-', row.httpVersion || '-',
-                row.warp || '-', row.gateway || '-', row.rbi || '-',
-                row.kex || '-', row.timestamp || '-'
-            ];
-        }
-
-        function renderAllNSBLiveRows() {
-            const tbody = document.querySelector('#scanTable tbody');
-            tbody.innerHTML = '';
-            nsbLiveRowElements = {};
-            const rows = nsbLiveRows.filter((row) => matchesIPTypeFilter(row.ipType, nsbTableIPTypeFilter) && matchesQualifiedFilter(row, nsbTableQualifiedFilter));
-            rows.forEach((row) => {
-                appendNSBLiveRow(row);
-            });
-            updateBadge('scanCount', rows.length);
-            updateNSBSpeedButtons();
-        }
-
-        function renderNSBLiveRowHTML(row) {
-            const visibleHeaders = getVisibleNSBHeaders();
-            const visibleRow = filterNSBRow(NSB_LIVE_HEADERS, nsbRowToArray(row));
-            const tds = renderNSBRowFromCSV(visibleHeaders, visibleRow, row.originalInput);
-            const rowStatus = getSpeedStatus(row.speed, isNSBSpeedQualified(row.speed));
-            return `<tr class="${rowStatus === 'qualified' ? 'row-qualified' : (rowStatus === 'unqualified' ? 'row-unqualified' : '')}">${tds}</tr>`;
-        }
-
-        function appendNSBLiveRow(row) {
-            const key = (row.ip || '') + ':' + (row.port || '');
-            const tbody = document.querySelector('#scanTable tbody');
-            tbody.insertAdjacentHTML('beforeend', renderNSBLiveRowHTML(row));
-            nsbLiveRowElements[key] = tbody.lastElementChild;
-        }
-
-        function updateNSBLiveRowElement(row) {
-            const key = (row.ip || '') + ':' + (row.port || '');
-            const existing = nsbLiveRowElements[key];
-            const visible = matchesIPTypeFilter(row.ipType, nsbTableIPTypeFilter) && matchesQualifiedFilter(row, nsbTableQualifiedFilter);
-            if (!visible) {
-                if (existing) {
-                    existing.remove();
-                    delete nsbLiveRowElements[key];
-                }
-                return;
-            }
-            if (!existing) {
-                appendNSBLiveRow(row);
-                return;
-            }
-            existing.insertAdjacentHTML('afterend', renderNSBLiveRowHTML(row));
-            const replacement = existing.nextElementSibling;
-            existing.remove();
-            nsbLiveRowElements[key] = replacement;
-        }
-
-        function updateNSBLiveBadgeFromData() {
-            updateBadge('scanCount', nsbLiveRows.filter((item) => matchesIPTypeFilter(item.ipType, nsbTableIPTypeFilter) && matchesQualifiedFilter(item, nsbTableQualifiedFilter)).length);
-        }
-
-        function addNSBLiveResult(row, render = true) {
-            const key = (row.ip || '') + ':' + (row.port || '');
-            const existingIdx = nsbLiveIndex[key];
-
-            if (existingIdx !== undefined) {
-                Object.assign(nsbLiveRows[existingIdx], row);
-                if (!render) {
-                    updateNSBLiveBadgeFromData();
-                    updateNSBSpeedButtons();
-                    return;
-                }
-                updateNSBLiveRowElement(nsbLiveRows[existingIdx]);
-                updateBadge('scanCount', document.querySelector('#scanTable tbody').children.length);
-                updateNSBSpeedButtons();
-                return;
-            }
-
-            nsbLiveIndex[key] = nsbLiveRows.length;
-            nsbLiveRows.push(row);
-            if (!render) {
-                updateNSBLiveBadgeFromData();
-                updateNSBSpeedButtons();
-                return;
-            }
-            if (!matchesIPTypeFilter(row.ipType, nsbTableIPTypeFilter) || !matchesQualifiedFilter(row, nsbTableQualifiedFilter)) {
-                updateBadge('scanCount', document.querySelector('#scanTable tbody').children.length);
-                updateNSBSpeedButtons();
-                return;
-            }
-            appendNSBLiveRow(row);
-            updateBadge('scanCount', document.querySelector('#scanTable tbody').children.length);
-            updateNSBSpeedButtons();
-        }
-
-        function updateNSBDisplayedResult(row) {
-            if (!row) return;
-            const ip = String(row.ip || row.IP || '').trim();
-            const port = String(row.port || row.Port || '').trim();
-            if (!ip || !port) return;
-            const headerSource = nsbHeaders.length ? nsbHeaders : NSB_LIVE_HEADERS;
-            const normalizedHeaders = headerSource.map(normalizeNSBHeader);
-            const key = `${ip}:${port}`;
-            const patch = {
-                IP地址: ip,
-                端口号: port,
-                TLS: row.tls ?? row.TLS ?? '-',
-                丢包率: row.lossRate || row.LossRate || '0%',
-                网络延迟: row.latency || row.Latency || '-',
-                下载速度: row.speed || row.Speed || '-',
-                出站IP: row.outboundIP || row.OutboundIP || '-',
-                IP类型: row.ipType || row.IPType || '-',
-                原始输入: row.originalInput || row.OriginalInput || '-',
-                数据中心: row.dc || row.DC || '-',
-                源IP位置: row.loc || row.Loc || '-',
-                地区: row.region || row.Region || '-',
-                城市: row.city || row.City || '-',
-                ASN号码: row.asnNumber || row.ASNNumber || '-',
-                ASN组织: row.asnOrg || row.ASNOrg || '-',
-                访问协议: row.visitScheme || row.VisitScheme || '-',
-                TLS版本: row.tlsVersion || row.TLSVersion || '-',
-                SNI: row.sni || row.SNI || '-',
-                HTTP版本: row.httpVersion || row.HTTPVersion || '-',
-                WARP: row.warp || row.Warp || '-',
-                Gateway: row.gateway || row.Gateway || '-',
-                RBI: row.rbi || row.RBI || '-',
-                密钥交换: row.kex || row.Kex || '-',
-                时间戳: row.timestamp || row.Timestamp || '-',
-            };
-            if (nsbRows.length) {
-                const idx = nsbRows.findIndex((r) => String(r[normalizedHeaders.indexOf('IP地址')] ?? '').trim() === ip && String(r[normalizedHeaders.indexOf('端口号')] ?? '').trim() === port);
-                if (idx >= 0) {
-                    const updated = nsbRows[idx].slice();
-                    normalizedHeaders.forEach((header, hIdx) => {
-                        if (patch[header] !== undefined && hIdx < updated.length) updated[hIdx] = patch[header];
-                    });
-                    nsbRows[idx] = updated;
-                    renderScanRowsCSV(nsbHeaders, nsbRows);
-                }
-                return;
-            }
-            const liveIdx = nsbLiveIndex[key];
-            if (liveIdx === undefined) return;
-            Object.assign(nsbLiveRows[liveIdx], {
-                ip,
-                port,
-                tls: patch.TLS,
-                lossRate: patch['丢包率'],
-                latency: patch['网络延迟'],
-                speed: patch['下载速度'],
-                outboundIP: patch['出站IP'],
-                ipType: patch['IP类型'],
-                dc: patch['数据中心'],
-                loc: patch['源IP位置'],
-                region: patch['地区'],
-                city: patch['城市'],
-                asnNumber: patch['ASN号码'],
-                asnOrg: patch['ASN组织'],
-                visitScheme: patch['访问协议'],
-                tlsVersion: patch['TLS版本'],
-                sni: patch.SNI,
-                httpVersion: patch['HTTP版本'],
-                warp: patch.WARP,
-                gateway: patch.Gateway,
-                rbi: patch.RBI,
-                kex: patch['密钥交换'],
-                timestamp: patch['时间戳'],
-            });
-            updateNSBLiveRowElement(nsbLiveRows[liveIdx]);
         }
 
         function normalizeIPTypeFilter(value) {
@@ -4152,47 +3241,17 @@
             if (filter === 'all') return true;
             return String(value || '').trim().toLowerCase() === filter;
         }
-
-        function filterNSBRowsByIPType(headers, rows, filter) {
-            filter = normalizeIPTypeFilter(filter);
-            if (filter === 'all') return rows || [];
-            const normalized = (headers || []).map(normalizeNSBHeader);
-            const ipTypeIndex = normalized.indexOf('IP类型');
-            if (ipTypeIndex < 0) return [];
-            return (rows || []).filter((row) => matchesIPTypeFilter(row[ipTypeIndex], filter));
-        }
-
         function normalizeQualifiedFilter(value) {
             const normalized = String(value || 'all').trim().toLowerCase();
             if (normalized === 'qualified' || normalized === '合格') return 'qualified';
             if (normalized === 'unqualified' || normalized === '不合格') return 'unqualified';
             return 'all';
         }
-
-        function isNSBSpeedQualified(value) {
-            const speed = parseSpeedMB(value);
-            return speed >= 0 && speed >= nsbSpeedMinValue;
-        }
-
         function matchesQualifiedFilter(row, filter) {
             filter = normalizeQualifiedFilter(filter);
             if (filter === 'all') return true;
-            const status = getSpeedStatus(row.speed, isNSBSpeedQualified(row.speed));
             return status === filter;
         }
-
-        function filterNSBRowsByQualified(rows, headers, filter) {
-            filter = normalizeQualifiedFilter(filter);
-            if (filter === 'all') return rows || [];
-            const normalized = (headers || []).map(normalizeNSBHeader);
-            const speedIndex = normalized.indexOf('下载速度');
-            if (speedIndex < 0) return filter === 'qualified' ? (rows || []) : [];
-            return (rows || []).filter((row) => {
-                const status = getSpeedStatus(row[speedIndex], isNSBSpeedQualified(row[speedIndex]));
-                return status === filter;
-            });
-        }
-
         function addScanResult(row, render = true) {
             scanResultsCount++;
             scanData.push(row);
@@ -4376,7 +3435,6 @@
                 const port = parseInt(document.getElementById('officialTestPort')?.value) || 443;
                 return [443, 2053, 2083, 2087, 2096, 8443].includes(port) ? 4.0 : 1.3;
             }
-            const tls = String(document.getElementById('nsbTls')?.value || 'on').toLowerCase();
             return tls !== 'off' ? 4.0 : 1.3;
         }
 
@@ -4480,57 +3538,6 @@
             }
             return true;
         }
-
-        function startNSBBatchSpeed(continued = false) {
-            if (requireProxyWarning(() => startNSBBatchSpeed(continued))) return false;
-            if (nsbBatchSpeedRunning) return false;
-            if (currentMode !== 'nsb') {
-                showNoticeCard('请切换到非标模式后再测速');
-                return false;
-            }
-            const enableSpeedTest = document.getElementById('nsbEnableSpeed');
-            if (enableSpeedTest && String(enableSpeedTest.value || 'off').toLowerCase() !== 'on') {
-                enableSpeedTest.value = 'on';
-                updateNSBSpeedControls();
-            }
-            const rows = getNSBSpeedTargetRows();
-            if (!rows.length) {
-                showNoticeCard('当前没有可测速的非标结果');
-                return false;
-            }
-            const cfg = syncNSBSpeedConfigState();
-            if (cfg.speedTest <= 0) {
-                showNoticeCard('测速线程必须大于 0');
-                return false;
-            }
-            if (cfg.speedLimit <= 0) {
-                showNoticeCard('测速结果上限必须大于 0');
-                return false;
-            }
-            nsbBatchSpeedRunning = true;
-            isTaskRunning = true;
-            isStoppingTask = false;
-            runningTaskLabel = continued ? '非标继续测速' : '非标一键测速';
-            runningTaskMode = 'nsb';
-            runningTaskTab = 'scan';
-            if (!continued) {
-                rows.forEach((row) => { row.speed = ''; });
-            }
-            setNSBTableQualifiedFilter('all');
-            setStartLoading(getRunningButtonText());
-            resetProgress();
-            progressBox.style.display = 'block';
-            updateNSBSpeedButtons();
-            if (!wsSend({ type: 'start_nsb_speed_batch', data: { results: rows, speedTest: cfg.speedTest, speedURL: cfg.speedURL, enableTLS: cfg.enableTLS, speedMin: cfg.speedMin, speedLimit: cfg.speedLimit, skipTested: continued, compact: nsbCompactView } })) {
-                nsbBatchSpeedRunning = false;
-                finishRunningTask('✨ 开始扫描与测试');
-                updateNSBSpeedButtons();
-                showNoticeCard('连接未就绪，请等待重连后再试');
-                return false;
-            }
-            return true;
-        }
-
         function resetCurrentSpeedButton() {
             if (!currentSpeedTestingIP) return;
             const ip = currentSpeedTestingIP;
@@ -4600,18 +3607,13 @@
         }
 
         function startTask() {
-            if (isTaskRunning || officialBatchSpeedRunning || nsbBatchSpeedRunning) {
+if (isTaskRunning || officialBatchSpeedRunning) {
                 showConfirmCard(getStopConfirmText(), confirmStopCurrentTask, '终止当前任务');
                 return;
             }
 
             if (requireProxyWarning(() => startTask())) return;
-
-            if (currentMode === 'official') {
-                startOfficialTask();
-            } else {
-                startNSBTask();
-            }
+startOfficialTask();
         }
 
         function confirmStopCurrentTask() {
@@ -4703,106 +3705,6 @@
             selectDC(selected.DataCenter);
             return true;
         }
-
-        function startNSBTask() {
-            syncNSBInputMode();
-            const sourceURL = nsbSourceUrlInput ? nsbSourceUrlInput.value.trim() : '';
-            const hasFile = !!uploadedFileContent.trim();
-            const hasURL = !!sourceURL;
-            if (hasFile === hasURL) {
-                showNoticeCard('请选择本地文件或填写网络 URL（二选一）');
-                return;
-            }
-
-            const maxThreads = parseInt(document.getElementById('nsbThreads').value) || 100;
-            const fallbackPort = parseInt(document.getElementById('nsbFallbackPort').value) || 0;
-            const speedEnabled = String(document.getElementById('nsbEnableSpeed').value || 'off').toLowerCase() === 'on';
-            const speedTestInput = parseInt(document.getElementById('nsbSpeedTest').value) || 0;
-            const speedURL = resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset');
-            const outFile = document.getElementById('nsbOutFile').value.trim() || 'ip.csv';
-            const speedTest = speedEnabled ? speedTestInput : 0;
-            nsbSpeedEnabledForResults = speedTest > 0 && (parseInt(document.getElementById('nsbSpeedLimit').value) || 0) > 0;
-            nsbContinueSpeedUnlocked = false;
-            const tlsMode = String(document.getElementById('nsbTls').value || 'on').toLowerCase();
-            const enableTLS = tlsMode !== 'off';
-            const delay = parseInt(document.getElementById('nsbDelay').value) || 0;
-            const resultLimit = parseInt(document.getElementById('nsbResultLimit').value) || 0;
-            const targetDC = document.getElementById('nsbTargetDC').value.trim();
-            const speedMin = parseFloat(document.getElementById('nsbSpeedMin').value) || 0;
-            const speedLimit = parseInt(document.getElementById('nsbSpeedLimit').value) || 0;
-            nsbSpeedMinValue = speedMin;
-            nsbCompactView = document.getElementById('nsbCompactView')?.value !== 'full';
-            const compact = nsbCompactView;
-            nsbTableQualifiedFilter = 'all';
-            setNSBTableQualifiedFilter('all');
-
-            if (isNaN(speedTestInput) || speedTestInput < 0) {
-                showNoticeCard('测速线程必须为非负整数');
-                return;
-            }
-            if (resultLimit <= 0) {
-                showNoticeCard('延迟结果上限必须填写非 0 正整数');
-                return;
-            }
-            if (fallbackPort <= 0 || fallbackPort > 65535) {
-                showNoticeCard('备用端口必须为 1-65535');
-                return;
-            }
-
-            isTaskRunning = true;
-            isStoppingTask = false;
-            runningTaskLabel = '非标优选';
-            runningTaskMode = 'nsb';
-            runningTaskTab = 'scan';
-            
-            backgroundTaskActive = false;
-            backgroundTaskFollowing = false;
-            const card = document.getElementById('backgroundStatusCard');
-            if (card) card.classList.remove('active');
-            
-            updateNSBCompactToggle();
-            setStartLoading(getRunningButtonText(), 'linear-gradient(135deg, var(--error-color), #dc2626)', '0 4px 12px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255,255,255,0.2)');
-            renderScanHeaders('nsb');
-            resetProgress();
-            progressBox.style.display = 'block';
-            document.querySelector('#scanTable tbody').innerHTML = '';
-            document.getElementById('dcSection').style.display = 'none';
-            document.querySelector('#testTable tbody').innerHTML = '';
-
-            nsbHeaders = [];
-            nsbRows = [];
-            nsbLiveRows = [];
-            nsbLiveIndex = {};
-            nsbLiveRowElements = {};
-            updateBadge('scanCount', 0);
-            autoUploadKeys = new Set();
-
-            if (!wsSend({
-                type: 'start_nsb_task',
-                data: {
-                    fileName: uploadedFileName,
-                    fileContent: hasFile ? uploadedFileContent : '',
-                    sourceURL: hasURL ? sourceURL : '',
-                    outFile,
-                    maxThreads,
-                    fallbackPort,
-                    speedTest,
-                    speedURL,
-                    enableTLS,
-                    delay,
-                    resultLimit,
-                    dc: targetDC,
-                    speedMin,
-                    speedLimit,
-                    compact,
-                    scanMode: getScanMode(),
-                }
-            })) {
-                finishRunningTask('✨ 开始扫描与测试');
-                showNoticeCard('连接未就绪，请等待重连后再试');
-            }
-        }
-
         function escapeHTML(v) {
             return String(v)
                 .replace(/&/g, '&amp;')
@@ -4842,18 +3744,18 @@
         ];
 
         function openResultModal(mode) {
-            resultModalMode = currentMode === 'nsb' ? 'nsb' : mode;
+resultModalMode = mode;
             const rows = getCurrentResultRows(resultModalMode);
             if (!rows.length) return showNoticeCard('暂无可操作结果');
             document.getElementById('resultModalTitle').textContent = '结果操作';
             const formatSelect = document.getElementById('resultFormat');
             if (formatSelect && !formatSelect.value) formatSelect.value = 'txt';
             const nameInput = document.getElementById('resultFileName');
-            if (nameInput && !nameInput.value.trim()) nameInput.value = resultModalMode === 'nsb' ? 'Cloudflare_NSB_Results' : (resultModalMode === 'test' ? 'Cloudflare_SpeedTest_Results' : 'Cloudflare_Scan_Results');
+if (nameInput && !nameInput.value.trim()) nameInput.value = (resultModalMode === 'test' ? 'Cloudflare_SpeedTest_Results' : 'Cloudflare_Scan_Results');
             const filterField = document.getElementById('resultIPTypeFilterField');
-            if (filterField) filterField.style.display = resultModalMode === 'nsb' ? '' : 'none';
+
             const filterSelect = document.getElementById('resultIPTypeFilter');
-            if (filterSelect && resultModalMode !== 'nsb') filterSelect.value = 'all';
+
             const qualifiedField = document.getElementById('resultQualifiedFilterField');
             if (qualifiedField) qualifiedField.style.display = '';
             const qualifiedSelect = document.getElementById('resultQualifiedFilter');
@@ -4869,10 +3771,9 @@
         }
 
         function openSortModal(mode) {
-            sortModalMode = mode === 'nsb' ? 'nsb' : 'official';
-            const count = sortModalMode === 'nsb' ? (nsbRows.length || nsbLiveRows.length) : testData.length;
+sortModalMode = 'official';
             if (!count) return showNoticeCard('暂无可排序结果');
-            document.getElementById('sortModalTitle').textContent = sortModalMode === 'nsb' ? '非标测速一键排序' : '官方详细测试一键排序';
+document.getElementById('sortModalTitle').textContent = '官方详细测试一键排序';
             document.getElementById('sortModalMask').classList.add('active');
         }
 
@@ -4942,7 +3843,7 @@
         function applySortModal() {
             const priorities = getSortPriorities();
             if (!priorities.length) return showNoticeCard('请选择排序优先级');
-            if (sortModalMode === 'nsb') applyNSBSort(priorities);
+
             else applyOfficialTestSort(priorities);
             closeSortModal();
         }
@@ -4962,40 +3863,12 @@
                 speed: item.Speed || '未测速',
             };
         }
-
-        function applyNSBSort(priorities) {
-            if (nsbRows.length) {
-                const normalizedHeaders = nsbHeaders.map(normalizeNSBHeader);
-                const lossIndex = normalizedHeaders.indexOf('丢包率');
-                const latencyIndex = normalizedHeaders.indexOf('网络延迟');
-                const speedIndex = normalizedHeaders.indexOf('下载速度');
-                nsbRows = nsbRows.map((item, index) => ({ item, index, row: { lossRate: item[lossIndex], latency: item[latencyIndex], speed: item[speedIndex] } }))
-                    .sort((a, b) => compareSortableRows(a, b, priorities))
-                    .map((entry) => entry.item);
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-            } else {
-                nsbLiveRows = nsbLiveRows.map((item, index) => ({ item, index, row: item }))
-                    .sort((a, b) => compareSortableRows(a, b, priorities))
-                    .map((entry) => entry.item);
-                rebuildNSBLiveIndex();
-                if (currentMode === 'nsb') renderAllNSBLiveRows();
-            }
-            log('非标测速结果已按自定义优先级排序');
-        }
-
-        function rebuildNSBLiveIndex() {
-            nsbLiveIndex = {};
-            nsbLiveRows.forEach((row, index) => {
-                nsbLiveIndex[(row.ip || '') + ':' + (row.port || '')] = index;
-            });
-        }
-
         function getDefaultResultFieldOrder(format) {
             return getDefaultResultFieldOrderFor(resultModalMode, format);
         }
 
         function getDefaultResultFieldOrderFor(mode, format) {
-            if (format === 'txt') return mode === 'nsb' ? ['ipport', 'dc', 'loc'] : ['ipport', 'dc', 'dcCountry'];
+if (format === 'txt') return ['ipport', 'dc', 'dcCountry'];
             if (format === 'csv') return getCompactResultFieldOrderFor(mode);
             const rows = getCurrentResultRows(mode);
             if (!rows.length) return ['ipport'];
@@ -5005,7 +3878,7 @@
         function getAllResultFieldOrder() {
             const rows = getCurrentResultRows(resultModalMode);
             if (!rows.length) return ['ipport'];
-            if (resultModalMode !== 'nsb') {
+
                 return getOfficialResultFieldOrder().filter((key) => rows.some((r) => String(r[key] ?? '').trim() !== ''));
             }
             return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
@@ -5016,7 +3889,7 @@
         }
 
         function getCompactResultFieldOrderFor(mode) {
-            if (mode === 'nsb') return ['ip', 'port', 'tls', 'lossRate', 'latency', 'speed', 'outboundIP', 'ipType', 'originalInput', 'dc', 'loc', 'region', 'city', 'asnNumber', 'asnOrg'];
+
             return getOfficialResultFieldOrder(mode);
         }
 
@@ -5072,8 +3945,7 @@
             const accounts = getGitHubAccounts();
             const accountOptions = '<option value="">新账户/不使用保存配置</option>' + accounts.map((a, i) => `<option value="${i}">${escapeHTML(a.name || a.repo || 'GitHub账户')} ${a.tokenHash ? '(' + escapeHTML(a.tokenHash.slice(0, 10)) + ')' : ''}</option>`).join('');
             if (select) select.innerHTML = accountOptions;
-            const autoSelect = document.getElementById('nsbAutoUploadAccount');
-            if (autoSelect) autoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option><option value="${i}:csv">${escapeHTML(a.name || a.repo || 'GitHub账户')} - CSV</option>`).join('');
+
             const officialAutoSelect = document.getElementById('officialAutoUploadAccount');
             if (officialAutoSelect) officialAutoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option><option value="${i}:csv">${escapeHTML(a.name || a.repo || 'GitHub账户')} - CSV</option>`).join('');
         }
@@ -5457,12 +4329,12 @@
         }
 
         function openCopyModal(mode) {
-            copyModalMode = currentMode === 'nsb' ? 'nsb' : mode;
-            document.getElementById('copyModalTitle').textContent = copyModalMode === 'nsb' ? '非标结果一键复制' : (copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制');
+copyModalMode = mode;
+            document.getElementById('copyModalTitle').textContent = (copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制');
             const filterField = document.getElementById('copyIPTypeFilterField');
-            if (filterField) filterField.style.display = copyModalMode === 'nsb' ? '' : 'none';
+
             const filterSelect = document.getElementById('copyIPTypeFilter');
-            if (filterSelect && copyModalMode !== 'nsb') filterSelect.value = 'all';
+
             const qualifiedField = document.getElementById('copyQualifiedFilterField');
             if (qualifiedField) qualifiedField.style.display = '';
             const qualifiedSelect = document.getElementById('copyQualifiedFilter');
@@ -5481,9 +4353,7 @@
         function getCopyRowsBeforeRange() {
             const filter = document.getElementById('copyIPTypeFilter')?.value || 'all';
             const qualified = document.getElementById('copyQualifiedFilter')?.value || 'all';
-            if (currentMode === 'nsb') {
-                return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
-            }
+
             const rows = getCurrentResultRows(copyModalMode);
             return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
         }
@@ -5616,7 +4486,7 @@
         }
 
         function getCurrentResultRows(mode) {
-            if (currentMode === 'nsb') return getNSBResultObjects();
+
             if (mode === 'test') return testData.map(testResultToObject);
             return scanData.map(scanResultToObject).slice().sort(compareOfficialResultObjects);
         }
@@ -5625,16 +4495,12 @@
             const rows = getCurrentResultRows(mode);
             const filter = document.getElementById('resultIPTypeFilter')?.value || 'all';
             const qualified = document.getElementById('resultQualifiedFilter')?.value || 'all';
-            if (currentMode === 'nsb') {
-                return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
-            }
+
             return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
         }
 
         function getDisplayedResultRows(mode) {
-            if (currentMode === 'nsb') {
-                return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, nsbTableIPTypeFilter) && matchesQualifiedFilter(row, nsbTableQualifiedFilter));
-            }
+
             if (mode === 'test') {
                 return getFilteredOfficialTestData().map(testResultToObject);
             }
@@ -5660,26 +4526,6 @@
                 speed: r.Speed || '未测速',
             };
         }
-
-        function getNSBResultObjects() {
-            const sourceHeaders = nsbHeaders.length ? nsbHeaders : NSB_LIVE_HEADERS;
-            const sourceRows = nsbRows.length ? nsbRows : nsbLiveRows.map(nsbRowToArray);
-            const normalizedHeaders = sourceHeaders.map(normalizeNSBHeader);
-            const ipIndex = normalizedHeaders.indexOf('IP地址');
-            const portIndex = normalizedHeaders.indexOf('端口号');
-            return sourceRows.map((row) => {
-                const obj = {};
-                normalizedHeaders.forEach((header, idx) => {
-                    const field = RESULT_FIELDS.find((f) => f.label === header);
-                    if (field) obj[field.key] = row[idx] ?? '';
-                });
-                obj.ip = obj.ip || (ipIndex >= 0 ? row[ipIndex] : '') || '';
-                obj.port = obj.port || (portIndex >= 0 ? row[portIndex] : '') || '';
-                obj.ipport = `${obj.ip}:${obj.port}`;
-                return obj;
-            });
-        }
-
         function buildSelectedResultContent(format) {
             const rows = getSelectedResultRows();
             if (!rows.length) throw new Error('暂无可操作结果');
@@ -5898,12 +4744,6 @@
             sendGitHubUpload(payload);
             log('已提交 GitHub 上传请求');
         }
-
-        async function autoUploadNSBResults() {
-            const value = document.getElementById('nsbAutoUploadAccount')?.value || '';
-            await autoUploadResults(value, 'nsb', '自动上传已提交');
-        }
-
         async function autoUploadOfficialResults() {
             const value = document.getElementById('officialAutoUploadAccount')?.value || '';
             await autoUploadResults(value, 'test', '官方自动上传已提交');
@@ -5978,7 +4818,7 @@
                     const speedDefault = msg.data.speedTestDefault || msg.data.speedTestURL || AUTO_SPEED_URL_VALUE;
                     defaultSpeedTestUrl = speedDefault || defaultSpeedTestUrl;
                     applySpeedUrlConfig('officialSpeedUrl', 'officialSpeedUrlPreset', speedDefault);
-                    applySpeedUrlConfig('nsbSpeedUrl', 'nsbSpeedUrlPreset', speedDefault);
+
                     renderVersionInfo(msg.data || {});
                     autoLoadConfig();
                     break;
@@ -5998,7 +4838,7 @@
                     break;
                 case 'scan_result':
                     if (isStoppingTask) break;
-                    addScanResult(msg.data, currentMode === 'official' && runningTaskMode !== 'nsb');
+                    addScanResult(msg.data, currentMode === 'official' && true);
                     break;
                 case 'scan_complete_wait_dc':
                     const wasStoppingScan = isStoppingTask;
@@ -6124,89 +4964,6 @@
                     log(msg.data.message || 'edgetunnel 上传失败');
                     break;
 
-                case 'nsb_progress':
-                    if (currentMode === 'nsb') {
-                        const p = msg.data || {};
-                        const percent = parseFloat(p.percent || 0);
-                        const txt = p.text || '处理中';
-                        if (p.phase === 'speed') {
-                            updateQualifiedSpeedProgress(p.current || 0, p.total || 1);
-                        } else {
-                            updateProgress(p.current || 0, p.total || 1, `${txt}`);
-                        }
-                    }
-                    break;
-                case 'nsb_scan_result':
-                    if (nsbBatchSpeedRunning) {
-                        updateNSBDisplayedResult(msg.data || {});
-                    } else {
-                        addNSBLiveResult(msg.data || {}, currentMode === 'nsb');
-                    }
-                    break;
-                case 'nsb_scan_sorted':
-                    nsbLiveRows = [];
-                    nsbLiveIndex = {};
-                    nsbLiveRowElements = {};
-                    (msg.data || []).forEach((row) => addNSBLiveResult(row || {}, false));
-                    if (currentMode === 'nsb') renderAllNSBLiveRows();
-                    break;
-                case 'nsb_speed_complete':
-                    if (isStoppingTask) {
-                        resetStoppedTaskUI('已手动终止');
-                        log('任务已手动终止');
-                        break;
-                    }
-                    nsbBatchSpeedRunning = false;
-                    nsbSpeedEnabledForResults = ((msg.data?.totalQualified ?? msg.data?.qualified) || 0) > 0;
-                    nsbContinueSpeedUnlocked = true;
-                    finishRunningTask('✨ 开始扫描与测试');
-                    updateNSBSpeedButtons();
-                    if (nsbSpeedEnabledForResults) setNSBTableQualifiedFilter('qualified');
-                    updateProgress(msg.data?.qualified || 0, msg.data?.limit || 1, '测速完成');
-                    autoUploadNSBResults();
-                    break;
-
-                case 'nsb_csv_ready':
-                    finishRunningTask('✨ 开始扫描与测试');
-                    nsbStopHandledByComplete = true;
-                    progressBar.style.background = 'var(--warning-color)';
-                    progressBar.style.width = '100%';
-                    progressBar.style.animation = 'none';
-                    progressBar.textContent = '任务已停止，结果已整理，正在回传表格';
-                    log(`任务已停止: ${msg.data?.message || '已整理当前可用结果'}${msg.data?.file ? '，结果文件: ' + msg.data.file : ''}`);
-                    break;
-
-                case 'nsb_csv_complete':
-                    const wasStoppingNSB = isStoppingTask;
-                    finishRunningTask('✨ 开始扫描与测试');
-                    nsbStopHandledByComplete = wasStoppingNSB;
-                    nsbHeaders = msg.data.headers || [];
-                    nsbRows = msg.data.rows || [];
-                    nsbLiveRows = [];
-                    nsbLiveIndex = {};
-                    nsbLiveRowElements = {};
-                    nsbContinueSpeedUnlocked = nsbSpeedEnabledForResults;
-                    if (nsbSpeedEnabledForResults) {
-                        setNSBTableQualifiedFilter((msg.data.qualifiedCount || 0) > 0 ? 'qualified' : 'all');
-                    }
-                    renderScanRowsCSV(nsbHeaders, nsbRows);
-                    const nsbStatus = msg.data.status || 'complete';
-                    const nsbMessage = msg.data.message || '测试完成';
-                    updateProgress(nsbRows.length, Math.max(nsbRows.length, 1), nsbStatus === 'failed' ? '任务失败' : '完成');
-                    progressBar.style.background = nsbStatus === 'failed' ? 'var(--error-color)' : (nsbStatus === 'partial' ? 'var(--warning-color)' : 'linear-gradient(to right, #10b981, #34d399)');
-                    progressBar.style.animation = 'none';
-                    if (nsbStatus === 'failed') {
-                        progressBar.textContent = '任务失败';
-                        log(`任务失败: 测试${nsbMessage}`);
-                    } else if (nsbStatus === 'partial') {
-                        progressBar.textContent = '任务结束';
-                        log(`任务结束: ${nsbMessage}`);
-                    } else {
-                        log(`非标优选完成，已生成: ${msg.data.file}`);
-                    }
-                    autoUploadNSBResults();
-                    break;
-
                 case 'background_task_enabled':
                 case 'background_task_found':
                 case 'background_task_update':
@@ -6229,10 +4986,6 @@
                     break;
 
                 case 'task_stopped':
-                    if (nsbStopHandledByComplete) {
-                        nsbStopHandledByComplete = false;
-                        break;
-                    }
                     resetStoppedTaskUI('已手动终止');
                     log('任务已手动终止');
                     break;
@@ -6250,13 +5003,9 @@
                 } else if (officialBatchSpeedRunning) {
                     officialBatchSpeedRunning = false;
                     finishRunningTask('✨ 开始扫描与测试');
-                } else if (nsbBatchSpeedRunning) {
-                    nsbBatchSpeedRunning = false;
-                    finishRunningTask('✨ 开始扫描与测试');
-                }
                 resetCurrentSpeedButton();
                 updateBatchSpeedButton();
-                updateNSBSpeedButtons();
+
                 log('错误: ' + msg.data);
                 break;
             }
@@ -6269,7 +5018,7 @@
                         officialAutoSpeedPending = false;
                         officialAutoStage = '';
                         officialBatchSpeedRunning = false;
-                        nsbBatchSpeedRunning = false;
+
                         officialTestCompletePending = false;
                         officialSpeedEndedByRateLimit = false;
                         if (currentSpeedTestingIP) {
@@ -6277,7 +5026,7 @@
                         }
                         finishRunningTask('✨ 开始扫描与测试');
                         updateBatchSpeedButton();
-                        updateNSBSpeedButtons();
+
                         finishCompactIPv4();
                         progressBar.style.background = 'var(--error-color)';
                         progressBar.style.width = '100%';
