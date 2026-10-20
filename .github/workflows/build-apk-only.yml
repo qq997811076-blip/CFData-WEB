@@ -11,13 +11,14 @@ on:
   push:
     branches:
       - main
+      - feature/independent-nsb-official-parity
     paths:
       - ".github/workflows/build-apk-only.yml"
-      - "combined_refactor/index.html"
-      - "combined_refactor/protocol.go"
-      - "combined_refactor/server.go"
-      - "combined_refactor/tasks_speed.go"
-      - "combined_refactor/cli.go"
+      - "combined_refactor/**"
+      - "app/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle/**"
 
 permissions:
   contents: read
