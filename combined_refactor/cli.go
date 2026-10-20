@@ -27,6 +27,7 @@ type cliConfig struct {
 	ipType          int
 	threads         int
 	offThreads      int
+	speedTest       int
 
 	port            int
 	delay           int
@@ -237,7 +238,7 @@ var (
 var errCLIConfigCreated = errors.New("CLI 配置文件已生成")
 
 func registerCLIFlags() *cliConfig {
-	cfg := &cliConfig{}
+	cfg := &cliConfig{speedTest: speedTestWorkers}
 	flag.Usage = printCLIUsage
 	flag.BoolVar(&cfg.enabled, "cli", false, "启用命令行模式（默认启动 Web）")
 	flag.StringVar(&cfg.scanMode, "scanmode", "tcping", "扫描方式：tcping（默认，TCP 握手延迟）或 httping（HTTP TTFB，延迟比 tcping 高属正常，不同模式数据不可对比）")
@@ -1664,6 +1665,13 @@ func applyCLICustomFields(rows []cliResultRow, fields []cliCustomField) []cliRes
 		}
 	}
 	return rows
+}
+
+func scanModeLabel(scanMode string) string {
+	if strings.EqualFold(strings.TrimSpace(scanMode), "httping") {
+		return "HTTPing"
+	}
+	return "TCPing"
 }
 
 func officialScanRows(scanResults []ScanResult, scanMode string) []cliResultRow {
