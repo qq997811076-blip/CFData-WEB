@@ -26,27 +26,19 @@ type cliConfig struct {
 	ipType          int
 	threads         int
 	offThreads      int
-	nsbThreads      int
 	port            int
 	delay           int
 	offDelay        int
-	nsbDelay        int
 	resultLimit     int
 	dc              string
 	file            string
 	sourceURL       string
 	offURL          string
-	nsbURL          string
 	outFile         string
-	nsbFallbackPort int
 	speedTest       int
 	speedLimit      int
 	speedMin        float64
 	enableTLS       bool
-	compactNSB      bool
-	nsbDC           string
-	nsbSpeedMin     float64
-	nsbSpeedLimit   int
 	showProgress    bool
 	noColor         bool
 	compactIPv4     bool
@@ -87,34 +79,21 @@ type cliFileConfig struct {
 	ScanMode        string  `json:"scanmode"`
 	IPType          int     `json:"offiptype"`
 	Threads         int     `json:"offthreads"`
-	NSBThreads      int     `json:"nsbthreads"`
 	Out             string  `json:"out"`
-	SpeedTest       int     `json:"nsbspeedtest"`
 	Progress        bool    `json:"progress"`
 	NoColor         bool    `json:"nocolor"`
 	SkipGeo         bool    `json:"skipgeo"`
 	URL             string  `json:"offurl"`
-	NSBURL          string  `json:"nsburl"`
 	DNS             string  `json:"dns"`
 	Debug           any     `json:"debug"`
 	CompactIPv4     bool    `json:"compactipv4"`
 	TestPort        int     `json:"offport"`
 	Delay           int     `json:"offdelay"`
-	NSBDelay        int     `json:"nsbdelay"`
 	DC              string  `json:"offdc"`
 	SpeedLimit      int     `json:"offspeedlimit"`
 	SpeedMin        float64 `json:"offspeedmin"`
-	File            string  `json:"nsbfile"`
-	SourceURL       string  `json:"nsbsourceurl"`
-	NSBFallbackPort int     `json:"nsbfallbackport"`
-	NSBDC           string  `json:"nsbdc"`
 	OutIPType       string  `json:"outiptype"`
 	OutQualified    string  `json:"outqualified"`
-	TLS             bool    `json:"nsbtls"`
-	Compact         bool    `json:"nsbcompact"`
-	ResultLimit     int     `json:"nsbresultlimit"`
-	NSBSpeedMin     float64 `json:"nsbspeedmin"`
-	NSBSpeedLimit   int     `json:"nsbspeedlimit"`
 	Format          string  `json:"outformat"`
 	Fields          string  `json:"outfields"`
 	Custom          string  `json:"outcustom"`
@@ -202,7 +181,7 @@ var (
 		{name: "password", description: "Web 认证密码（需同时设置 -user）", defaultValue: ""},
 		{name: "session", description: "Web 登录会话有效期（分钟）", defaultValue: "720"},
 		{name: "host", description: "服务监听地址；留空监听全部地址，Android APK 建议使用 127.0.0.1", defaultValue: ""},
-		{name: "mode", description: "运行模式：official 或 nsb", defaultValue: "official"},
+		{name: "mode", description: "运行模式：official", defaultValue: "official"},
 		{name: "scanmode", description: "扫描方式：tcping（默认，TCP 握手延迟）或 httping（HTTP TTFB，延迟比 tcping 高属正常，不同模式数据不可对比）", defaultValue: "tcping"},
 		{name: "out", description: "输出文件名", defaultValue: "cfdata-results"},
 		{name: "progress", description: "是否输出进度日志", defaultValue: "true"},
