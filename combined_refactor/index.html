@@ -3677,31 +3677,48 @@
 
         function resetStoppedTaskUI(message = '已手动终止') {
             clearStopWatchdog();
+            const stoppedTaskMode = runningTaskMode;
             isStoppingTask = false;
-            officialAutoSpeedPending = false;
-            officialAutoStage = '';
-            officialBatchSpeedRunning = false;
-            nsbBatchSpeedRunning = false;
-            officialTestCompletePending = false;
-            officialSpeedEndedByRateLimit = false;
-            currentTestingDC = '';
-            resetCurrentSpeedButton();
+            if (stoppedTaskMode === 'nsb') {
+                nsbBatchSpeedRunning = false;
+            } else if (stoppedTaskMode === 'official') {
+                officialAutoSpeedPending = false;
+                officialAutoStage = '';
+                officialBatchSpeedRunning = false;
+                officialTestCompletePending = false;
+                officialSpeedEndedByRateLimit = false;
+                currentTestingDC = '';
+                resetCurrentSpeedButton();
+                showDCSelection(dcList);
+            } else {
+                officialAutoSpeedPending = false;
+                officialAutoStage = '';
+                officialBatchSpeedRunning = false;
+                nsbBatchSpeedRunning = false;
+                officialTestCompletePending = false;
+                officialSpeedEndedByRateLimit = false;
+                currentTestingDC = '';
+                resetCurrentSpeedButton();
+                showDCSelection(dcList);
+            }
             finishRunningTask('✨ 开始扫描与测试');
             updateBatchSpeedButton();
             updateNSBSpeedButtons();
             finishCompactIPv4();
-            showDCSelection(dcList);
             const status = document.getElementById('currentTestDC');
-            if (status && runningTaskMode !== 'nsb') status.textContent = message;
+            if (status && stoppedTaskMode !== 'nsb') status.textContent = message;
             if (currentMode === 'official' && document.getElementById('test').classList.contains('active')) {
                 renderAllTestResults();
             } else {
                 renderCurrentScanResults();
             }
-            progressBar.style.background = 'var(--warning-color)';
-            progressBar.style.width = '100%';
-            progressBar.style.animation = 'none';
-            progressBar.textContent = message;
+            if (!stoppedTaskMode || currentMode === stoppedTaskMode) {
+                progressBar.style.background = 'var(--warning-color)';
+                progressBar.style.width = '100%';
+                progressBar.style.animation = 'none';
+                progressBar.textContent = message;
+                if (stoppedTaskMode) captureProgressSnapshot(stoppedTaskMode);
+            }
         }
 
         function resetButton(text = '✨ 开始扫描与测试') {
@@ -6162,7 +6179,7 @@
                     updateSpeedResult(msg.data);
                     break;
                 case 'official_speed_progress':
-                    if (isStoppingTask || runningTaskMode !== 'official') break;
+                    if (isStoppingTask || runningTaskMode !== 'official' || currentMode !== 'official') break;
                     {
                         const p = msg.data || {};
                         updateQualifiedSpeedProgress(p.qualified || 0, p.limit || 1);
@@ -6431,7 +6448,7 @@
                     handleResetConfigResult(msg.data);
                     break;
                 case 'compact_ipv4_progress':
-                    if (isStoppingTask) break;
+                    if (isStoppingTask || (runningTaskMode && currentMode !== runningTaskMode)) break;
                     {
                         const p = msg.data || {};
                         const percent = parseFloat(p.percent || 0);
@@ -6449,6 +6466,12 @@
                     }
                     break;
                 case 'compact_ipv4_done':
+                    if (runningTaskMode && currentMode !== runningTaskMode) {
+                        finishRunningTask('✨ 开始扫描与测试');
+                        finishCompactIPv4('✅');
+                        setTimeout(() => finishCompactIPv4('🧹'), 3000);
+                        break;
+                    }
                     if (isStoppingTask) {
                         resetStoppedTaskUI('已手动终止');
                         log('任务已手动终止');
