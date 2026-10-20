@@ -1855,21 +1855,7 @@
                 <h3 style="display:flex;justify-content:space-between;align-items:center;">
                     <span>扫描结果 <span class="badge" id="scanCount">0</span></span>
                     <span class="table-actions">
-                        <span class="nsb-scan-actions" id="nsbScanActions">
-                            <select id="nsbTableIPTypeFilter" class="table-filter-select" onchange="setNSBTableIPTypeFilter(this.value)">
-                                <option value="all" selected>展示全部类型</option>
-                                <option value="ipv4">仅展示IPV4</option>
-                                <option value="ipv6">仅展示IPV6</option>
-                            </select>
-                            <select id="nsbTableQualifiedFilter" class="table-filter-select" onchange="setNSBTableQualifiedFilter(this.value)">
-                                <option value="all" selected>展示全部结果</option>
-                                <option value="qualified">仅展示合格</option>
-                                <option value="unqualified">仅展示不合格</option>
-                            </select>
-                            <button class="action-btn export-btn" id="btnNSBBatchSpeed" onclick="startNSBBatchSpeed(false)" disabled>🚀 一键测速</button>
-                            <button class="action-btn export-btn" id="btnNSBContinueSpeed" onclick="startNSBBatchSpeed(true)" disabled>⏭️ 继续测速</button>
-                            <button class="action-btn export-btn" id="btnNSBSort" onclick="openSortModal('nsb')">↕️ 一键排序</button>
-                            <button class="action-btn export-btn" id="btnScanCopy" onclick="openCopyModal('scan')">📋 一键复制</button>
+                        <span class="table-actions-inner"><button class="action-btn export-btn" id="btnScanCopy" onclick="openCopyModal('scan')">📋 一键复制</button>
                             <button class="action-btn export-btn" id="btnScanResultAction" onclick="openResultModal('scan')">📥 结果操作</button>
                         </span>
                     </span>
@@ -2415,7 +2401,7 @@
         }
 
         function initializeUI() {
-            updateNSBSpeedControls();
+            
             updateOfficialAutoSpeedControls();
             updateBatchSpeedButton();
         }
@@ -2599,10 +2585,10 @@
             if (o.speedUrl) applySpeedUrlConfig('officialSpeedUrl', 'officialSpeedUrlPreset', o.speedUrl);
             if (n.speedUrl) applySpeedUrlConfig('nsbSpeedUrl', 'nsbSpeedUrlPreset', n.speedUrl);
             syncOfficialSpeedConfigState();
-            syncNSBSpeedConfigState();
+            
             updateOfficialAutoSpeedControls();
             updateNSBSpeedControls();
-            updateNSBCompactToggle();
+            
         }
 
         function saveConfigToLS() {
@@ -3062,7 +3048,7 @@
             modeOfficial.classList.toggle('active', selectedMode === 'official');
             modeNSB.classList.toggle('active', selectedMode === 'nsb');
             officialControls.classList.remove('hidden');
-            nsbControls.classList.add('hidden');
+            
             document.querySelector('.tabs .tab:last-child').style.display = 'block';
             document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
             if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
@@ -3429,7 +3415,7 @@
 
         function startStopWatchdog() {
             clearStopWatchdog();
-            nsbStopHandledByComplete = false;
+            
             stopWatchdogTimer = window.setTimeout(() => {
                 if (!isStoppingTask) return;
                 resetStoppedTaskUI('已手动终止，后台仍在清理；如立即重试提示已有任务，请稍后再试');
@@ -3442,14 +3428,14 @@
             officialAutoSpeedPending = false;
             officialAutoStage = '';
             officialBatchSpeedRunning = false;
-            nsbBatchSpeedRunning = false;
+            
             officialTestCompletePending = false;
             officialSpeedEndedByRateLimit = false;
             currentTestingDC = '';
             resetCurrentSpeedButton();
             finishRunningTask('✨ 开始扫描与测试');
             updateBatchSpeedButton();
-            updateNSBSpeedButtons();
+            
             finishCompactIPv4();
             showDCSelection(dcList);
             const status = document.getElementById('currentTestDC');
@@ -3947,18 +3933,14 @@
         }
 
         function startTask() {
-            if (isTaskRunning || officialBatchSpeedRunning || nsbBatchSpeedRunning) {
+            if (isTaskRunning || officialBatchSpeedRunning) {
                 showConfirmCard(getStopConfirmText(), confirmStopCurrentTask, '终止当前任务');
                 return;
             }
 
             if (requireProxyWarning(() => startTask())) return;
 
-            if (currentMode === 'official') {
-                startOfficialTask();
-            } else {
-                startNSBTask();
-            }
+            startOfficialTask();
         }
 
         function confirmStopCurrentTask() {
@@ -5175,7 +5157,7 @@
                     const speedDefault = msg.data.speedTestDefault || msg.data.speedTestURL || AUTO_SPEED_URL_VALUE;
                     defaultSpeedTestUrl = speedDefault || defaultSpeedTestUrl;
                     applySpeedUrlConfig('officialSpeedUrl', 'officialSpeedUrlPreset', speedDefault);
-                    applySpeedUrlConfig('nsbSpeedUrl', 'nsbSpeedUrlPreset', speedDefault);
+                    
                     renderVersionInfo(msg.data || {});
                     autoLoadConfig();
                     break;
@@ -5195,7 +5177,7 @@
                     break;
                 case 'scan_result':
                     if (isStoppingTask) break;
-                    addScanResult(msg.data, currentMode === 'official' && runningTaskMode !== 'nsb');
+                    addScanResult(msg.data, currentMode === 'official');
                     break;
                 case 'scan_complete_wait_dc':
                     const wasStoppingScan = isStoppingTask;
