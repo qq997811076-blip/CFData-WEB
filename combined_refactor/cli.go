@@ -245,21 +245,7 @@ var (
 		{name: "offspeedmin", description: "官方模式测速达标下限，单位 MB/s", defaultValue: "0.1"},
 		{name: "offurl", description: "官方模式测速下载地址；auto 表示由后端自动选择内置测速源", defaultValue: autoSpeedURLValue},
 	}
-	cliNSBFlags = []cliFlagInfo{
-		{name: "nsbfile", description: "非标模式输入文件路径", defaultValue: ""},
-		{name: "nsbsourceurl", description: "非标模式网络输入 URL", defaultValue: ""},
-		{name: "nsbthreads", description: "非标模式扫描并发数", defaultValue: "100"},
-		{name: "nsbdelay", description: "非标模式延迟阈值（毫秒）；0 表示不筛延迟", defaultValue: "0"},
-		{name: "nsbfallbackport", description: "非标输入缺省端口；不填时随 TLS 自动使用 443/80", defaultValue: "0"},
-		{name: "nsbdc", description: "非标模式指定结果数据中心；留空不限制", defaultValue: ""},
-		{name: "nsbspeedtest", description: "非标测速线程数；0 表示不测速。多 IP 并发影响实际速度，需要准确应设为 1", defaultValue: "0"},
-		{name: "nsburl", description: "非标模式测速下载地址；auto 表示由后端自动选择内置测速源", defaultValue: autoSpeedURLValue},
-		{name: "nsbtls", description: "非标模式是否启用 TLS", defaultValue: "true"},
-		{name: "nsbcompact", description: "非标模式导出精简表格列", defaultValue: "true"},
-		{name: "nsbresultlimit", description: "非标模式延迟测试结果上限；必须为非 0 正整数", defaultValue: "1000"},
-		{name: "nsbspeedmin", description: "非标模式测速结果阈值，单位 MB/s", defaultValue: "0.1"},
-		{name: "nsbspeedlimit", description: "非标模式测速结果上限；0 表示关闭测速", defaultValue: "5"},
-	}
+
 )
 
 var errCLIConfigCreated = errors.New("CLI 配置文件已生成")
@@ -268,34 +254,21 @@ func registerCLIFlags() *cliConfig {
 	cfg := &cliConfig{}
 	flag.Usage = printCLIUsage
 	flag.BoolVar(&cfg.enabled, "cli", false, "启用命令行模式（默认启动 Web）")
-	flag.StringVar(&cfg.mode, "mode", "official", "CLI 模式：official 或 nsb")
+	flag.StringVar(&cfg.mode, "mode", "official", "CLI 模式：official")
 	flag.StringVar(&cfg.scanMode, "scanmode", "tcping", "扫描方式：tcping（默认，TCP 握手延迟）或 httping（HTTP TTFB，延迟比 tcping 高属正常，不同模式数据不可对比）")
 	flag.IntVar(&cfg.ipType, "offiptype", 4, "官方模式 IP 类型：4 或 6")
 	flag.IntVar(&cfg.offThreads, "offthreads", 100, "官方扫描并发数")
-	flag.IntVar(&cfg.nsbThreads, "nsbthreads", 100, "非标扫描并发数")
-	flag.IntVar(&cfg.speedTest, "nsbspeedtest", 0, "非标测速线程数；表示同时测速的 IP 数量，0 表示不测速。多 IP 并发测速会影响实际下载速度，需要准确速度应设置为 1")
 	flag.IntVar(&cfg.port, "offport", 443, "目标测试端口")
 	flag.IntVar(&cfg.offDelay, "offdelay", 500, "官方延迟阈值（毫秒）")
-	flag.IntVar(&cfg.nsbDelay, "nsbdelay", 0, "非标延迟阈值（毫秒）；0 表示不筛延迟")
 	flag.StringVar(&cfg.dc, "offdc", "", "官方模式指定数据中心，不填则自动选择最低延迟数据中心")
-	flag.StringVar(&cfg.file, "nsbfile", "", "非标模式输入文件路径")
-	flag.StringVar(&cfg.sourceURL, "nsbsourceurl", "", "非标模式网络输入 URL")
-	flag.IntVar(&cfg.nsbFallbackPort, "nsbfallbackport", 0, "非标输入缺省端口；不填时随 TLS 自动使用 443/80")
 	flag.StringVar(&cfg.outIPType, "outiptype", "all", "导出/上传 IP 类型筛选：all、ipv4 或 ipv6")
 	flag.StringVar(&cfg.outQualified, "outqualified", "all", "导出/上传合格结果筛选：all、qualified 或 unqualified")
-	flag.StringVar(&cfg.nsbDC, "nsbdc", "", "非标模式指定结果数据中心")
 	flag.StringVar(&cfg.outFile, "out", "cfdata-results", "输出文件名")
 	flag.IntVar(&cfg.startRow, "outstartrow", 1, "导出/上传开始行（筛选后第 1 行起计）")
 	flag.IntVar(&cfg.endRow, "outendrow", 20, "导出/上传结束行；0 表示至末尾")
 	flag.IntVar(&cfg.speedLimit, "offspeedlimit", 5, "官方模式测速达标结果上限；0 表示关闭官方测速")
 	flag.Float64Var(&cfg.speedMin, "offspeedmin", 0.1, "官方模式测速达标下限，单位 MB/s")
 	flag.StringVar(&cfg.offURL, "offurl", autoSpeedURLValue, "官方测速下载地址")
-	flag.StringVar(&cfg.nsbURL, "nsburl", autoSpeedURLValue, "非标测速下载地址")
-	flag.BoolVar(&cfg.enableTLS, "nsbtls", true, "非标模式是否启用 TLS")
-	flag.BoolVar(&cfg.compactNSB, "nsbcompact", true, "非标模式导出精简表格列")
-	flag.IntVar(&cfg.resultLimit, "nsbresultlimit", 1000, "非标模式延迟测试结果上限；必须为非 0 正整数")
-	flag.Float64Var(&cfg.nsbSpeedMin, "nsbspeedmin", 0.1, "非标模式测速结果阈值，单位 MB/s")
-	flag.IntVar(&cfg.nsbSpeedLimit, "nsbspeedlimit", 5, "非标模式测速结果上限；0 表示关闭测速")
 	flag.BoolVar(&cfg.showProgress, "progress", true, "CLI 模式输出进度日志")
 	flag.BoolVar(&cfg.noColor, "nocolor", false, "禁用 ANSI 颜色输出（cmd 等不支持的终端建议开启）")
 	flag.BoolVar(&cfg.compactIPv4, "compactipv4", false, "精简本地 IPv4 地址库，按 /24 子网探测 TCP:80 连通性后覆盖 ips-v4.txt")
@@ -351,10 +324,8 @@ func runCLI(cfg *cliConfig) error {
 	switch mode {
 	case "official":
 		return runOfficialCLI(cfg)
-	case "nsb":
-		return runNSBCLI(cfg)
-	default:
-		return fmt.Errorf("不支持的 -mode: %s（仅支持 official 或 nsb）", cfg.mode)
+		default:
+		return fmt.Errorf("不支持的 -mode: %s（仅支持 official）", cfg.mode)
 	}
 }
 
@@ -434,9 +405,6 @@ func resolveCLIExportConfig(cfg *cliConfig) error {
 func applyCLIExportResolution(cfg *cliConfig, fileCfg cliFileConfig, configPath string, provided map[string]bool) error {
 	merged := defaultCLIExportConfig()
 	applyCLIFileConfig(cfg, fileCfg, provided)
-	if !provided["nsbfallbackport"] && fileCfg.NSBFallbackPort <= 0 {
-		cfg.nsbFallbackPort = defaultNSBPort(cfg.enableTLS)
-	}
 	mergeCLIExportConfig(&merged, fileCfg.Export(), false)
 	mergeCLIExportConfig(&merged, cfg.export, true, provided)
 	merged.ConfigFile = configPath
@@ -736,7 +704,7 @@ func newCLIConfigTemplate(cfg cliFileConfig) cliExportConfigTemplate {
 		ConfigHelp:      buildCLIConfigHelp(),
 		FormatValues:    []string{"csv", "txt"},
 		FieldsValues:    []string{"compact", "all", "ipport", "ipport,dc,loc", "ipport,latency,dc,loc"},
-		ModeValues:      []string{"official", "nsb"},
+		ModeValues:      []string{"official"},
 		AvailableFields: cliResultFields,
 	}
 }
@@ -756,36 +724,23 @@ func writeCLIConfigTemplate(path string, cfg cliFileConfig) error {
 func buildCLIConfigHelp() []cliConfigHelp {
 	return []cliConfigHelp{
 		{Name: "cli", Description: "CLI 模式开关；已废弃本字段，CLI 仅由命令行 -cli 控制（保留仅为兼容旧配置）", Default: "false", Options: []string{"true", "false"}},
-		{Name: "mode", Description: "运行模式", Default: "official", Options: []string{"official", "nsb"}},
+		{Name: "mode", Description: "运行模式", Default: "official", Options: []string{"official"}},
 		{Name: "scanmode", Description: "扫描方式；tcping：仅测量 TCP 握手延迟（默认），httping：测量 HTTP TTFB 全链路延迟，延迟比 tcping 高属正常，不同模式数据不可互相比较", Default: "tcping", Options: []string{"tcping", "httping"}},
 		{Name: "offiptype", Description: "官方模式 IP 类型", Default: "4", Options: []string{"4", "6"}},
 		{Name: "offthreads", Description: "官方扫描并发数", Default: "100"},
-		{Name: "nsbthreads", Description: "非标扫描并发数", Default: "100"},
 		{Name: "out", Description: "输出文件名", Default: "cfdata-results"},
-		{Name: "nsbspeedtest", Description: "非标测速线程数；0 表示不测速。多 IP 并发影响实际速度，需要准确应设为 1", Default: "0"},
 		{Name: "progress", Description: "输出进度日志", Default: "true", Options: []string{"true", "false"}},
 		{Name: "nocolor", Description: "禁用 ANSI 颜色输出", Default: "false", Options: []string{"true", "false"}},
 		{Name: "skipgeo", Description: "跳过地区/代理环境验证（等同命令行 -skipgeo）", Default: "false", Options: []string{"true", "false"}},
 		{Name: "offurl", Description: "官方测速下载地址；auto 表示由后端自动选择内置测速源", Default: autoSpeedURLValue},
-		{Name: "nsburl", Description: "非标测速下载地址；auto 表示由后端自动选择内置测速源", Default: autoSpeedURLValue},
 		{Name: "dns", Description: "自定义 DNS 服务器；默认系统 DNS 优先，失败回退内置 DNS；显式设置时强制使用指定 DNS。用于 IP 库、locations、ASN、GitHub、网络 URL 输入等需要 DNS 的外部请求", Default: defaultDNSServers},
 		{Name: "debug", Description: "调试输出等级；error 记录程序错误和下载/更新/API 异常，all 额外包含测速失败等全部明细", Default: "false", Options: []string{"false", "error", "all", "true"}},
 		{Name: "compactipv4", Description: "精简本地 IPv4 地址库并覆盖 ips-v4.txt", Default: "false", Options: []string{"true", "false"}},
 		{Name: "offport", Description: "官方模式测试端口", Default: "443"},
 		{Name: "offdelay", Description: "官方延迟阈值，单位毫秒", Default: "500"},
-		{Name: "nsbdelay", Description: "非标延迟阈值，单位毫秒；0=不筛延迟", Default: "0"},
 		{Name: "offdc", Description: "官方模式指定数据中心；留空自动选择最低延迟数据中心", Default: ""},
 		{Name: "offspeedlimit", Description: "官方模式测速达标结果上限；0 表示关闭官方测速", Default: "5"},
 		{Name: "offspeedmin", Description: "官方模式测速达标下限，单位 MB/s", Default: "0.1"},
-		{Name: "nsbfile", Description: "非标模式输入文件路径", Default: ""},
-		{Name: "nsbsourceurl", Description: "非标模式网络输入 URL", Default: ""},
-		{Name: "nsbfallbackport", Description: "非标输入缺省端口；不填时随 TLS 自动使用 443/80；显式设置时必须为 1-65535", Default: "自动"},
-		{Name: "nsbdc", Description: "非标模式指定结果数据中心；留空不限制", Default: ""},
-		{Name: "nsbtls", Description: "非标模式启用 TLS；缺省端口随 TLS 为 443/80", Default: "true", Options: []string{"true", "false"}},
-		{Name: "nsbcompact", Description: "非标模式本地 CSV 是否默认精简字段", Default: "true", Options: []string{"true", "false"}},
-		{Name: "nsbresultlimit", Description: "非标模式延迟测试结果上限；必须为非 0 正整数", Default: "1000"},
-		{Name: "nsbspeedmin", Description: "非标模式测速结果阈值，单位 MB/s", Default: "0.1"},
-		{Name: "nsbspeedlimit", Description: "非标模式测速结果上限；0 表示关闭测速", Default: "5"},
 		{Name: "outformat", Description: "导出/上传内容格式", Default: "txt", Options: []string{"csv", "txt"}},
 		{Name: "outfields", Description: "导出字段；支持 compact、all、ipport 或逗号分隔字段 key；自定义字段可写在这里排序", Default: "compact", Options: []string{"compact", "all", "ipport", "ipport,dc,loc", "ipport,latency,dc,loc"}},
 		{Name: "outcustom", Description: "自定义导出字段，格式 标题:内容，多项用逗号分隔；未在 outfields 中排序时默认追加到最后。兼容 key=标题:内容", Default: ""},
@@ -831,20 +786,15 @@ func applyCLIFileConfig(cfg *cliConfig, fileCfg cliFileConfig, provided map[stri
 	}
 	setString("mode", &cfg.mode, fileCfg.Mode)
 	setString("scanmode", &cfg.scanMode, fileCfg.ScanMode)
-	isNSBRun := strings.EqualFold(strings.TrimSpace(cfg.mode), "nsb")
-	if !provided["offiptype"] {
+		if !provided["offiptype"] {
 		cfg.ipType = fileCfg.IPType
 	}
 	if !provided["offthreads"] {
 		cfg.offThreads = fileCfg.Threads
 	}
-	if !provided["nsbthreads"] {
-		cfg.nsbThreads = fileCfg.NSBThreads
-	}
 	if !provided["out"] {
 		cfg.outFile = fileCfg.Out
 	}
-	setInt("nsbspeedtest", &cfg.speedTest, fileCfg.SpeedTest)
 	if !provided["progress"] {
 		cfg.showProgress = fileCfg.Progress
 	}
@@ -856,9 +806,6 @@ func applyCLIFileConfig(cfg *cliConfig, fileCfg cliFileConfig, provided map[stri
 	}
 	if !provided["offurl"] && strings.TrimSpace(fileCfg.URL) != "" {
 		cfg.offURL = fileCfg.URL
-	}
-	if !provided["nsburl"] && strings.TrimSpace(fileCfg.NSBURL) != "" {
-		cfg.nsbURL = fileCfg.NSBURL
 	}
 	if !provided["dns"] && strings.TrimSpace(fileCfg.DNS) != "" {
 		customDNSServer = fileCfg.DNS
@@ -875,49 +822,23 @@ func applyCLIFileConfig(cfg *cliConfig, fileCfg cliFileConfig, provided map[stri
 	if !provided["offdelay"] {
 		cfg.offDelay = fileCfg.Delay
 	}
-	if !provided["nsbdelay"] {
-		cfg.nsbDelay = fileCfg.NSBDelay
-	}
 	if !provided["offdc"] {
 		cfg.dc = fileCfg.DC
 	}
 	setInt("offspeedlimit", &cfg.speedLimit, fileCfg.SpeedLimit)
 	setFloat("offspeedmin", &cfg.speedMin, fileCfg.SpeedMin)
-	setString("nsbfile", &cfg.file, fileCfg.File)
-	setString("nsbsourceurl", &cfg.sourceURL, fileCfg.SourceURL)
-	if !provided["nsbfallbackport"] && fileCfg.NSBFallbackPort > 0 {
-		cfg.nsbFallbackPort = fileCfg.NSBFallbackPort
-	}
 	setString("outiptype", &cfg.outIPType, fileCfg.OutIPType)
 	setString("outqualified", &cfg.outQualified, fileCfg.OutQualified)
 	setInt("outstartrow", &cfg.startRow, fileCfg.OutStartRow)
 	setInt("outendrow", &cfg.endRow, fileCfg.OutEndRow)
-	setString("nsbdc", &cfg.nsbDC, fileCfg.NSBDC)
-	if !provided["nsbtls"] {
-		cfg.enableTLS = fileCfg.TLS
-	}
-	if !provided["nsbcompact"] {
-		cfg.compactNSB = fileCfg.Compact
-	}
-	setInt("nsbresultlimit", &cfg.resultLimit, fileCfg.ResultLimit)
-	setFloat("nsbspeedmin", &cfg.nsbSpeedMin, fileCfg.NSBSpeedMin)
-	setInt("nsbspeedlimit", &cfg.nsbSpeedLimit, fileCfg.NSBSpeedLimit)
-
 	genericURL := speedTestURL
-	if isNSBRun {
-		cfg.threads = cfg.nsbThreads
-		cfg.delay = cfg.nsbDelay
-		if isAutoSpeedURL(cfg.nsbURL) && provided["url"] && strings.TrimSpace(genericURL) != "" {
-			speedTestURL = genericURL
-		} else {
-			speedTestURL = cfg.nsbURL
-		}
+	cfg.threads = cfg.offThreads
+	cfg.delay = cfg.offDelay
+	if isAutoSpeedURL(cfg.offURL) && provided["url"] && strings.TrimSpace(speedTestURL) != "" {
+		speedTestURL = speedTestURL
 	} else {
-		cfg.threads = cfg.offThreads
-		cfg.delay = cfg.offDelay
-		if isAutoSpeedURL(cfg.offURL) && provided["url"] && strings.TrimSpace(genericURL) != "" {
-			speedTestURL = genericURL
-		} else {
+		speedTestURL = cfg.offURL
+	} else {
 			speedTestURL = cfg.offURL
 		}
 	}
@@ -1151,18 +1072,6 @@ func runOfficialCLI(cfg *cliConfig) error {
 	return writeCLIExportAndMaybeUpload(cfg, applyCLIExportFilters(cfg, officialResultRows(scanResults, results, scanMode), cfg.speedMin), "official")
 }
 
-func runNSBCLI(cfg *cliConfig) error {
-    officialCfg := *cfg
-    officialCfg.mode = "official"
-    if officialCfg.ipType != 4 && officialCfg.ipType != 6 { officialCfg.ipType = 4 }
-    if officialCfg.threads <= 0 { officialCfg.threads = 100 }
-    if officialCfg.nsbFallbackPort > 0 && officialCfg.nsbFallbackPort <= 65535 { officialCfg.port = officialCfg.nsbFallbackPort }
-    if officialCfg.nsbDC != "" { officialCfg.dc = officialCfg.nsbDC }
-    officialCfg.speedLimit = officialCfg.nsbSpeedLimit
-    officialCfg.speedMin = officialCfg.nsbSpeedMin
-    return runOfficialCLI(&officialCfg)
-}
-
 func cliTaskError(err error) error {
 	if errors.Is(err, context.Canceled) {
 		return errors.New("已有任务正在运行，请等待完成后再试")
@@ -1263,8 +1172,7 @@ func printCLIUsage() {
 	fmt.Fprintf(flag.CommandLine.Output(), "\n")
 	printCLIUsageGroup("通用参数", cliCommonFlags)
 	printCLIUsageGroup("官方模式参数", cliOfficialFlags)
-	printCLIUsageGroup("非标模式参数", cliNSBFlags)
-}
+	}
 
 func printCLIUsageGroup(title string, rows []cliFlagInfo) {
 	fmt.Fprintf(flag.CommandLine.Output(), "%s\n", colorize("----------------------------------------", ansiCyan))
@@ -1849,24 +1757,6 @@ func parseLatencyMSForSort(value string) float64 {
 	return latency
 }
 
-func nsbPayloadRows(headers []string, rows [][]string) []cliResultRow {
-	result := make([]cliResultRow, 0, len(rows))
-	for _, row := range rows {
-		item := cliResultRow{}
-		for idx, header := range headers {
-			if idx >= len(row) {
-				continue
-			}
-			if key := cliFieldKeyFromHeader(header); key != "" {
-				item[key] = row[idx]
-			}
-		}
-		item["ipport"] = item["ip"] + ":" + item["port"]
-		result = append(result, item)
-	}
-	return result
-}
-
 func filterCLIResultRowsByIPType(rows []cliResultRow, filter string) []cliResultRow {
 	filter = normalizeIPTypeFilter(filter)
 	if filter == "all" {
@@ -1953,7 +1843,7 @@ func normalizeIPTypeFilter(value string) string {
 }
 
 func cliFieldKeyFromHeader(header string) string {
-	header = normalizeNSBHeaderForCLI(header)
+	header = normalizeCLIHeader(header)
 	for _, field := range cliResultFields {
 		if field.Label == header {
 			return field.Key
@@ -1962,7 +1852,7 @@ func cliFieldKeyFromHeader(header string) string {
 	return ""
 }
 
-func normalizeNSBHeaderForCLI(header string) string {
+func normalizeCLIHeader(header string) string {
 	switch strings.TrimSpace(header) {
 	case "IP":
 		return "IP地址"
