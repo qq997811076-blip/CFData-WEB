@@ -2426,7 +2426,8 @@
         let resultCustomFields = [];
         let copyFieldOrder = [];
         let copyCustomFields = [];
-        let autoUploadKeys = new Set();
+        let officialAutoUploadKeys = new Set();
+        let nsbAutoUploadKeys = new Set();
         let noticeConfirmAction = null;
         const githubAccountStorageKey = 'cfdata-github-accounts';
         const githubSessionTokens = new Map();
@@ -4256,7 +4257,7 @@
             const delay = parseInt(document.getElementById('officialDelay').value) || 500;
 
             testResultsCount = 0;
-            autoUploadKeys = new Set();
+            officialAutoUploadKeys = new Set();
             updateBadge('testCount', 0);
             testData = [];
             officialSpeedEnabledForResults = false;
@@ -4665,7 +4666,7 @@
             currentTestingDC = '';
             scanResultsCount = 0;
             testResultsCount = 0;
-            autoUploadKeys = new Set();
+            officialAutoUploadKeys = new Set();
             updateBadge('scanCount', 0);
             updateBadge('testCount', 0);
             updateBadge('dcCount', 0);
@@ -4775,7 +4776,7 @@
             nsbLiveIndex = {};
             nsbLiveRowElements = {};
             updateBadge('scanCount', 0);
-            autoUploadKeys = new Set();
+            nsbAutoUploadKeys = new Set();
 
             if (!wsSend({
                 type: 'start_nsb_task',
@@ -5936,11 +5937,12 @@
             const repoParts = account.repo.split('/');
             const path = (account.path || `results/ip.${format || 'txt'}`).replace(/\.(csv|txt)$/i, `.${format || 'txt'}`);
             const uploadKey = `${mode}:${idx}:${format || 'txt'}:${path}`;
-            if (autoUploadKeys.has(uploadKey)) {
+            const uploadKeys = mode === 'nsb' ? nsbAutoUploadKeys : officialAutoUploadKeys;
+            if (uploadKeys.has(uploadKey)) {
                 log(`自动上传已跳过重复提交: ${path}`);
                 return;
             }
-            autoUploadKeys.add(uploadKey);
+            uploadKeys.add(uploadKey);
             const payload = {
                 token,
                 owner: repoParts[0], repo: repoParts[1],
@@ -5994,7 +5996,7 @@
                     break;
                 case 'scan_progress':
                     if (isStoppingTask || runningTaskMode !== 'official') break;
-                    updateProgress(msg.data.current || 0, msg.data.total || 0, '扫描中');
+                    if (currentMode === 'official') updateProgress(msg.data.current || 0, msg.data.total || 0, '扫描中');
                     break;
                 case 'scan_result':
                     if (isStoppingTask || runningTaskMode !== 'official') break;
@@ -6072,14 +6074,16 @@
                     finishRunningTask('✨ 开始扫描与测试');
                     updateBatchSpeedButton();
                     setOfficialTestQualifiedFilter(officialSpeedEnabledForResults ? 'qualified' : 'all');
-                    renderAllTestResults();
-                    sortAndRenderScanResults();
-                    if (officialSpeedEndedByRateLimit) {
+                    if (currentMode === 'official') {
+                        renderAllTestResults();
+                        sortAndRenderScanResults();
+                    }
+                    if (currentMode === 'official' && officialSpeedEndedByRateLimit) {
                         progressBar.style.background = 'var(--warning-color)';
                         progressBar.style.width = '100%';
                         progressBar.style.animation = 'none';
                         progressBar.textContent = '检测到触发速率限制，请稍后重试或更换网络环境';
-                    } else {
+                    } else if (currentMode === 'official') {
                         updateProgress(msg.data?.qualified || 0, msg.data?.limit || 1, '测速完成');
                     }
                     autoUploadOfficialResults();
@@ -6132,10 +6136,12 @@
                         const p = msg.data || {};
                         const percent = parseFloat(p.percent || 0);
                         const txt = p.text || '处理中';
-                        if (p.phase === 'speed') {
-                            updateQualifiedSpeedProgress(p.current || 0, p.total || 1);
-                        } else {
-                            updateProgress(p.current || 0, p.total || 1, `${txt}`);
+                        if (currentMode === 'nsb') {
+                            if (p.phase === 'speed') {
+                                updateQualifiedSpeedProgress(p.current || 0, p.total || 1);
+                            } else {
+                                updateProgress(p.current || 0, p.total || 1, `${txt}`);
+                            }
                         }
                     }
                     break;
@@ -6197,17 +6203,19 @@
                     if (nsbSpeedEnabledForResults) {
                         setNSBTableQualifiedFilter((msg.data.qualifiedCount || 0) > 0 ? 'qualified' : 'all');
                     }
-                    renderScanRowsCSV(nsbHeaders, nsbRows);
+                    if (currentMode === 'nsb') renderScanRowsCSV(nsbHeaders, nsbRows);
                     const nsbStatus = msg.data.status || 'complete';
                     const nsbMessage = msg.data.message || '测试完成';
-                    updateProgress(nsbRows.length, Math.max(nsbRows.length, 1), nsbStatus === 'failed' ? '任务失败' : '完成');
-                    progressBar.style.background = nsbStatus === 'failed' ? 'var(--error-color)' : (nsbStatus === 'partial' ? 'var(--warning-color)' : 'linear-gradient(to right, #10b981, #34d399)');
-                    progressBar.style.animation = 'none';
+                    if (currentMode === 'nsb') {
+                        updateProgress(nsbRows.length, Math.max(nsbRows.length, 1), nsbStatus === 'failed' ? '任务失败' : '完成');
+                        progressBar.style.background = nsbStatus === 'failed' ? 'var(--error-color)' : (nsbStatus === 'partial' ? 'var(--warning-color)' : 'linear-gradient(to right, #10b981, #34d399)');
+                        progressBar.style.animation = 'none';
+                    }
                     if (nsbStatus === 'failed') {
-                        progressBar.textContent = '任务失败';
+                        if (currentMode === 'nsb') progressBar.textContent = '任务失败';
                         log(`任务失败: 测试${nsbMessage}`);
                     } else if (nsbStatus === 'partial') {
-                        progressBar.textContent = '任务结束';
+                        if (currentMode === 'nsb') progressBar.textContent = '任务结束';
                         log(`任务结束: ${nsbMessage}`);
                     } else {
                         log(`非标优选完成，已生成: ${msg.data.file}`);
