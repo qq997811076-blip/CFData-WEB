@@ -212,6 +212,15 @@ body.dark-theme
             border-left-color: var(--error-color);
             background: linear-gradient(to right, #fbefef, #f8e3e3);
             color: #991b1b;
+        }.nsb-overlay {
+            position: fixed; inset: 0; z-index: 100000; display: none; background: var(--bg-color, #fff);
+        }
+        .nsb-overlay.active { display: block; }
+        .nsb-overlay-head {
+            height: 48px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 12px; background: var(--card-bg, #fff); border-bottom: 1px solid var(--border-color, #ddd);
+        }
+        .nsb-overlay-frame { display: block; width: 100%; height: calc(100% - 48px); border: 0; background: transparent; }
         }.mode-switch
 {
             display: flex;
@@ -1471,6 +1480,7 @@ table td,
 
         <div class="mode-switch">
             <button class="mode-btn active" id="btnOfficial" onclick="switchMode('official')">☁️ 官方优选</button>
+            <button class="mode-btn" id="btnNSB" onclick="openNSBPanel()">🧪 非标优选</button>
 
         </div>
 
@@ -1720,6 +1730,14 @@ table td,
         <div class="log-box" id="logBox">
             <div>[系统] 等待操作...</div>
         </div>
+    </div>
+
+    <div class="nsb-overlay" id="nsbOverlay" aria-hidden="true">
+        <div class="nsb-overlay-head">
+            <strong>🧪 非标优选（独立运行）</strong>
+            <button class="action-btn" type="button" onclick="closeNSBPanel()">关闭非标优选 ×</button>
+        </div>
+        <iframe class="nsb-overlay-frame" id="nsbFrame" title="非标优选独立工作区" loading="lazy"></iframe>
     </div>
 
     <div class="modal-mask" id="resultModalMask">
@@ -2543,9 +2561,41 @@ table td,
             compactHitBuffer = [];
         }
 
+        const cfdataModeNamespace = new URLSearchParams(window.location.search).get('mode') === 'nsb' ? 'nsb' : 'official';
+
+        function openNSBPanel() {
+            const overlay = document.getElementById('nsbOverlay');
+            const frame = document.getElementById('nsbFrame');
+            if (!overlay || !frame) return;
+            if (!frame.dataset.loaded) {
+                frame.src = window.location.pathname + '?mode=nsb&isolated=1';
+                frame.dataset.loaded = '1';
+            }
+            overlay.classList.add('active');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeNSBPanel() {
+            const overlay = document.getElementById('nsbOverlay');
+            if (!overlay) return;
+            overlay.classList.remove('active');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+
+        if (cfdataModeNamespace === 'nsb') {
+            document.title = 'CFData-WEB - 非标优选';
+            const modeButton = document.getElementById('btnOfficial');
+            if (modeButton) modeButton.textContent = '🧪 非标优选';
+            const nsbButton = document.getElementById('btnNSB');
+            if (nsbButton) nsbButton.style.display = 'none';
+            const controlsTitle = document.querySelector('#officialControls .control-title span:first-child');
+            if (controlsTitle) controlsTitle.textContent = '非标参数';
+        }
+
         function connect() {
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(wsProtocol + "//" + window.location.host + "/ws");
+            const wsQuery = cfdataModeNamespace === 'nsb' ? '?mode=nsb' : '';
+            ws = new WebSocket(wsProtocol + "//" + window.location.host + "/ws" + wsQuery);
             ws.onopen = () => {
                 updateStatus('已连接服务器', true);
                 log('已连接服务器');
