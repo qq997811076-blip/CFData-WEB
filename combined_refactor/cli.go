@@ -1901,3 +1901,9 @@ func cliSpeedStatus(value string, speedMin float64) string {
 	if err == nil && speed >= speedMin { return "qualified" }
 	return "unqualified"
 }
+
+
+func scanModeLabel(scanMode string) string {
+	if scanMode == scanModeHTTPing { return "HTTPing" }
+	return "TCPing"
+}
