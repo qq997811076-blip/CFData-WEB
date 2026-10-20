@@ -3240,43 +3240,26 @@
         }
 
         function switchMode(mode) {
-            currentMode = mode;
-            modeOfficial.classList.toggle('active', mode === 'official');
-            modeNSB.classList.toggle('active', mode === 'nsb');
-
-            if (mode === 'official') {
-                officialControls.classList.remove('hidden');
-                nsbControls.classList.add('hidden');
-                document.querySelector('.tabs .tab:last-child').style.display = 'block';
-                document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
-                if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
-                updateNSBCompactToggle();
-                if (isTaskRunning && runningTaskMode === 'official') {
-                    showRunningTaskView();
-                } else if (!isTaskRunning) {
-                    switchTab('scan');
-                    renderCurrentScanResults();
-                }
-            } else {
-                officialControls.classList.add('hidden');
-                nsbControls.classList.remove('hidden');
-                const testTab = document.querySelectorAll('.tab')[1];
-                testTab.style.display = 'none';
-                if (document.querySelector('.tab.active') !== document.querySelector('.tabs .tab:first-child')) {
-                    switchTab('scan');
-                }
-                document.getElementById('dcSection').style.display = 'none';
-                if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
-                updateNSBCompactToggle();
-                if (isTaskRunning && runningTaskMode === 'nsb') {
-                    showRunningTaskView();
-                } else if (!isTaskRunning) {
-                    renderCurrentScanResults();
-                }
+            const selectedMode = mode === 'nsb' ? 'nsb' : 'official';
+            // Both tabs now use the same unchanged official controls and engine.
+            currentMode = 'official';
+            modeOfficial.classList.toggle('active', selectedMode === 'official');
+            modeNSB.classList.toggle('active', selectedMode === 'nsb');
+            officialControls.classList.remove('hidden');
+            nsbControls.classList.add('hidden');
+            document.querySelector('.tabs .tab:last-child').style.display = 'block';
+            document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
+            if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
+            updateNSBCompactToggle();
+            if (isTaskRunning && runningTaskMode === 'official') {
+                showRunningTaskView();
+            } else if (!isTaskRunning) {
+                switchTab('scan');
+                renderCurrentScanResults();
             }
             if (!isTaskRunning) resetProgress();
             updateScanModeHint();
-            log(`切换至：${mode === 'official' ? '官方优选' : '非标优选'}`);
+            log(`切换至：${selectedMode === 'official' ? '官方优选' : '非标优选（使用官方优选引擎）'}`);
         }
 
         function switchTab(tabId) {
