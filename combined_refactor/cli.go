@@ -1198,72 +1198,17 @@ func runOfficialCLI(cfg *cliConfig) error {
 }
 
 func runNSBCLI(cfg *cliConfig) error {
-	if strings.TrimSpace(cfg.file) == "" && strings.TrimSpace(cfg.sourceURL) == "" {
-		return errors.New("非标模式需要通过 -nsbfile 或 -nsbsourceurl 指定输入来源")
-	}
-	if cfg.threads <= 0 {
-		cfg.threads = 100
-	}
-	if cfg.speedTest < 0 {
-		cfg.speedTest = 0
-	}
-	if cfg.resultLimit <= 0 {
-		return fmt.Errorf("-nsbresultlimit 必须是非 0 正整数")
-	}
-	if cfg.nsbSpeedLimit < 0 {
-		cfg.nsbSpeedLimit = 0
-	}
-	if cfg.nsbSpeedMin < 0 {
-		cfg.nsbSpeedMin = 0
-	}
-	if cfg.nsbFallbackPort <= 0 || cfg.nsbFallbackPort > 65535 {
-		return errors.New("-nsbfallbackport 必须为 1-65535")
-	}
-	if cfg.delay < 0 {
-		cfg.delay = 0
-	}
-	if strings.TrimSpace(cfg.outFile) == "" {
-		cfg.outFile = "cfdata-results"
-	}
-	inputName := cfg.file
-	content := ""
-	var err error
-	if strings.TrimSpace(cfg.file) != "" {
-		content, err = getFileContent(cfg.file)
-		if err != nil {
-			return err
-		}
-	} else {
-		parsedURL, parseErr := url.Parse(cfg.sourceURL)
-		if parseErr != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
-			return errors.New("-nsbsourceurl 必须是有效的 http/https 地址")
-		}
-		inputName = cfg.sourceURL
-		content, err = getURLContent(cfg.sourceURL)
-		if err != nil {
-			return fmt.Errorf("获取非标网络输入失败: %w", err)
-		}
-	}
-
-	session := newCLISession(cfg)
-	if err := session.runTaskSync(func(ctx context.Context, session *appSession) {
-		scanMode := cfg.scanMode
-		if scanMode == "" {
-			scanMode = scanModeTCPing
-		}
-		runNSBTask(ctx, session, inputName, content, cfg.outFile, cfg.threads, cfg.nsbFallbackPort, cfg.speedTest, speedTestURL, cfg.enableTLS, cfg.delay, cfg.resultLimit, cfg.nsbDC, cfg.nsbSpeedMin, cfg.nsbSpeedLimit, cfg.compactNSB, scanMode)
-	}); err != nil {
-		return cliTaskError(err)
-	}
-	session.nsbMutex.Lock()
-	rows := nsbPayloadRows(session.nsbHeaders, session.nsbRows)
-	session.nsbMutex.Unlock()
-	rows = applyCLIExportFilters(cfg, rows, cfg.nsbSpeedMin)
-	if len(rows) == 0 {
-		fmt.Printf("%s[nsb]%s 没有符合导出条件的结果\n", ansiYellow, ansiReset)
-		return nil
-	}
-	return writeCLIExportAndMaybeUpload(cfg, rows, "nsb")
+	// The former non-standard engine has been replaced with the official engine.
+	// Keep the legacy CLI mode entry point as an alias so existing invocations still work.
+	officialCfg := *cfg
+	officialCfg.mode = "official"
+	if officialCfg.ipType != 4 && officialCfg.ipType != 6 { officialCfg.ipType = 4 }
+	if officialCfg.threads <= 0 { officialCfg.threads = 100 }
+	if officialCfg.nsbFallbackPort > 0 && officialCfg.nsbFallbackPort <= 65535 { officialCfg.port = officialCfg.nsbFallbackPort }
+	if officialCfg.nsbDC != "" { officialCfg.dc = officialCfg.nsbDC }
+	officialCfg.speedLimit = officialCfg.nsbSpeedLimit
+	officialCfg.speedMin = officialCfg.nsbSpeedMin
+	return runOfficialCLI(&officialCfg)
 }
 
 func cliTaskError(err error) error {
@@ -2068,7 +2013,7 @@ func filterCLIResultRowsByQualified(rows []cliResultRow, filter string, speedMin
 	}
 	filtered := make([]cliResultRow, 0, len(rows))
 	for _, row := range rows {
-		if getNSBSpeedStatus(row["speed"], speedMin) == filter {
+		if cliSpeedStatus(row["speed"], speedMin) == filter {
 			filtered = append(filtered, row)
 		}
 	}
@@ -2191,4 +2136,14 @@ func uploadCLIExportToEdgetunnel(cfg *cliConfig, content string) error {
 	}
 	fmt.Printf("%s[edgetunnel]%s uploaded\n", ansiGreen, ansiReset)
 	return nil
+}
+
+
+func cliSpeedStatus(value string, speedMin float64) string {
+	value = strings.TrimSpace(value)
+	if value == "" || value == "-" || value == "未测速" { return "untested" }
+	value = strings.TrimSpace(strings.TrimSuffix(value, "MB/s"))
+	speed, err := strconv.ParseFloat(value, 64)
+	if err == nil && speed >= speedMin { return "qualified" }
+	return "unqualified"
 }
