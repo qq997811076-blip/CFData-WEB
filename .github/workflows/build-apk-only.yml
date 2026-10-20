@@ -13,6 +13,10 @@ on:
       - main
     paths:
       - ".github/workflows/build-apk-only.yml"
+      - "combined_refactor/index.html"
+      - "combined_refactor/protocol.go"
+      - "combined_refactor/server.go"
+      - "combined_refactor/tasks_speed.go"
 
 permissions:
   contents: read
