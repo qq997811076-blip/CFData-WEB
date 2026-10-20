@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version"
+        description: "APK version name"
         required: false
         default: "v1.0"
         type: string
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   android-apk:
-    name: Android APK
+    name: Android APK (debug-signed, no repository keystore)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -52,7 +52,7 @@ jobs:
         run: |
           version="${{ github.event.inputs.version }}"
           if [ -z "$version" ]; then
-            version="${{ github.ref_name }}"
+            version="debug-${GITHUB_SHA::7}"
           fi
           echo "VERSION=$version" >> $GITHUB_OUTPUT
 
@@ -71,40 +71,26 @@ jobs:
         run: |
           go build -ldflags "-s -w -X main.appVersion=${{ steps.set-version.outputs.VERSION }}" -o ../app/src/main/jniLibs/arm64-v8a/libcfdata.so .
 
-      - name: Prepare Release Keystore
+      - name: Build debug APK (uses Android debug signing, no repository secrets)
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "ANDROID_KEYSTORE_BASE64 secret is required for release APK signing."
-            exit 1
-          fi
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/cfdata-release.keystore"
-
-      - name: Build release APK
-        env:
-          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/cfdata-release.keystore
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_VERSION_NAME: ${{ steps.set-version.outputs.VERSION }}
-        run: gradle assembleRelease --no-daemon
+        run: gradle assembleDebug --no-daemon
 
       - name: Verify APK Contains Backend
         run: |
-          unzip -l app/build/outputs/apk/release/app-release.apk | tee apk-contents.txt
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | tee apk-contents.txt
           grep -q "lib/arm64-v8a/libcfdata.so" apk-contents.txt
-          unzip -l app/build/outputs/apk/release/app-release.apk "lib/arm64-v8a/libcfdata.so"
+          unzip -l app/build/outputs/apk/debug/app-debug.apk "lib/arm64-v8a/libcfdata.so"
 
       - name: Prepare APK Asset
         run: |
           mkdir -p release_assets
-          cp app/build/outputs/apk/release/app-release.apk release_assets/cfdata-android-arm64.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release_assets/cfdata-android-arm64-debug.apk
           cd release_assets
-          sha256sum cfdata-android-arm64.apk | awk '{print $1}' > cfdata-android-arm64.apk.sha256
+          sha256sum cfdata-android-arm64-debug.apk | awk '{print $1}' > cfdata-android-arm64-debug.apk.sha256
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: asset-android-arm64-apk
+          name: asset-android-arm64-apk-debug
           path: release_assets/*
