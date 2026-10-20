@@ -23,6 +23,9 @@ on:
       - "combined_refactor/session.go"
       - "combined_refactor/types.go"
       - "combined_refactor/cli.go"
+      - "combined_refactor/utils.go"
+      - "combined_refactor/menu.go"
+      - "combined_refactor/main.go"
 
 permissions:
   contents: read
