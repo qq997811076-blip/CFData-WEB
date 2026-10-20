@@ -3268,6 +3268,26 @@
             return true;
         }
 
+        function storeProgressStatus(mode, text, background) {
+            if (!mode) return;
+            const previous = progressSnapshotsByMode[mode] || {
+                boxDisplay: 'block',
+                width: '0%',
+                background: 'linear-gradient(to right, var(--primary-color), #60a5fa)',
+                backgroundSize: '20px 20px, 100% 100%',
+                animation: 'stripe 1s linear infinite',
+                text: '0%'
+            };
+            progressSnapshotsByMode[mode] = {
+                ...previous,
+                boxDisplay: 'block',
+                width: '100%',
+                background: background || previous.background,
+                animation: 'none',
+                text
+            };
+        }
+
         function switchMode(mode) {
             if (mode !== currentMode) captureProgressSnapshot(currentMode);
             currentMode = mode;
@@ -3718,6 +3738,8 @@
                 progressBar.style.animation = 'none';
                 progressBar.textContent = message;
                 if (stoppedTaskMode) captureProgressSnapshot(stoppedTaskMode);
+            } else {
+                storeProgressStatus(stoppedTaskMode, message, 'var(--warning-color)');
             }
         }
 
@@ -6439,6 +6461,8 @@
                             progressBar.style.animation = 'none';
                             progressBar.textContent = '任务失败';
                             if (failedTaskMode) captureProgressSnapshot(failedTaskMode);
+                        } else {
+                            storeProgressStatus(failedTaskMode, '任务失败', 'var(--error-color)');
                         }
                     }
                     log('错误: ' + msg.data);
