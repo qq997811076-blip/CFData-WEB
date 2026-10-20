@@ -2,14 +2,10 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
-	"net/netip"
-	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 )
