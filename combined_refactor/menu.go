@@ -453,8 +453,6 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	} else {
 		fileCfg.Format = "txt"
 	}
-		fileCfg.Compact = idx == 0
-	}
 
 	startDisplay := strconv.Itoa(fileCfg.OutStartRow)
 	n, o = askInt("开始行", startDisplay, "筛选后从第几行开始导出（从 1 计）", fileCfg.OutStartRow, 1, 0)
