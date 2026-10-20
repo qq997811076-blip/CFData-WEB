@@ -302,38 +302,10 @@ func (s *appSession) applyBackgroundMessageLocked(msgType string, data interface
 		s.backgroundSnapshot.SpeedTotal = asInt(m["limit"])
 		s.backgroundSnapshot.SpeedQualified = asInt(m["qualified"])
 		s.updateProgressSnapshotLocked("测速中", asInt(m["qualified"]), asInt(m["limit"]), "测速中")
-	case "nsb_progress":
-		m, ok := data.(map[string]interface{})
-		if !ok {
-			return
-		}
-		text := fmt.Sprint(m["text"])
-		if text == "" || text == "<nil>" {
-			text = "处理中"
-		}
-		phase := fmt.Sprint(m["phase"])
-		current := asInt(m["current"])
-		total := asInt(m["total"])
-		
-		if phase == "scan" {
-			s.backgroundSnapshot.ScanFailed = max(current-s.backgroundSnapshot.ScanSuccess, 0)
-		} else if phase == "speed" {
-			s.backgroundSnapshot.SpeedQualified = current
-		}
-		s.updateProgressSnapshotLocked(text, current, total, text)
 	case "scan_result":
 		s.backgroundSnapshot.ResultCount++
 		s.backgroundSnapshot.ScanSuccess++
 		s.backgroundSnapshot.ScanTotal++
-	case "nsb_scan_result":
-		if s.backgroundSnapshot.Phase == "测速中" {
-			s.backgroundSnapshot.SpeedCount++
-			s.updateBackgroundSpeedStatsLocked(data)
-		} else {
-			s.backgroundSnapshot.ResultCount++
-			s.backgroundSnapshot.ScanSuccess++
-			s.backgroundSnapshot.ScanTotal++
-		}
 	case "speed_test_result":
 		s.backgroundSnapshot.SpeedCount++
 		s.updateBackgroundSpeedStatsLocked(data)
@@ -359,19 +331,10 @@ func (s *appSession) applyBackgroundMessageLocked(msgType string, data interface
 	case "test_complete":
 		s.backgroundSnapshot.Phase = "详细测试完成"
 		s.backgroundSnapshot.Message = "详细测试完成"
-	case "official_speed_complete", "nsb_speed_complete":
+	case "official_speed_complete":
 		s.backgroundSnapshot.Phase = "测速完成"
 		s.backgroundSnapshot.Message = "测速完成"
 		s.finishBackgroundStatsLocked()
-	case "nsb_csv_complete":
-		s.backgroundSnapshot.Phase = "完成"
-		s.backgroundSnapshot.Message = "结果文件已生成"
-		s.finishBackgroundStatsLocked()
-		if payload, ok := data.(nsbCSVCompletePayload); ok {
-			s.nsbMutex.Lock()
-			s.nsbCompletePayload = &payload
-			s.nsbMutex.Unlock()
-		}
 	case "task_stopped":
 		s.backgroundSnapshot.Phase = "已停止"
 		s.backgroundSnapshot.Message = "任务已停止"
@@ -392,20 +355,6 @@ func (s *appSession) updateBackgroundSpeedStatsLocked(data interface{}) {
 		speedText = value["speed"]
 	case map[string]interface{}:
 		speedText = fmt.Sprint(value["speed"])
-	case nsbScanMessage:
-		speedText = value.Speed
-		if value.SpeedQualified {
-			s.backgroundSnapshot.SpeedQualified++
-			return
-		}
-	case *nsbScanMessage:
-		if value != nil {
-			speedText = value.Speed
-			if value.SpeedQualified {
-				s.backgroundSnapshot.SpeedQualified++
-				return
-			}
-		}
 	}
 	if speedMB, ok := parseSpeedMBForSort(speedText); ok {
 		if speedMB >= s.backgroundSpeedMinLocked() {
