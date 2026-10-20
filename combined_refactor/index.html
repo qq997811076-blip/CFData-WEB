@@ -4144,7 +4144,7 @@
                         if (patch[header] !== undefined && hIdx < updated.length) updated[hIdx] = patch[header];
                     });
                     nsbRows[idx] = updated;
-                    renderScanRowsCSV(nsbHeaders, nsbRows);
+                    if (currentMode === 'nsb') renderScanRowsCSV(nsbHeaders, nsbRows);
                 }
                 return;
             }
@@ -5087,7 +5087,7 @@
                 nsbRows = nsbRows.map((item, index) => ({ item, index, row: { lossRate: item[lossIndex], latency: item[latencyIndex], speed: item[speedIndex] } }))
                     .sort((a, b) => compareSortableRows(a, b, priorities))
                     .map((entry) => entry.item);
-                renderScanRowsCSV(nsbHeaders, nsbRows);
+                if (currentMode === 'nsb') renderScanRowsCSV(nsbHeaders, nsbRows);
             } else {
                 nsbLiveRows = nsbLiveRows.map((item, index) => ({ item, index, row: item }))
                     .sort((a, b) => compareSortableRows(a, b, priorities))
