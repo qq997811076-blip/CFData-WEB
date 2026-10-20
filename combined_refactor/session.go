@@ -14,11 +14,19 @@ import (
 
 var globalRunningTasks int32
 var globalTaskMutex sync.Mutex
+var activeTaskNamespaces = map[string]int{}
 var backgroundTaskMutex sync.Mutex
 var backgroundTaskSession *appSession
 
 func anyTaskRunning() bool {
 	return atomic.LoadInt32(&globalRunningTasks) > 0
+}
+
+func normalizeTaskNamespace(value string) string {
+	if value == "nsb" {
+		return "nsb"
+	}
+	return "official"
 }
 
 func safeGo(label string, session *appSession, fn func()) {
@@ -187,12 +195,14 @@ func (s *appSession) beginTask(cancel context.CancelFunc, label string, mode str
 	clearCompletedBackgroundTaskSession()
 	s.taskMutex.Lock()
 	defer s.taskMutex.Unlock()
-	if anyTaskRunning() {
+	namespace := normalizeTaskNamespace(s.modeNamespace)
+	if activeTaskNamespaces[namespace] > 0 {
 		return false
 	}
 	if s.isTaskRunning {
 		return false
 	}
+	activeTaskNamespaces[namespace]++
 	s.isTaskRunning = true
 	s.taskCancel = cancel
 	s.backgroundTask = false
@@ -209,6 +219,10 @@ func (s *appSession) endTask() {
 	defer s.taskMutex.Unlock()
 	if s.isTaskRunning {
 		atomic.AddInt32(&globalRunningTasks, -1)
+		namespace := normalizeTaskNamespace(s.modeNamespace)
+		if activeTaskNamespaces[namespace] > 0 {
+			activeTaskNamespaces[namespace]--
+		}
 	}
 	s.isTaskRunning = false
 	s.taskCancel = nil
