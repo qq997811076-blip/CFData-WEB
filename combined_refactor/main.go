@@ -17,7 +17,7 @@ import (
 
 var webUser, webPassword string
 var webSessionMinutes int
-var boolFlagNames = []string{"cli", "nsbtls", "progress", "nocolor", "compactipv4", "nsbcompact", "github", "skipgeo", "outv6bracket", "edgetunnel"}
+var boolFlagNames = []string{"cli", "progress", "nocolor", "compactipv4", "github", "skipgeo", "outv6bracket", "edgetunnel"}
 
 type latestReleaseInfo struct {
 	TagName string `json:"tag_name"`
