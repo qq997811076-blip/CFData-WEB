@@ -3819,7 +3819,7 @@ function openSortModal(mode) {
             const priorities = getSortPriorities();
             if (!priorities.length) return showNoticeCard('请选择排序优先级');
 
-            else applyOfficialTestSort(priorities);
+            applyOfficialTestSort(priorities);
             closeSortModal();
         }
 
@@ -3854,9 +3854,6 @@ function getAllResultFieldOrder() {
             if (!rows.length) return ['ipport'];
             return getOfficialResultFieldOrder().filter((key) => rows.some((r) => String(r[key] ?? '').trim() !== ''));
         }
-            return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
-        }
-
         function getCompactResultFieldOrder() {
             return getCompactResultFieldOrderFor(resultModalMode);
         }
