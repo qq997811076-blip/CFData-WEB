@@ -519,8 +519,15 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 }
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
-	const speedWindow = 10 * time.Second
-	const speedMaxBytes = 200 * 1024 * 1024
+	// 非标测速同步采用 gxg 的下载测量规则，并保留原项目的 IP、端口、TLS 与测速 URL 适配。
+	const (
+		testDuration     = 5 * time.Second
+		idleTimeout      = 3 * time.Second
+		readBufferSize   = 32 * 1024
+		minDownloadBytes = 64 * 1024
+		minMeasureTime   = 100 * time.Millisecond
+	)
+	const downloadLimit int64 = 50 * 1024 * 1024
 
 	scheme := "http"
 	if enableTLS {
@@ -532,111 +539,124 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 		return 0, "测速地址解析失败: " + err.Error()
 	}
 
+	speedCtx, cancel := context.WithTimeout(ctx, testDuration)
+	defer cancel()
+
 	transport := &http.Transport{
 		DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
 			return dialContextWithTimeout(c, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)), 5*time.Second)
 		},
-		TLSHandshakeTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: testDuration,
 		TLSClientConfig:     tlsConfigWithRootCAs(parsedURL.Hostname()),
 		DisableCompression:  true,
 	}
 	client := http.Client{
 		Transport: wrapDebugTransport("nsb-speed", transport),
-		Timeout:   speedWindow + 5*time.Second,
+		Timeout:   testDuration,
 	}
 
-	speedCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(speedCtx, "GET", parsedURL.String(), nil)
+	req, err := http.NewRequestWithContext(speedCtx, http.MethodGet, parsedURL.String(), nil)
 	if err != nil {
 		return 0, "测速请求构建失败: " + err.Error()
 	}
 	req.Host = parsedURL.Host
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Accept-Encoding", "identity")
+	req.Header.Set("Range", fmt.Sprintf("bytes=0-%d", downloadLimit-1))
 
-	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		if ctx.Err() != nil {
+			return 0, "测速任务已终止"
+		}
 		return 0, "测速请求失败: " + err.Error()
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		return 0, formatSpeedHTTPFailure(resp.StatusCode)
 	}
 
-	buf := make([]byte, 32*1024)
+	// 测速速度只按响应头返回后的有效下载时段计算。
+	start := time.Now()
+	var written int64
+	var lastData time.Time
+	buf := make([]byte, readBufferSize)
+
 	type readChunk struct {
 		n   int
 		err error
 	}
-	chunks := make(chan readChunk, 16)
-	readerDone := make(chan struct{})
-	safeGo("nsb-speed-reader", nil, func() {
-		defer close(readerDone)
-		for {
-			n, err := resp.Body.Read(buf)
-			select {
-			case chunks <- readChunk{n: n, err: err}:
-			case <-speedCtx.Done():
-				return
-			}
-			if err != nil {
-				return
-			}
+
+	for time.Since(start) < testDuration && written < downloadLimit {
+		b := buf
+		if remaining := downloadLimit - written; int64(len(b)) > remaining {
+			b = b[:int(remaining)]
 		}
-	})
+		ch := make(chan readChunk, 1)
+		go func(readBuf []byte) {
+			n, readErr := resp.Body.Read(readBuf)
+			ch <- readChunk{n: n, err: readErr}
+		}(b)
 
-	windowTimer := time.NewTimer(speedWindow)
-	defer windowTimer.Stop()
+		wait := idleTimeout
+		if !lastData.IsZero() {
+			wait -= time.Since(lastData)
+		}
+		if wait <= 0 {
+			cancel()
+			break
+		}
 
-	var written int64
-	for {
+		timer := time.NewTimer(wait)
 		select {
-		case <-ctx.Done():
-			cancel()
-			resp.Body.Close()
-			<-readerDone
-			return 0, "测速任务已终止"
-		case <-windowTimer.C:
-			cancel()
-			resp.Body.Close()
-			<-readerDone
-			goto done
-		case chunk := <-chunks:
+		case chunk := <-ch:
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
 			if chunk.n > 0 {
 				written += int64(chunk.n)
-				if written >= speedMaxBytes {
-					cancel()
-					resp.Body.Close()
-					<-readerDone
-					goto done
-				}
+				lastData = time.Now()
 			}
 			if chunk.err != nil {
-				if chunk.err != io.EOF {
-					cancel()
-					resp.Body.Close()
-					<-readerDone
+				if chunk.err != io.EOF && written == 0 {
 					return 0, "测速下载失败: " + chunk.err.Error()
 				}
-				cancel()
-				resp.Body.Close()
-				<-readerDone
-				goto done
+				goto finished
 			}
+			if chunk.n == 0 {
+				time.Sleep(10 * time.Millisecond)
+			}
+		case <-timer.C:
+			cancel()
+			goto finished
+		case <-speedCtx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			goto finished
 		}
 	}
 
-done:
-	duration := time.Since(start)
-	if duration <= 0 {
-		return 0, "测速耗时异常: duration<=0"
+finished:
+	if ctx.Err() != nil {
+		return 0, "测速任务已终止"
+	}
+	if written < minDownloadBytes {
+		return 0, "有效下载数据不足 64 KiB"
 	}
 
-	return float64(written) / duration.Seconds() / 1024, ""
+	used := lastData.Sub(start)
+	if used < minMeasureTime {
+		used = minMeasureTime
+	}
+	// 保留原项目约定：此函数返回 KB/s，调用方再换算为 MB/s。
+	return float64(written) / used.Seconds() / 1024, ""
 }
 
 func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string) {
