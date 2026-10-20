@@ -11,12 +11,17 @@ on:
   push:
     branches:
       - main
+      - delete-all-nsb-from-baseline-39418922471
     paths:
       - ".github/workflows/build-apk-only.yml"
       - "combined_refactor/index.html"
       - "combined_refactor/protocol.go"
       - "combined_refactor/server.go"
       - "combined_refactor/tasks_speed.go"
+      - "combined_refactor/tasks_official.go"
+      - "combined_refactor/tasks_common.go"
+      - "combined_refactor/session.go"
+      - "combined_refactor/types.go"
       - "combined_refactor/cli.go"
 
 permissions:
