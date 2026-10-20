@@ -1787,6 +1787,108 @@
             <div id="nsbControls" class="hidden">
                 <div class="control-title">
                     <span>非标参数</span>
+                    <span style="font-size:12px;color:var(--text-secondary);">端口可选</span>
+                </div>
+                <div class="option-item">
+                    <span class="label">🌐 IP 类型</span>
+                    <select id="nsbOfficialIpType">
+                        <option value="4">IPv4</option>
+                        <option value="6">IPv6</option>
+                    </select>
+                </div>
+                <div class="option-item">
+                    <span class="label" title="目标端口，HTTPS 默认 443">🚪 测试端口</span>
+                    <select id="nsbOfficialTestPort">
+                        <optgroup label="HTTPS (默认)">
+                            <option value="443" selected>443</option>
+                            <option value="2053">2053</option>
+                            <option value="2083">2083</option>
+                            <option value="2087">2087</option>
+                            <option value="2096">2096</option>
+                            <option value="8443">8443</option>
+                        </optgroup>
+                        <optgroup label="HTTP">
+                            <option value="80">80</option>
+                            <option value="8080">8080</option>
+                            <option value="8880">8880</option>
+                            <option value="2052">2052</option>
+                            <option value="2082">2082</option>
+                            <option value="2086">2086</option>
+                            <option value="2095">2095</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="option-item">
+                    <span class="label" title="同时扫描的线程数">🚀 并发数量</span>
+                    <input id="nsbOfficialThreads" type="number" value="100" placeholder="默认 100">
+                </div>
+                <div class="option-item">
+                    <span class="label" title="超过此值的连接将被过滤，单位毫秒">⏱️ 扫描合格延迟</span>
+                    <input id="nsbOfficialDelay" type="number" value="500" placeholder="默认 500ms">
+                </div>
+                <div class="option-item">
+                    <span class="label" title="测速达标下限，单位 MB/s">📉 测试合格速度</span>
+                    <input id="nsbOfficialSpeedMin" type="number" value="0.1" step="0.01" placeholder="默认 0.1MB/s">
+                </div>
+                <div class="option-item">
+                    <span class="label" title="测速达标结果的最大数量，关闭测速填 0">🏁 测速结果数量</span>
+                    <input id="nsbOfficialSpeedLimit" type="number" value="5" placeholder="0 关闭测速">
+                </div>
+                <div class="option-item">
+                    <span class="label" title="扫描完成后自动进行详细测试和测速">🧪 自动测速</span>
+                    <select id="nsbOfficialAutoSpeed">
+                        <option value="off" selected>关闭</option>
+                        <option value="on">开启</option>
+                    </select>
+                </div>
+                <div class="option-item">
+                    <span class="label" title="同时测速的 IP 数量，设为 1 可减少测速互相影响">⚡ 测速并发</span>
+                    <input id="nsbOfficialSpeedTest" type="number" min="0" max="100" value="0" placeholder="0 默认单 IP 测速">
+                </div>
+                <div class="option-item">
+                    <span class="label" title="指定数据中心，留空自动选择">🏢 数据中心</span>
+                    <input id="nsbOfficialTargetDC" type="text" value="" placeholder="留空自动选择" disabled>
+                </div>
+                <div class="option-item full-width">
+                    <span class="label">📡 扫描方式</span>
+                    <div class="field-with-action">
+                        <select id="nsbOfficialScanMode" class="speed-url-select">
+                            <option value="tcping" selected>TCPing（默认）</option>
+                            <option value="httping">HTTPing</option>
+                        </select>
+                        <input id="nsbOfficialScanModeHint" type="text" value="仅测量 TCP 握手延迟" readonly style="flex:1;min-width:0;">
+                    </div>
+                </div>
+                <div class="option-item full-width">
+                    <span class="label">🔗 测速网址</span>
+                    <div class="field-with-action">
+                        <select id="nsbOfficialSpeedUrlPreset" class="speed-url-select">
+                            <option value="auto" selected>自动选择</option>
+                            <option value="speed.cloudflare.com/__down?bytes=99999999">Cloudflare</option>
+                            <option value="cf.090227.xyz/__down?bytes=99999999">CM提供</option>
+                            <option value="speed.okl.abrdns.com">移动专属</option>
+                            <option value="custom">手动输入</option>
+                        </select>
+                        <input id="nsbOfficialSpeedUrl" type="text" value="自动选择"
+                            placeholder="例如 speed.okl.abrdns.com">
+                        <button class="mini-action-btn" title="恢复自动选择测速网站">↺</button>
+                    </div>
+                </div>
+                <div class="option-item full-width">
+                    <span class="label">🧹 精简地址库</span>
+                    <div class="field-with-action">
+                        <input id="nsbCompactIPv4Hint" type="text" value="按 /24 子网探测 TCP:80 连通性，仅保留活跃子网并覆盖 ips-v4.txt"
+                            readonly>
+                        <button id="nsbBtnCompactIPv4" class="mini-action-btn" title="开始精简 IPv4 地址库">🧹</button>
+                    </div>
+                </div>
+                <div class="option-item full-width">
+                    <span class="label">⬆ 自动上传</span>
+                    <select id="nsbOfficialAutoUploadAccount"></select>
+                </div>
+            </div><div id="nsbLegacyControls" class="hidden" class="hidden">
+                <div class="control-title">
+                    <span>非标参数</span>
                     <span style="font-size:12px;color:var(--text-secondary);">支持上传 txt/csv 文件或填写网络
                         URL（二选一）；若识别失败，请整理为每行一个目标，格式：IP 空格 端口，例如 1.2.3.4 443</span>
                 </div>
@@ -4705,21 +4807,25 @@
         }
 
         function startNSBTask() {
-            const threads = parseInt(document.getElementById('nsbThreads')?.value) || 100;
-            const port = parseInt(document.getElementById('nsbFallbackPort')?.value) || 443;
-            const delay = parseInt(document.getElementById('nsbDelay')?.value) || 0;
-            const scanMode = document.getElementById('nsbScanMode')?.value || 'tcping';
-            const speedMin = parseFloat(document.getElementById('nsbSpeedMin')?.value) || 0.1;
-            const speedLimit = parseInt(document.getElementById('nsbSpeedLimit')?.value) || 0;
-            const speedEnabled = String(document.getElementById('nsbEnableSpeed')?.value || 'off').toLowerCase() === 'on';
-            const speedURL = resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset');
+            const ipType = parseInt(document.getElementById('nsbOfficialIpType')?.value || '4');
+            const threads = parseInt(document.getElementById('nsbOfficialThreads')?.value) || 100;
+            const port = parseInt(document.getElementById('nsbOfficialTestPort')?.value) || 443;
+            const delay = parseInt(document.getElementById('nsbOfficialDelay')?.value) || 0;
+            const scanMode = document.getElementById('nsbOfficialScanMode')?.value || 'tcping';
+            const speedMin = parseFloat(document.getElementById('nsbOfficialSpeedMin')?.value) || 0.1;
+            const speedLimit = parseInt(document.getElementById('nsbOfficialSpeedLimit')?.value) || 0;
+            const autoSpeed = String(document.getElementById('nsbOfficialAutoSpeed')?.value || 'off').toLowerCase() === 'on';
+            const speedURL = resolveSpeedTestUrl('nsbOfficialSpeedUrl', 'nsbOfficialSpeedUrlPreset');
+            const speedConcurrency = Math.max(1, parseInt(document.getElementById('nsbOfficialSpeedTest')?.value) || 1);
             if (threads < 1 || port < 1 || port > 65535 || delay < 0) { showNoticeCard('请检查并发、端口和延迟参数'); return; }
-            nsbSpeedEnabledForResults = speedEnabled && speedLimit > 0; nsbSpeedMinValue = speedMin; nsbContinueSpeedUnlocked = false;
+            nsbSpeedEnabledForResults = autoSpeed && speedLimit > 0;
+            nsbSpeedMinValue = speedMin;
+            nsbContinueSpeedUnlocked = false;
             nsbLiveRows = []; nsbLiveIndex = {}; nsbLiveRowElements = {};
             document.querySelector('#scanTable tbody').innerHTML = ''; updateBadge('scanCount', 0);
             isTaskRunning = true; isStoppingTask = false; runningTaskLabel = '非标优选'; runningTaskMode = 'nsb'; runningTaskTab = 'scan';
             setStartLoading(getRunningButtonText()); resetProgress(); progressBox.style.display = 'block';
-            if (!wsSend({type:'start_nsb_task', data:{ipType:4,threads,port,delay,scanMode,autoSpeed:speedEnabled,officialTargetDC:document.getElementById('nsbTargetDC')?.value.trim() || '',officialSpeedPort:port,officialSpeedURL:speedURL,officialSpeedMin:speedMin,officialSpeedLimit:speedLimit,officialSpeedConcurrency:Math.max(1,parseInt(document.getElementById('nsbSpeedTest')?.value)||1)}})) {
+            if (!wsSend({type:'start_nsb_task', data:{ipType,threads,port,delay,scanMode,autoSpeed,officialTargetDC:document.getElementById('nsbOfficialTargetDC')?.value.trim() || '',officialSpeedPort:port,officialSpeedURL:speedURL,officialSpeedMin:speedMin,officialSpeedLimit:speedLimit,officialSpeedConcurrency:speedConcurrency}})) {
                 finishRunningTask('✨ 开始扫描与测试'); showNoticeCard('连接未就绪，无法启动任务');
             }
         }
