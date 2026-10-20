@@ -2422,6 +2422,7 @@
         let resultModalMode = 'scan';
         let copyModalMode = 'scan';
         let sortModalMode = 'official';
+        const progressSnapshotsByMode = { official: null, nsb: null };
         let resultFieldOrder = [];
         let resultCustomFields = [];
         let copyFieldOrder = [];
@@ -3240,7 +3241,32 @@
             }
         }
 
+        function captureProgressSnapshot(mode) {
+            if (!mode || !progressBar || !progressBox) return;
+            progressSnapshotsByMode[mode] = {
+                boxDisplay: progressBox.style.display,
+                width: progressBar.style.width,
+                background: progressBar.style.background,
+                backgroundSize: progressBar.style.backgroundSize,
+                animation: progressBar.style.animation,
+                text: progressBar.textContent
+            };
+        }
+
+        function restoreProgressSnapshot(mode) {
+            const snapshot = progressSnapshotsByMode[mode];
+            if (!snapshot || !progressBar || !progressBox) return false;
+            progressBox.style.display = snapshot.boxDisplay;
+            progressBar.style.width = snapshot.width;
+            progressBar.style.background = snapshot.background;
+            progressBar.style.backgroundSize = snapshot.backgroundSize;
+            progressBar.style.animation = snapshot.animation;
+            progressBar.textContent = snapshot.text;
+            return true;
+        }
+
         function switchMode(mode) {
+            if (mode !== currentMode) captureProgressSnapshot(currentMode);
             currentMode = mode;
             modeOfficial.classList.toggle('active', mode === 'official');
             modeNSB.classList.toggle('active', mode === 'nsb');
@@ -3283,6 +3309,7 @@
                 }
             }
             if (!isTaskRunning) resetProgress();
+            else if (runningTaskMode !== mode) restoreProgressSnapshot(mode);
             updateScanModeHint();
             log(`切换至：${mode === 'official' ? '官方优选' : '非标优选'}`);
         }
