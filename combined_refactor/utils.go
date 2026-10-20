@@ -2,13 +2,11 @@ package main
 
 import (
 	"bufio"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"math/rand"
 	"net"
 	"net/netip"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
