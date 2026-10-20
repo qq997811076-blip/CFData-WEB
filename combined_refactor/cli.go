@@ -1121,7 +1121,7 @@ func runOfficialCLI(cfg *cliConfig) error {
 		inputName = cfg.sourceURL
 		content, err = getURLContent(cfg.sourceURL)
 		if err != nil {
-			return fmt.Errorf("获取非标网络输入失败: %w", err)
+			return fmt.Errorf("获取输入失败: %w", err)
 		}
 	}
 
