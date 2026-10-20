@@ -410,7 +410,7 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	fileCfg.TestPort = n
 	dcCurrent := "自动"
 	if strings.TrimSpace(fileCfg.DC) != "" { dcCurrent = fileCfg.DC }
-	v, o := askLine("数据中心", dcCurrent, "格式: 数据中心代码（如 HKG/NRT）；输入 0=自动选择最低延迟数据中心")
+	v, o = askLine("数据中心", dcCurrent, "格式: 数据中心代码（如 HKG/NRT）；输入 0=自动选择最低延迟数据中心")
 	if o != promptOK { return o }
 	if v == "0" { fileCfg.DC = "" } else if v != "" { fileCfg.DC = v }
 	speedURL := fileCfg.URL
