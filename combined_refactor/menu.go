@@ -410,7 +410,7 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 	delayMin := 1
 	delayHint := "TCPing/HTTPing 延迟超过该值视为不合格（毫秒）"
 	
-	n, o := askInt("扫描合格延迟", fmt.Sprintf("%dms", delayCurrent), delayHint, delayCurrent, delayMin, 0)
+	n, o = askInt("扫描合格延迟", fmt.Sprintf("%dms", delayCurrent), delayHint, delayCurrent, delayMin, 0)
 	if o != promptOK {
 		return o
 	}
@@ -446,7 +446,7 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 		dcCurrent = fileCfg.DC
 	}
 	
-		v, o := askLine("数据中心", dcCurrent, "格式: 数据中心代码（如 HKG/NRT）；输入 0=自动选择最低延迟数据中心")
+		v, o = askLine("数据中心", dcCurrent, "格式: 数据中心代码（如 HKG/NRT）；输入 0=自动选择最低延迟数据中心")
 		if o != promptOK {
 			return o
 		}
