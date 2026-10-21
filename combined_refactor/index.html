@@ -2506,7 +2506,8 @@ table td,
                     speedMin: val('nsbSpeedMin'),
                     speedLimit: val('nsbSpeedLimit'),
                     enableSpeed: selVal('nsbEnableSpeed'),
-                    speedConcurrency: val('nsbSpeedTest'),
+                    speedTest: val('nsbSpeedTest'),
+                    outFile: val('nsbOutFile'),
                     targetDC: val('nsbTargetDC'),
                     compactView: selVal('nsbCompactView'),
                     tls: selVal('nsbTls'),
@@ -2550,7 +2551,8 @@ table td,
             setValue('nsbSpeedMin', n.speedMin);
             setValue('nsbSpeedLimit', n.speedLimit);
             setValue('nsbEnableSpeed', n.enableSpeed);
-            setValue('nsbSpeedTest', n.speedConcurrency);
+            setValue('nsbSpeedTest', n.speedTest !== undefined ? n.speedTest : n.speedConcurrency);
+            setValue('nsbOutFile', n.outFile);
             setValue('nsbTargetDC', n.targetDC);
             setValue('nsbCompactView', n.compactView);
             setValue('nsbTls', n.tls);
