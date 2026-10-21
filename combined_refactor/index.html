@@ -1517,7 +1517,7 @@ table td,
         </div>
 
         <div class="section-box controls">
-            <div id="officialControls">
+            <div id="officialControls" style="display:block;">
                 <div class="control-title">
                     <span>官方参数</span>
                     <span style="font-size:12px;color:var(--text-secondary);">端口可选</span>
@@ -1625,7 +1625,7 @@ table td,
 
             
 
-            <div id="nsbControls" class="hidden">
+            <div id="nsbControls" class="hidden" style="display:none;">
                 <div class="control-title">
                     <span>非标参数</span>
                     <span style="font-size:12px;color:var(--text-secondary);">支持上传 txt/csv 文件或填写网络
@@ -3694,7 +3694,9 @@ function switchMode(mode) {
 
             if (mode === 'official') {
                 officialControls.classList.remove('hidden');
+                officialControls.style.display = 'block';
                 nsbControls.classList.add('hidden');
+                nsbControls.style.display = 'none';
                 document.querySelector('.tabs .tab:last-child').style.display = 'block';
                 document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
                 if (!isTaskRunning) resetButton('✨ 开始扫描与测试');
@@ -3707,7 +3709,9 @@ function switchMode(mode) {
                 }
             } else {
                 officialControls.classList.add('hidden');
+                officialControls.style.display = 'none';
                 nsbControls.classList.remove('hidden');
+                nsbControls.style.display = 'block';
                 const testTab = document.querySelectorAll('.tab')[1];
                 testTab.style.display = 'none';
                 if (document.querySelector('.tab.active') !== document.querySelector('.tabs .tab:first-child')) {
