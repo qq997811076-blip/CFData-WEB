@@ -2677,6 +2677,11 @@ table td,
                     startNextNsbURLImport();
                 }
             };
+            const nsbURLInput = document.getElementById('nsbIPURL');
+            if (nsbURLInput) {
+                nsbURLInput.value = localStorage.getItem('cfdata-nsb:importedIPURLs') || '';
+                nsbURLInput.addEventListener('input', () => localStorage.setItem('cfdata-nsb:importedIPURLs', nsbURLInput.value));
+            }
             document.getElementById('nsbIPImportStatus').textContent = '已导入唯一 IPv4：' + nsbGetIPs().length;
             document.getElementById('nsbIPFile').addEventListener('change', async () => {
                 const file = document.getElementById('nsbIPFile').files[0];
