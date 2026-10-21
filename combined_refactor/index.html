@@ -2619,7 +2619,7 @@ table td,
             const nsbControls = document.getElementById('officialControls');
             if (nsbControls) nsbControls.prepend(nsbImportPanel);
             const nsbGetIPs = () => { try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
-            const nsbExtractIPs = (content) => {
+            window.nsbExtractIPs = (content) => {
                 const found = [...String(content || '').matchAll(/(?:^|[^0-9.])((?:\d{1,3}\.){3}\d{1,3}(?:\s*\/\s*\d{1,2})?)(?![0-9./])/g)].map(m => m[1]);
                 const result = new Set();
                 for (const raw of found) {
@@ -2652,13 +2652,13 @@ table td,
             document.getElementById('nsbIPFileImport').addEventListener('click', async () => {
                 const file = document.getElementById('nsbIPFile').files[0];
                 if (!file) { showNoticeCard('请先选择 TXT 或 CSV 文件'); return; }
-                try { nsbSaveIPs(nsbExtractIPs(await file.text()), '文件导入'); } catch (e) { showNoticeCard('文件读取失败：' + e.message); }
+                try { nsbSaveIPs(window.nsbExtractIPs(await file.text()), '文件导入'); } catch (e) { showNoticeCard('文件读取失败：' + e.message); }
             });
             document.getElementById('nsbIPClipboardImport').addEventListener('click', async () => {
                 let content = document.getElementById('nsbIPClipboard').value;
                 if (!content.trim() && navigator.clipboard && navigator.clipboard.readText) { try { content = await navigator.clipboard.readText(); } catch (_) {} }
                 if (!content.trim()) { showNoticeCard('请粘贴内容，或允许读取剪切板'); return; }
-                nsbSaveIPs(nsbExtractIPs(content), '剪切板导入');
+                nsbSaveIPs(window.nsbExtractIPs(content), '剪切板导入');
             });
             document.getElementById('nsbIPURLImport').addEventListener('click', () => {
                 const url = document.getElementById('nsbIPURL').value.trim();
@@ -3808,7 +3808,7 @@ startOfficialTask();
                 try {
                     if (navigator.clipboard && navigator.clipboard.readText) {
                         const clipboardText = await navigator.clipboard.readText();
-                        nsbScanIPs = [...new Set([...nsbScanIPs, ...nsbExtractIPs(clipboardText)])];
+                        nsbScanIPs = [...new Set([...nsbScanIPs, ...window.nsbExtractIPs(clipboardText)])];
                     }
                 } catch (_) {}
             }
