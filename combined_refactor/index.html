@@ -2287,7 +2287,6 @@ table td,
         const nsbControls = document.getElementById('nsbControls');
         const fileInput = document.getElementById('nsbFileInput');
         const nsbSourceUrlInput = document.getElementById('nsbSourceUrl');
-        const officialControls = document.getElementById('officialControls');
 
         function applyTheme(theme) {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -4565,14 +4564,18 @@ function getLatencyColorFactor() {
         }
 
         function startTask() {
-            if (currentMode === 'nsb') return startNSBTask();
-if (isTaskRunning || officialBatchSpeedRunning) {
+            if (isTaskRunning || officialBatchSpeedRunning || nsbBatchSpeedRunning) {
                 showConfirmCard(getStopConfirmText(), confirmStopCurrentTask, '终止当前任务');
                 return;
             }
 
             if (requireProxyWarning(() => startTask())) return;
-startOfficialTask();
+
+            if (currentMode === 'official') {
+                startOfficialTask();
+            } else {
+                startNSBTask();
+            }
         }
 
         function confirmStopCurrentTask() {
