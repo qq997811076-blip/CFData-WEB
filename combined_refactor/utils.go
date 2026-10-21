@@ -256,7 +256,7 @@ func getRandomIPv6s(ipList []string) []string {
 
 // extractImportedIPv4s extracts valid IPv4 addresses from imported text.
 func extractImportedIPv4s(content string) []string {
-	matches := regexp.MustCompile(\`(?:[0-9]{1,3}\.){3}[0-9]{1,3}\`).FindAllString(content, -1)
+	matches := regexp.MustCompile("(?:[0-9]{1,3}\\.){3}[0-9]{1,3}").FindAllString(content, -1)
 	seen := make(map[string]bool, len(matches))
 	ips := make([]string, 0, len(matches))
 	for _, candidate := range matches {
