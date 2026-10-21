@@ -2503,7 +2503,8 @@ table td,
             const status = document.getElementById('nsbIPImportStatus');
             if (status) status.textContent = '正在读取网络 URL（' + (nsbURLImportIndex + 1) + '/' + nsbURLImportQueue.length + '）：' + currentURL;
             if (window.CFDataAndroid && typeof window.CFDataAndroid.fetchNsbIPURL === 'function') {
-                // 与 gxg 参考版一致：使用 Android 原生网络栈读取 URL，避免 Go DNS 误用本机 ::1:53。
+                // 原生读取完成后通过 evaluateJavascript 回调；显式挂到 window，确保原生层可调用。
+                window.handleMessage = handleMessage;
                 window.CFDataAndroid.fetchNsbIPURL(currentURL);
                 return;
             }
