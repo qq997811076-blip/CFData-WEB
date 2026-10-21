@@ -1,0 +1,115 @@
+name: Build APK (debug)
+
+on:
+  push:
+    branches:
+      - ui-import-network-url-20261021
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    name: Android APK (debug-signed, no repository keystore)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.4"
+          cache-dependency-path: combined_refactor/go.sum
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Set Version
+        run: echo "VERSION=debug-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Download CA Certificates
+        run: |
+          curl -fsSL --retry 3 --connect-timeout 10 \
+            https://curl.se/ca/cacert.pem \
+            -o combined_refactor/ca-certificates.crt
+
+      - name: Build Android backend
+        working-directory: combined_refactor
+        env:
+          GOOS: android
+          GOARCH: arm64
+          CGO_ENABLED: "0"
+        run: |
+          go build -ldflags "-s -w -X main.appVersion=${VERSION}" -o ../app/src/main/jniLibs/arm64-v8a/libcfdata.so .
+
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.items = []
+                  self.current = None
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "script":
+                      attrs = dict(attrs)
+                      self.current = {"src": attrs.get("src"), "type": attrs.get("type", ""), "text": ""}
+              def handle_data(self, data):
+                  if self.current is not None:
+                      self.current["text"] += data
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.current is not None:
+                      item = self.current
+                      if not item["src"] and item["type"] in ("", "text/javascript", "application/javascript", "module") and item["text"].strip():
+                          ext = ".mjs" if item["type"] == "module" else ".js"
+                          path = Path("/tmp") / f"cfdata-inline-{len(self.items)}{ext}"
+                          path.write_text(item["text"], encoding="utf-8")
+                          self.items.append(path)
+                      self.current = None
+          parser = Scripts()
+          parser.feed(Path("combined_refactor/index.html").read_text(encoding="utf-8"))
+          if not parser.items:
+              raise SystemExit("No inline JavaScript blocks found")
+          Path("/tmp/cfdata-js-files.txt").write_text("\n".join(map(str, parser.items)), encoding="utf-8")
+          print(f"Extracted {len(parser.items)} inline JavaScript blocks")
+          PY
+          while IFS= read -r file; do node --check "$file"; done < /tmp/cfdata-js-files.txt
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Verify APK Contains Backend
+        run: |
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | tee apk-contents.txt
+          grep -q "lib/arm64-v8a/libcfdata.so" apk-contents.txt
+          unzip -l app/build/outputs/apk/debug/app-debug.apk "lib/arm64-v8a/libcfdata.so"
+
+      - name: Prepare APK Artifact
+        run: |
+          mkdir -p release_assets
+          cp app/build/outputs/apk/debug/app-debug.apk release_assets/cfdata-android-arm64-debug.apk
+          cd release_assets
+          sha256sum cfdata-android-arm64-debug.apk | awk '{print $1}' > cfdata-android-arm64-debug.apk.sha256
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-android-arm64-apk-debug
+          path: release_assets/*
