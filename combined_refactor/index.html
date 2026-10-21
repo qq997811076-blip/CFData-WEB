@@ -2619,6 +2619,21 @@ table td,
             const nsbControls = document.getElementById('officialControls');
             if (nsbControls) nsbControls.prepend(nsbImportPanel);
             const nsbGetIPs = () => { try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
+            window.nsbURLTaskStartPending = false;
+            window.nsbImportURLBeforeTask = () => {
+                const url = document.getElementById('nsbIPURL')?.value?.trim() || '';
+                if (!url) return false;
+                if (window.nsbURLTaskStartPending) return true;
+                window.nsbURLTaskStartPending = true;
+                const status = document.getElementById('nsbIPImportStatus');
+                if (status) status.textContent = '正在从 URL 获取 IPv4，获取完成后自动开始任务…';
+                if (!wsSend({ type: 'import_ip_url', data: { url } })) {
+                    window.nsbURLTaskStartPending = false;
+                    if (status) status.textContent = 'URL 获取失败：连接未就绪';
+                    showNoticeCard('连接未就绪，无法获取 URL；请等待重连后再试');
+                }
+                return true;
+            };
             const nsbExtractIPs = (content) => {
                 const found = String(content || '').match(/(?:\d{1,3}\.){3}\d{1,3}/g) || [];
                 return [...new Set(found.filter(ip => { const p = ip.split('.').map(Number); return p.length === 4 && p.every(n => n >= 0 && n <= 255) && p.join('.') === ip; }))];
@@ -3720,7 +3735,8 @@ if (isTaskRunning || officialBatchSpeedRunning) {
             }
 
             if (requireProxyWarning(() => startTask())) return;
-startOfficialTask();
+            if (cfdataModeNamespace === 'nsb' && typeof window.nsbImportURLBeforeTask === 'function' && window.nsbImportURLBeforeTask()) return;
+            startOfficialTask();
         }
 
         function confirmStopCurrentTask() {
@@ -4894,14 +4910,20 @@ copyModalMode = mode;
         function handleMessage(msg) {
             if (msg && msg.type === 'ip_source_content') {
                 const content = msg.data && msg.data.content || '';
-                const found = (String(content).match(/(?:\d{1,3}\.){3}\d{1,3}/g) || []);
-                const ips = [...new Set(found.filter(ip => { const p = ip.split('.').map(Number); return p.length === 4 && p.every(n => n >= 0 && n <= 255) && p.join('.') === ip; }))];
-                const existing = (() => { try { return JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); } catch (_) { return []; } })();
-                const merged = [...new Set([...existing, ...ips])];
-                localStorage.setItem('cfdata-nsb:importedIPs', JSON.stringify(merged));
-                const status = document.getElementById('nsbIPImportStatus');
-                if (status) status.textContent = 'URL 导入完成：本次识别 ' + ips.length + ' 个有效 IPv4，累计保存唯一 IPv4：' + merged.length;
-                log('[飞标优选] URL 导入完成，累计唯一 IPv4：' + merged.length);
+                const ips = nsbExtractIPs(content);
+                if (window.nsbURLTaskStartPending) {
+                    window.nsbURLTaskStartPending = false;
+                    if (ips.length === 0) {
+                        const status = document.getElementById('nsbIPImportStatus');
+                        if (status) status.textContent = 'URL 内容中没有找到有效 IPv4';
+                        showNoticeCard('URL 内容中没有找到有效 IPv4，任务未启动');
+                        return;
+                    }
+                    nsbSaveIPs(ips, 'URL 导入');
+                    startOfficialTask();
+                    return;
+                }
+                nsbSaveIPs(ips, 'URL 导入');
                 return;
             }
 
@@ -5092,6 +5114,13 @@ copyModalMode = mode;
 
                 case 'error':
                     recordWebDebugError('server_error', msg.data);
+                    if (window.nsbURLTaskStartPending) {
+                        window.nsbURLTaskStartPending = false;
+                        const status = document.getElementById('nsbIPImportStatus');
+                        if (status) status.textContent = 'URL 获取失败：' + String(msg.data || '未知错误');
+                        showNoticeCard('URL 获取失败：' + String(msg.data || '未知错误'));
+                        break;
+                    }
                     isStoppingTask = false;
                     if (String(msg.data || '').includes('已有任务正在运行')) {
                         if (officialAutoSpeedPending && officialAutoStage === 'test') {
