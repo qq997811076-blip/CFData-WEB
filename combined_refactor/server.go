@@ -145,10 +145,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			autoSpeed := params.AutoSpeed && params.OfficialSpeedLimit > 0
 			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed}, func(ctx context.Context, session *appSession) {
 				if normalizeTaskNamespace(session.modeNamespace) == "nsb" {
-					session.sendWSMessage("error", "非标优选的旧 IP 获取来源和逻辑已移除，等待配置新的 IP 来源。")
+					runOfficialTask(ctx, session, 0, params.Threads, params.Port, params.Delay, scanMode, params.CustomIPs)
 					return
 				}
-				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode)
+				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode, nil)
 				if ctx.Err() != nil || !autoSpeed || !session.isBackgroundTask() {
 					return
 				}
@@ -177,6 +177,28 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					runOfficialSpeedBatch(ctx, session, params.OfficialSpeedPort, speedURL, params.OfficialSpeedLimit, params.OfficialSpeedConcurrency, params.OfficialSpeedMin, results, false)
 				}
 			})
+		},
+		"import_ip_url": func(data json.RawMessage) {
+			var params importIPURLRequest
+			if err := json.Unmarshal(data, &params); err != nil { session.sendWSMessage("error", "URL 参数解析失败"); return }
+			u := strings.TrimSpace(params.URL)
+			parsed, err := url.ParseRequestURI(u)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+				session.sendWSMessage("error", "请输入有效的 http:// 或 https:// URL"); return
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+			if err != nil { session.sendWSMessage("error", "创建 URL 请求失败: "+err.Error()); return }
+			req.Header.Set("User-Agent", "Mozilla/5.0")
+			resp, err := (&http.Client{Timeout: 20*time.Second}).Do(req)
+			if err != nil { session.sendWSMessage("error", "URL 获取失败: "+err.Error()); return }
+			defer resp.Body.Close()
+			if resp.StatusCode < 200 || resp.StatusCode >= 300 { session.sendWSMessage("error", fmt.Sprintf("URL 返回 HTTP %d", resp.StatusCode)); return }
+			body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024+1))
+			if err != nil { session.sendWSMessage("error", "读取 URL 内容失败: "+err.Error()); return }
+			if len(body) > 5*1024*1024 { session.sendWSMessage("error", "URL 内容超过 5 MiB 限制"); return }
+			session.sendWSMessage("ip_source_content", map[string]string{"url": u, "content": string(body)})
 		},
 		"start_test": func(data json.RawMessage) {
 			var params startTestRequest
