@@ -13,9 +13,11 @@ on:
       - main
       - delete-all-nsb-from-baseline-39418922471
       - nsb-import-ip-sources
+      - nsb-url-module-port-gxg-baseline-39536735727
     paths:
       - ".github/workflows/build-apk-only.yml"
       - "combined_refactor/index.html"
+      - "app/src/main/java/com/cfdata/web/MainActivity.java"
       - "combined_refactor/protocol.go"
       - "combined_refactor/server.go"
       - "combined_refactor/tasks_speed.go"
