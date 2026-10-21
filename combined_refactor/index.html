@@ -2615,7 +2615,7 @@ table td,
             nsbImportPanel.id = 'nsbIPImportPanel';
             nsbImportPanel.className = 'section-box';
             nsbImportPanel.style.cssText = 'margin:12px 0;padding:16px;border-radius:14px;';
-            nsbImportPanel.innerHTML = '<div class="control-title"><span>IP 来源</span><span style="font-size:12px;color:var(--text-secondary)">仅用于飞标优选</span></div><div style="display:grid;gap:12px"><div><label for="nsbIPFile" style="display:block;margin-bottom:6px">文件导入（TXT / CSV）</label><input id="nsbIPFile" type="file" accept=".txt,.csv,text/plain,text/csv" style="width:100%;box-sizing:border-box"></div><div><label for="nsbIPClipboardImport" style="display:block;margin-bottom:6px">剪切板导入</label><button class="action-btn" id="nsbIPClipboardImport" type="button">剪切板导入</button></div><div><label for="nsbIPURL" style="display:block;margin-bottom:6px">启用网络URL</label><input id="nsbIPURL" type="url" placeholder="https://example.com/ips.txt" style="width:100%;box-sizing:border-box"></div><div id="nsbIPImportStatus" role="status" style="font-size:13px;color:var(--text-secondary)">已导入唯一 IPv4：0</div><button class="danger-btn" id="nsbIPClear" type="button">清除已导入 IP</button></div>';
+            nsbImportPanel.innerHTML = '<div class="control-title"><span>IP 来源</span><span style="font-size:12px;color:var(--text-secondary)">仅用于飞标优选</span></div><div style="display:grid;gap:12px"><div><label for="nsbIPFile" style="display:block;margin-bottom:6px">文件导入（TXT / CSV）</label><input id="nsbIPFile" type="file" accept=".txt,.csv,text/plain,text/csv" style="width:100%;box-sizing:border-box"></div><div><label for="nsbIPClipboardImport" style="display:block;margin-bottom:6px">剪切板导入</label><button class="action-btn" id="nsbIPClipboardImport" type="button">剪切板导入</button></div><div><label for="nsbIPURL" style="display:block;margin-bottom:6px">启用网络URL</label><textarea id="nsbIPURL" rows="3" placeholder="每行输入一个 http:// 或 https:// URL" style="width:100%;box-sizing:border-box;resize:vertical"></textarea><button class="action-btn" id="nsbIPURLFetch" type="button">读取网络 URL</button></div><div id="nsbIPImportStatus" role="status" style="font-size:13px;color:var(--text-secondary)">已导入唯一 IPv4：0</div><button class="danger-btn" id="nsbIPClear" type="button">清除已导入 IP</button></div>';
             const nsbControls = document.getElementById('officialControls');
             if (nsbControls) nsbControls.prepend(nsbImportPanel);
             const nsbGetIPs = () => { try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
@@ -2631,6 +2631,17 @@ table td,
                 log('[飞标优选] ' + source + '完成，累计唯一 IPv4：' + merged.length);
             };
             document.getElementById('nsbIPImportStatus').textContent = '已导入唯一 IPv4：' + nsbGetIPs().length;
+            document.getElementById('nsbIPURLFetch').addEventListener('click', () => {
+                const input = document.getElementById('nsbIPURL');
+                const urls = input ? input.value.trim() : '';
+                if (!urls) { showNoticeCard('请先输入至少一个网络 URL'); return; }
+                const status = document.getElementById('nsbIPImportStatus');
+                if (status) status.textContent = '正在由飞标优选后端读取网络 URL…';
+                if (!wsSend({ type: 'import_ip_url', data: { url: urls } })) {
+                    if (status) status.textContent = '连接未就绪，URL 读取未发送';
+                    showNoticeCard('连接未就绪，请等待重连后再试');
+                }
+            });
             document.getElementById('nsbIPFile').addEventListener('change', async () => {
                 const file = document.getElementById('nsbIPFile').files[0];
                 if (!file) { showNoticeCard('请先选择 TXT 或 CSV 文件'); return; }
@@ -4893,6 +4904,7 @@ copyModalMode = mode;
 
         function handleMessage(msg) {
             if (msg && msg.type === 'ip_source_content') {
+                const failed = msg.data && msg.data.failed || '';
                 const content = msg.data && msg.data.content || '';
                 const found = (String(content).match(/(?:\d{1,3}\.){3}\d{1,3}/g) || []);
                 const ips = [...new Set(found.filter(ip => { const p = ip.split('.').map(Number); return p.length === 4 && p.every(n => n >= 0 && n <= 255) && p.join('.') === ip; }))];
@@ -4902,6 +4914,7 @@ copyModalMode = mode;
                 const status = document.getElementById('nsbIPImportStatus');
                 if (status) status.textContent = 'URL 导入完成：本次识别 ' + ips.length + ' 个有效 IPv4，累计保存唯一 IPv4：' + merged.length;
                 log('[飞标优选] URL 导入完成，累计唯一 IPv4：' + merged.length);
+                if (failed) log('[飞标优选] 部分 URL 获取失败：' + failed);
                 return;
             }
 
