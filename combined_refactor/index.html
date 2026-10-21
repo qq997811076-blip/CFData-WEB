@@ -2615,7 +2615,7 @@ table td,
             nsbImportPanel.id = 'nsbIPImportPanel';
             nsbImportPanel.className = 'section-box';
             nsbImportPanel.style.cssText = 'margin:12px 0;padding:16px;border-radius:14px;';
-            nsbImportPanel.innerHTML = '<div class="control-title"><span>IP 来源</span><span style="font-size:12px;color:var(--text-secondary)">仅用于飞标优选</span></div><div style="display:grid;gap:12px"><div><label for="nsbIPFile" style="display:block;margin-bottom:6px">文件导入（TXT / CSV）</label><input id="nsbIPFile" type="file" accept=".txt,.csv,text/plain,text/csv" style="width:100%"><button class="action-btn" id="nsbIPFileImport" type="button" style="margin-top:6px">导入文件</button></div><div><label for="nsbIPClipboard" style="display:block;margin-bottom:6px">剪切板导入</label><textarea id="nsbIPClipboard" rows="3" placeholder="粘贴 IP 列表到这里" style="width:100%;box-sizing:border-box"></textarea><button class="action-btn" id="nsbIPClipboardImport" type="button" style="margin-top:6px">导入粘贴内容</button></div><div><label for="nsbIPURL" style="display:block;margin-bottom:6px">URL 导入</label><input id="nsbIPURL" type="url" placeholder="https://example.com/ips.txt" style="width:100%;box-sizing:border-box"><button class="action-btn" id="nsbIPURLImport" type="button" style="margin-top:6px">获取并导入 URL</button></div><div id="nsbIPImportStatus" role="status" style="font-size:13px;color:var(--text-secondary)">已导入唯一 IPv4：0</div><button class="danger-btn" id="nsbIPClear" type="button">清除已导入 IP</button></div>';
+            nsbImportPanel.innerHTML = '<div class="control-title"><span>IP 来源</span><span style="font-size:12px;color:var(--text-secondary)">仅用于飞标优选</span></div><div style="display:grid;gap:12px"><div><label for="nsbIPFile" style="display:block;margin-bottom:6px">文件导入（TXT / CSV）</label><input id="nsbIPFile" type="file" accept=".txt,.csv,text/plain,text/csv" style="width:100%;box-sizing:border-box"></div><div><label for="nsbIPClipboardImport" style="display:block;margin-bottom:6px">剪切板导入</label><button class="action-btn" id="nsbIPClipboardImport" type="button">剪切板导入</button></div><div><label for="nsbIPURL" style="display:block;margin-bottom:6px">URL 导入</label><input id="nsbIPURL" type="url" placeholder="https://example.com/ips.txt" style="width:100%;box-sizing:border-box"><button class="action-btn" id="nsbIPURLImport" type="button" style="margin-top:6px">获取并导入 URL</button></div><div id="nsbIPImportStatus" role="status" style="font-size:13px;color:var(--text-secondary)">已导入唯一 IPv4：0</div><button class="danger-btn" id="nsbIPClear" type="button">清除已导入 IP</button></div>';
             const nsbControls = document.getElementById('officialControls');
             if (nsbControls) nsbControls.prepend(nsbImportPanel);
             const nsbGetIPs = () => { try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
@@ -2631,15 +2631,16 @@ table td,
                 log('[飞标优选] ' + source + '完成，累计唯一 IPv4：' + merged.length);
             };
             document.getElementById('nsbIPImportStatus').textContent = '已导入唯一 IPv4：' + nsbGetIPs().length;
-            document.getElementById('nsbIPFileImport').addEventListener('click', async () => {
+            document.getElementById('nsbIPFile').addEventListener('change', async () => {
                 const file = document.getElementById('nsbIPFile').files[0];
                 if (!file) { showNoticeCard('请先选择 TXT 或 CSV 文件'); return; }
                 try { nsbSaveIPs(nsbExtractIPs(await file.text()), '文件导入'); } catch (e) { showNoticeCard('文件读取失败：' + e.message); }
             });
             document.getElementById('nsbIPClipboardImport').addEventListener('click', async () => {
-                let content = document.getElementById('nsbIPClipboard').value;
-                if (!content.trim() && navigator.clipboard && navigator.clipboard.readText) { try { content = await navigator.clipboard.readText(); } catch (_) {} }
-                if (!content.trim()) { showNoticeCard('请粘贴内容，或允许读取剪切板'); return; }
+                if (!navigator.clipboard || !navigator.clipboard.readText) { showNoticeCard('当前环境不支持读取系统剪切板，请检查浏览器权限或安全连接'); return; }
+                let content = '';
+                try { content = await navigator.clipboard.readText(); } catch (e) { showNoticeCard('读取系统剪切板失败，请允许剪切板权限后重试'); return; }
+                if (!content.trim()) { showNoticeCard('系统剪切板为空'); return; }
                 nsbSaveIPs(nsbExtractIPs(content), '剪切板导入');
             });
             document.getElementById('nsbIPURLImport').addEventListener('click', () => {
