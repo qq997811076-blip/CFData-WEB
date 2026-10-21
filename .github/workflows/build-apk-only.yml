@@ -137,3 +137,5 @@ jobs:
         with:
           name: asset-android-arm64-apk-debug
           path: release_assets/*
+
+# Rebuild after fixing official-mode visibility for NSB-only inputs.
