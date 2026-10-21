@@ -2627,15 +2627,15 @@ table td,
                 const found = new Set();
                 const validIPv4 = (value) => {
                     const parts = value.split('.');
-                    if (parts.length !== 4 || parts.some(part => !/^\\d{1,3}$/.test(part))) return null;
+                    if (parts.length !== 4 || parts.some(part => !/^\d{1,3}$/.test(part))) return null;
                     const nums = parts.map(Number);
                     if (nums.some(n => n < 0 || n > 255)) return null;
                     return nums.join('.');
                 };
-                for (const line of String(content || '').split(/\\r?\\n/)) {
-                    const match = /^\\s*([0-9]{1,3}(?:\\.[0-9]{1,3}){3}(?:\\s*\\/\\s*[0-9]{1,2})?)/.exec(line);
+                for (const line of String(content || '').split(/\r?\n/)) {
+                    const match = /^\s*([0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*\/\s*[0-9]{1,2})?)/.exec(line);
                     if (!match) continue;
-                    const token = match[1].replace(/\\s*\\/\\s*/, '/');
+                    const token = match[1].replace(/\s*\/\s*/, '/');
                     const parts = token.split('/');
                     const ip = validIPv4(parts[0]);
                     if (!ip) continue;
@@ -3812,7 +3812,7 @@ startOfficialTask();
                     nsbURLSkipOnNextStart = false;
                 } else {
                     const rawURLs = document.getElementById('nsbIPURL')?.value || '';
-                    const urls = [...new Set(rawURLs.split(/\\r?\\n/).map(value => value.trim()).filter(Boolean))];
+                    const urls = [...new Set(rawURLs.split(/\r?\n/).map(value => value.trim()).filter(Boolean))];
                     localStorage.setItem('cfdata-nsb:importedIPURLs', rawURLs);
                     if (urls.length > 0) {
                         if (nsbURLImportPending) return;
@@ -4982,6 +4982,13 @@ copyModalMode = mode;
         }
 
         function handleMessage(msg) {
+            if (msg && msg.type === 'error' && nsbURLImportPending && !(window.CFDataAndroid && typeof window.CFDataAndroid.fetchNsbIPURL === 'function')) {
+                const failedURL = nsbURLImportQueue[nsbURLImportIndex] || '';
+                log('[飞标优选] 网络 URL 读取失败，跳过并继续：' + failedURL + '；原因：' + String(msg.data || '未知错误'));
+                nsbURLImportIndex++;
+                startNextNsbURLImport();
+                return;
+            }
             if (msg && msg.type === 'ip_source_content') {
                 const content = msg.data && msg.data.content || '';
                 const ips = window.cfdataNsbExtractIPs ? window.cfdataNsbExtractIPs(content) : [];
