@@ -2638,6 +2638,7 @@ table td,
                 const found = String(content || '').match(/(?:\d{1,3}\.){3}\d{1,3}/g) || [];
                 return [...new Set(found.filter(ip => { const p = ip.split('.').map(Number); return p.length === 4 && p.every(n => n >= 0 && n <= 255) && p.join('.') === ip; }))];
             };
+            window.nsbExtractIPs = nsbExtractIPs;
             const nsbSaveIPs = (newIPs, source) => {
                 const merged = [...new Set([...nsbGetIPs(), ...newIPs])];
                 localStorage.setItem('cfdata-nsb:importedIPs', JSON.stringify(merged));
@@ -2645,6 +2646,7 @@ table td,
                 if (status) status.textContent = source + '完成：本次识别 ' + newIPs.length + ' 个有效 IPv4，累计保存唯一 IPv4：' + merged.length;
                 log('[飞标优选] ' + source + '完成，累计唯一 IPv4：' + merged.length);
             };
+            window.nsbSaveIPs = nsbSaveIPs;
             document.getElementById('nsbIPImportStatus').textContent = '已导入唯一 IPv4：' + nsbGetIPs().length;
             document.getElementById('nsbIPFile').addEventListener('change', async () => {
                 const file = document.getElementById('nsbIPFile').files[0];
@@ -4910,7 +4912,7 @@ copyModalMode = mode;
         function handleMessage(msg) {
             if (msg && msg.type === 'ip_source_content') {
                 const content = msg.data && msg.data.content || '';
-                const ips = nsbExtractIPs(content);
+                const ips = typeof window.nsbExtractIPs === 'function' ? window.nsbExtractIPs(content) : [];
                 if (window.nsbURLTaskStartPending) {
                     window.nsbURLTaskStartPending = false;
                     if (ips.length === 0) {
@@ -4919,11 +4921,11 @@ copyModalMode = mode;
                         showNoticeCard('URL 内容中没有找到有效 IPv4，任务未启动');
                         return;
                     }
-                    nsbSaveIPs(ips, 'URL 导入');
+                    window.nsbSaveIPs(ips, 'URL 导入');
                     startOfficialTask();
                     return;
                 }
-                nsbSaveIPs(ips, 'URL 导入');
+                if (typeof window.nsbSaveIPs === 'function') window.nsbSaveIPs(ips, 'URL 导入');
                 return;
             }
 
