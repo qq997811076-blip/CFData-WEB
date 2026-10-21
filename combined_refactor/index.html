@@ -3019,6 +3019,7 @@ table td,
                 const el = document.getElementById('officialScanMode');
                 return el ? el.value : 'tcping';
             }
+            const el = document.getElementById('nsbScanMode');
             return el ? el.value : 'tcping';
         }
 
@@ -3027,32 +3028,13 @@ table td,
                 const el = document.getElementById('officialScanModeHint');
                 return el || null;
             }
+            const el = document.getElementById('nsbScanModeHint');
             return el || null;
         }
 
         function getScanModeLabel() {
             return getScanMode() === 'httping' ? 'HTTPing' : 'TCPing';
         }
-
-
-        document.getElementById('nsbFileInput').addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) {
-                uploadedFileName = '';
-                uploadedFileContent = '';
-                syncNSBInputMode();
-                return;
-            }
-            uploadedFileName = file.name || 'upload.txt';
-            const reader = new FileReader();
-            reader.onload = () => {
-                uploadedFileContent = String(reader.result || '');
-                syncNSBInputMode('file');
-                log(`已选择文件: ${uploadedFileName}`);
-            };
-            reader.onerror = () => log('读取文件失败');
-            reader.readAsText(file);
-        });
 
 function syncNSBInputMode(preferred) {
             const hasFile = !!(fileInput && fileInput.files && fileInput.files.length);
