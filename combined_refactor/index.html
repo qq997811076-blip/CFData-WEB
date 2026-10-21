@@ -3743,6 +3743,10 @@ function getLatencyColorFactor() {
         }
 
         function startTask() {
+            if (nsbURLImportPending) {
+                showNoticeCard('正在读取网络 URL，请等待读取完成后再开始扫描');
+                return;
+            }
 if (isTaskRunning || officialBatchSpeedRunning) {
                 showConfirmCard(getStopConfirmText(), confirmStopCurrentTask, '终止当前任务');
                 return;
