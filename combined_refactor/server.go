@@ -28,7 +28,7 @@ const (
 
 // extractNetworkIPv4 extracts valid, unique IPv4 addresses from downloaded URL text.
 func extractNetworkIPv4(content string) []string {
-	pattern := regexp.MustCompile(`[0-9]{1,3}(?:\\.[0-9]{1,3}){3}`)
+	pattern := regexp.MustCompile(`[0-9]{1,3}(?:\.[0-9]{1,3}){3}`)
 	matches := pattern.FindAllStringIndex(content, -1)
 	seen := make(map[string]bool)
 	ips := make([]string, 0)
