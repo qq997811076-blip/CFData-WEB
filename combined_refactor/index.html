@@ -3804,7 +3804,7 @@ startOfficialTask();
             let nsbScanURLs = [];
             if (cfdataModeNamespace === 'nsb') {
                 try { nsbScanIPs = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); } catch (_) {}
-                try { nsbScanURLs = JSON.parse(localStorage.getItem('cfdata-nsb:sourceURLs') || '[]'); } catch (_) {}
+                try { nsbScanURLs = JSON.parse(localStorage.getItem('cfdata-nsb:sourceURLs') || 'null') || ['https://zip.cm.edu.kg/all.txt', 'https://countrymerge.pages.dev/all.txt']; } catch (_) { nsbScanURLs = ['https://zip.cm.edu.kg/all.txt', 'https://countrymerge.pages.dev/all.txt']; }
                 try {
                     if (navigator.clipboard && navigator.clipboard.readText) {
                         const clipboardText = await navigator.clipboard.readText();
