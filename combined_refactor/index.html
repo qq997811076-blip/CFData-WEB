@@ -2615,7 +2615,7 @@ table td,
             nsbImportPanel.id = 'nsbIPImportPanel';
             nsbImportPanel.className = 'section-box';
             nsbImportPanel.style.cssText = 'margin:12px 0;padding:16px;border-radius:14px;';
-            nsbImportPanel.innerHTML = '<div class="control-title"><span>IP 来源</span><span style="font-size:12px;color:var(--text-secondary)">仅用于飞标优选</span></div><div style="display:grid;gap:12px"><div><label for="nsbIPFile" style="display:block;margin-bottom:6px">文件导入（TXT / CSV）</label><input id="nsbIPFile" type="file" accept=".txt,.csv,text/plain,text/csv" style="width:100%;box-sizing:border-box"></div><div><label for="nsbIPClipboardImport" style="display:block;margin-bottom:6px">剪切板导入</label><button class="action-btn" id="nsbIPClipboardImport" type="button">剪切板导入</button></div><div><label for="nsbIPURL" style="display:block;margin-bottom:6px">启用网络URL</label><input id="nsbIPURL" type="url" placeholder="https://example.com/ips.txt" style="width:100%;box-sizing:border-box"></div><div id="nsbIPImportStatus" role="status" style="font-size:13px;color:var(--text-secondary)">已导入唯一 IPv4：0</div><button class="danger-btn" id="nsbIPClear" type="button">清除已导入 IP</button></div>';
+            nsbImportPanel.innerHTML = '<div class="control-title"><span>IP 来源</span><span style="font-size:12px;color:var(--text-secondary)">仅用于飞标优选</span></div><div style="display:grid;gap:12px"><div><label for="nsbIPFile" style="display:block;margin-bottom:6px">文件导入（TXT / CSV）</label><input id="nsbIPFile" type="file" accept=".txt,.csv,text/plain,text/csv" style="width:100%;box-sizing:border-box"></div><div><label for="nsbIPClipboardImport" style="display:block;margin-bottom:6px">剪切板导入</label><button class="action-btn" id="nsbIPClipboardImport" type="button">剪切板导入</button></div><div><label for="nsbIPURL" style="display:block;margin-bottom:6px">网络 URL</label><input id="nsbIPURL" type="url" placeholder="https://example.com/ips.txt" style="width:100%;box-sizing:border-box"><button class="action-btn" id="nsbIPURLImport" type="button" style="margin-top:8px">获取并导入 URL</button></div><div id="nsbIPImportStatus" role="status" style="font-size:13px;color:var(--text-secondary)">已导入唯一 IPv4：0</div><button class="danger-btn" id="nsbIPClear" type="button">清除已导入 IP</button></div>';
             const nsbControls = document.getElementById('officialControls');
             if (nsbControls) nsbControls.prepend(nsbImportPanel);
             const nsbGetIPs = () => { try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
@@ -2649,6 +2649,22 @@ table td,
                 } catch (e) { showNoticeCard('读取系统剪切板失败，请重试'); return; }
                 if (!content.trim()) { showNoticeCard('系统剪切板为空'); return; }
                 nsbSaveIPs(nsbExtractIPs(content), '剪切板导入');
+            });
+            const importIPsFromURL = () => {
+                const input = document.getElementById('nsbIPURL');
+                const url = input ? input.value.trim() : '';
+                const status = document.getElementById('nsbIPImportStatus');
+                if (!url) { showNoticeCard('请先填写网络 URL'); return; }
+                if (!/^https?:\/\//i.test(url)) { showNoticeCard('请输入有效的 http:// 或 https:// URL'); return; }
+                if (status) status.textContent = '正在获取 URL 内容…';
+                if (!wsSend({ type: 'import_ip_url', data: { url } })) {
+                    if (status) status.textContent = 'URL 获取失败：服务器连接未就绪';
+                    showNoticeCard('连接未就绪，请等待重连后再试');
+                }
+            };
+            document.getElementById('nsbIPURLImport').addEventListener('click', importIPsFromURL);
+            document.getElementById('nsbIPURL').addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') { event.preventDefault(); importIPsFromURL(); }
             });
             document.getElementById('nsbIPClear').addEventListener('click', () => {
                 localStorage.removeItem('cfdata-nsb:importedIPs');
