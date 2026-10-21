@@ -362,6 +362,55 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void fetchNsbIPURL(String rawURL) {
+            final String requestedURL = rawURL == null ? "" : rawURL.trim();
+            executor.execute(() -> {
+                HttpURLConnection connection = null;
+                org.json.JSONObject result = new org.json.JSONObject();
+                try {
+                    URL parsed = new URL(requestedURL);
+                    String scheme = parsed.getProtocol();
+                    if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                        throw new IOException("仅支持 http/https URL");
+                    }
+                    connection = (HttpURLConnection) parsed.openConnection();
+                    connection.setConnectTimeout(15000);
+                    connection.setReadTimeout(60000);
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    int code = connection.getResponseCode();
+                    if (code < 200 || code >= 300) throw new IOException("HTTP 状态码：" + code);
+                    java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
+                    int total = 0;
+                    try (java.io.InputStream input = connection.getInputStream()) {
+                        int count;
+                        while ((count = input.read(buffer)) != -1) {
+                            total += count;
+                            if (total > 5 * 1024 * 1024) throw new IOException("URL 内容超过 5 MiB 限制");
+                            output.write(buffer, 0, count);
+                        }
+                    }
+                    result.put("url", requestedURL);
+                    result.put("ok", true);
+                    result.put("content", new String(output.toByteArray(), StandardCharsets.UTF_8));
+                } catch (Exception e) {
+                    try {
+                        result.put("url", requestedURL);
+                        result.put("ok", false);
+                        result.put("error", "URL 获取失败：" + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                    } catch (org.json.JSONException ignored) {}
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+                final String script = "if(window.onNsbIPURLFetchResult)window.onNsbIPURLFetchResult(" + result.toString() + ");";
+                mainHandler.post(() -> {
+                    if (webView != null) webView.evaluateJavascript(script, null);
+                });
+            });
+        }
+
+        @JavascriptInterface
         public boolean isDarkMode() {
             int nightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
             return nightMode == Configuration.UI_MODE_NIGHT_YES;
