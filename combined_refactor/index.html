@@ -2620,7 +2620,7 @@ table td,
             if (nsbControls) nsbControls.prepend(nsbImportPanel);
             const nsbGetIPs = () => { try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
             const nsbExtractIPs = (content) => {
-                const found = String(content || '').match(/(?<![0-9.])(?:\d{1,3}\.){3}\d{1,3}(?:\s*\/\s*\d{1,2})?(?![0-9./])/g) || [];
+                const found = [...String(content || '').matchAll(/(?:^|[^0-9.])((?:\d{1,3}\.){3}\d{1,3}(?:\s*\/\s*\d{1,2})?)(?![0-9./])/g)].map(m => m[1]);
                 const result = new Set();
                 for (const raw of found) {
                     const token = raw.replace(/\s/g, '');
