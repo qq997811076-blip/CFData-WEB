@@ -2680,6 +2680,7 @@ table td,
                 }
                 return [...found];
             };
+            window.cfdataNsbExtractIPs = nsbExtractIPs;
             const nsbSaveIPs = (newIPs, source) => {
                 const merged = [...new Set([...nsbGetIPs(), ...newIPs])];
                 localStorage.setItem('cfdata-nsb:importedIPs', JSON.stringify(merged));
@@ -4984,7 +4985,7 @@ copyModalMode = mode;
             }
             if (msg && msg.type === 'ip_source_content') {
                 const content = msg.data && msg.data.content || '';
-                const ips = nsbExtractIPs(content);
+                const ips = window.cfdataNsbExtractIPs ? window.cfdataNsbExtractIPs(content) : [];
                 const existing = (() => { try { return JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); } catch (_) { return []; } })();
                 const merged = [...new Set([...existing, ...ips])];
                 localStorage.setItem('cfdata-nsb:importedIPs', JSON.stringify(merged));
