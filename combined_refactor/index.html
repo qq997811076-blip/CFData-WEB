@@ -1799,7 +1799,23 @@ table td,
                 <h3 style="display:flex;justify-content:space-between;align-items:center;">
                     <span>扫描结果 <span class="badge" id="scanCount">0</span></span>
                     <span class="table-actions">
-
+                        <span class="nsb-scan-actions" id="nsbScanActions">
+                            <select id="nsbTableIPTypeFilter" class="table-filter-select" onchange="setNSBTableIPTypeFilter(this.value)">
+                                <option value="all" selected>展示全部类型</option>
+                                <option value="ipv4">仅展示IPV4</option>
+                                <option value="ipv6">仅展示IPV6</option>
+                            </select>
+                            <select id="nsbTableQualifiedFilter" class="table-filter-select" onchange="setNSBTableQualifiedFilter(this.value)">
+                                <option value="all" selected>展示全部结果</option>
+                                <option value="qualified">仅展示合格</option>
+                                <option value="unqualified">仅展示不合格</option>
+                            </select>
+                            <button class="action-btn export-btn" id="btnNSBBatchSpeed" onclick="startNSBBatchSpeed(false)" disabled>🚀 一键测速</button>
+                            <button class="action-btn export-btn" id="btnNSBContinueSpeed" onclick="startNSBBatchSpeed(true)" disabled>⏭️ 继续测速</button>
+                            <button class="action-btn export-btn" id="btnNSBSort" onclick="openSortModal('nsb')">↕️ 一键排序</button>
+                            <button class="action-btn export-btn" id="btnScanCopy" onclick="openCopyModal('scan')">📋 一键复制</button>
+                            <button class="action-btn export-btn" id="btnScanResultAction" onclick="openResultModal('scan')">📥 结果操作</button>
+                        </span>
                     </span>
                 </h3>
                 <div class="scroll-table" style="max-height:520px;">
