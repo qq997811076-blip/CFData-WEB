@@ -42,6 +42,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final int PORT = 13335;
@@ -359,6 +360,52 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return "";
             }
+        }
+
+        @JavascriptInterface
+        public void fetchNsbIPURL(String rawURL) {
+            final String requestedURL = rawURL == null ? "" : rawURL.trim();
+            executor.execute(() -> {
+                HttpURLConnection connection = null;
+                String callback;
+                try {
+                    URL parsed = new URL(requestedURL);
+                    String scheme = parsed.getProtocol();
+                    if (!("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
+                        throw new IOException("仅支持 http/https URL");
+                    }
+                    connection = (HttpURLConnection) parsed.openConnection();
+                    connection.setConnectTimeout(15000);
+                    connection.setReadTimeout(60000);
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    int code = connection.getResponseCode();
+                    if (code < 200 || code >= 300) throw new IOException("HTTP 状态码：" + code);
+                    byte[] buffer = new byte[8192];
+                    java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+                    try (java.io.InputStream input = connection.getInputStream()) {
+                        int total = 0;
+                        int count;
+                        while ((count = input.read(buffer)) != -1) {
+                            total += count;
+                            if (total > 5 * 1024 * 1024) throw new IOException("URL 内容超过 5 MiB 限制");
+                            output.write(buffer, 0, count);
+                        }
+                    }
+                    String content = new String(output.toByteArray(), StandardCharsets.UTF_8);
+                    callback = "if(window.handleMessage)window.handleMessage({type:'ip_source_content',data:{url:"
+                            + JSONObject.quote(requestedURL) + ",content:" + JSONObject.quote(content) + "}});";
+                } catch (Exception e) {
+                    String message = "URL 获取失败: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+                    callback = "if(window.handleMessage)window.handleMessage({type:'error',data:" + JSONObject.quote(message) + "});";
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+                final String script = callback;
+                mainHandler.post(() -> {
+                    if (webView != null) webView.evaluateJavascript(script, null);
+                });
+            });
         }
 
         @JavascriptInterface
