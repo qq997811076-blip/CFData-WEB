@@ -145,10 +145,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			autoSpeed := params.AutoSpeed && params.OfficialSpeedLimit > 0
 			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed}, func(ctx context.Context, session *appSession) {
 				if normalizeTaskNamespace(session.modeNamespace) == "nsb" {
-					runOfficialTask(ctx, session, 0, params.Threads, params.Port, params.Delay, scanMode, params.CustomIPs)
+					runOfficialTask(ctx, session, 0, params.Threads, params.Port, params.Delay, scanMode, params.CustomIPs, params.CustomURLs)
 					return
 				}
-				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode, nil)
+				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode, nil, nil)
 				if ctx.Err() != nil || !autoSpeed || !session.isBackgroundTask() {
 					return
 				}
