@@ -2607,6 +2607,9 @@ table td,
             if (controlsTitle) controlsTitle.textContent = '非标参数';
             const startLabel = document.getElementById('btnStartLabel');
             if (startLabel) startLabel.textContent = '🧪 开始非标扫描与测试';
+            // 非标优选后续将接入新的 IP 来源；先移除旧的 IP 类型控件。
+            const nsbIPTypeOption = document.getElementById('officialIpType')?.closest('.option-item');
+            if (nsbIPTypeOption) nsbIPTypeOption.remove();
         }
 
         function connect() {
@@ -3688,7 +3691,7 @@ startOfficialTask();
         }
 
         function startOfficialTask() {
-            const ipType = parseInt(document.getElementById('officialIpType').value);
+            const ipType = cfdataModeNamespace === 'nsb' ? 0 : parseInt(document.getElementById('officialIpType').value);
             const threads = parseInt(document.getElementById('officialThreads').value) || 100;
             const port = parseInt(document.getElementById('officialTestPort').value) || 443;
             const delay = parseInt(document.getElementById('officialDelay').value) || 0;
@@ -3732,8 +3735,8 @@ startOfficialTask();
             updateBadge('testCount', 0);
             updateBadge('dcCount', 0);
 
-            if (!wsSend({ type: 'start_task', data: {
-                ipType, threads, port, delay, scanMode: getScanMode(),
+            const taskData = {
+                threads, port, delay, scanMode: getScanMode(),
                 autoSpeed: autoSpeed,
                 officialTargetDC: document.getElementById('officialTargetDC')?.value?.trim() || '',
                 officialSpeedPort: officialSpeedConfig.port,
@@ -3741,7 +3744,9 @@ startOfficialTask();
                 officialSpeedMin: officialSpeedConfig.speedMin,
                 officialSpeedLimit: officialSpeedConfig.speedLimit,
                 officialSpeedConcurrency: officialSpeedConfig.speedConcurrency,
-            } })) {
+            };
+            if (cfdataModeNamespace !== 'nsb') taskData.ipType = ipType;
+            if (!wsSend({ type: 'start_task', data: taskData })) {
                 officialAutoSpeedPending = false;
                 officialAutoStage = '';
                 finishRunningTask('✨ 开始扫描与测试');
