@@ -12,7 +12,6 @@ on:
     branches:
       - main
       - delete-all-nsb-from-baseline-39418922471
-      - same-page-mode-config-sync-39516480564
     paths:
       - ".github/workflows/build-apk-only.yml"
       - "combined_refactor/index.html"
