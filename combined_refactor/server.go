@@ -144,6 +144,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 			autoSpeed := params.AutoSpeed && params.OfficialSpeedLimit > 0
 			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed}, func(ctx context.Context, session *appSession) {
+				if normalizeTaskNamespace(session.modeNamespace) == "nsb" {
+					session.sendWSMessage("error", "非标优选的旧 IP 获取来源和逻辑已移除，等待配置新的 IP 来源。")
+					return
+				}
 				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode)
 				if ctx.Err() != nil || !autoSpeed || !session.isBackgroundTask() {
 					return
