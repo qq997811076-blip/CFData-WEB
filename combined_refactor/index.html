@@ -2378,7 +2378,13 @@ table td,
                 showNoticeCard('保存配置失败: ' + (e.message || String(e)));
                 return;
             }
-            if (cfdataModeNamespace !== 'nsb') runNSBFrameAction('saveConfigToLS');
+            if (cfdataModeNamespace !== 'nsb') {
+                const frame = document.getElementById('nsbFrame');
+                if (frame && frame.dataset.ready === '1' && frame.contentWindow &&
+                    typeof frame.contentWindow.saveConfigToLS === 'function') {
+                    frame.contentWindow.saveConfigToLS();
+                }
+            }
             log('当前配置已保存到 localStorage');
         }
 
