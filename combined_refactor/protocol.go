@@ -8,6 +8,7 @@ type wsRequest struct {
 }
 
 type startTaskRequest struct {
+	CustomIPs []string `json:"customIPs"`
 	IPType            int     `json:"ipType"`
 	Threads           int     `json:"threads"`
 	Port              int     `json:"port"`
@@ -28,6 +29,8 @@ type startTestRequest struct {
 	Delay    int    `json:"delay"`
 	ScanMode string `json:"scanMode"`
 }
+
+type importIPURLRequest struct { URL string `json:"url"` }
 
 type startSpeedTestRequest struct {
 	IP   string `json:"ip"`
