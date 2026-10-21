@@ -1735,7 +1735,7 @@ table td,
     <div class="nsb-overlay" id="nsbOverlay" aria-hidden="true">
         <div class="nsb-overlay-head">
             <strong>🧪 非标优选（独立运行）</strong>
-            <button class="action-btn" type="button" onclick="closeNSBPanel()">关闭非标优选 ×</button>
+            <button class="action-btn" type="button" onclick="closeNSBPanel()">☁️ 官方优选</button>
         </div>
         <iframe class="nsb-overlay-frame" id="nsbFrame" title="非标优选独立工作区" loading="lazy"></iframe>
     </div>
@@ -2378,10 +2378,14 @@ table td,
                 showNoticeCard('保存配置失败: ' + (e.message || String(e)));
                 return;
             }
+            if (cfdataModeNamespace !== 'nsb') runNSBFrameAction('saveConfigToLS');
             log('当前配置已保存到 localStorage');
         }
 
         function loadConfigFromLS() {
+            if (cfdataModeNamespace !== 'nsb' && localStorage.getItem('cfdata-nsb:cfdata-config')) {
+                runNSBFrameAction('loadConfigFromLS');
+            }
             let raw;
             try {
                 raw = localStorage.getItem('cfdata-config');
@@ -2563,16 +2567,49 @@ table td,
 
         const cfdataModeNamespace = new URLSearchParams(window.location.search).get('mode') === 'nsb' ? 'nsb' : 'official';
 
-        function openNSBPanel() {
-            const overlay = document.getElementById('nsbOverlay');
+        function ensureNSBFrame(callback) {
             const frame = document.getElementById('nsbFrame');
-            if (!overlay || !frame) return;
+            if (!frame) return;
+            if (frame.dataset.ready === '1') {
+                if (callback) callback(frame);
+                return;
+            }
+            if (callback) {
+                frame.addEventListener('load', () => {
+                    frame.dataset.ready = '1';
+                    callback(frame);
+                }, { once: true });
+            } else {
+                frame.addEventListener('load', () => {
+                    frame.dataset.ready = '1';
+                }, { once: true });
+            }
             if (!frame.dataset.loaded) {
                 frame.src = window.location.pathname + '?mode=nsb&isolated=1';
                 frame.dataset.loaded = '1';
             }
+        }
+
+        function runNSBFrameAction(action) {
+            ensureNSBFrame((frame) => {
+                try {
+                    const target = frame.contentWindow;
+                    if (target && typeof target[action] === 'function') target[action]();
+                } catch (e) {
+                    console.error('非标优选配置同步失败:', e);
+                }
+            });
+        }
+
+        function openNSBPanel() {
+            const overlay = document.getElementById('nsbOverlay');
+            const frame = document.getElementById('nsbFrame');
+            if (!overlay || !frame) return;
+            ensureNSBFrame();
             overlay.classList.add('active');
             overlay.setAttribute('aria-hidden', 'false');
+            document.getElementById('btnOfficial').classList.remove('active');
+            document.getElementById('btnNSB').classList.add('active');
         }
 
         function closeNSBPanel() {
@@ -2580,6 +2617,8 @@ table td,
             if (!overlay) return;
             overlay.classList.remove('active');
             overlay.setAttribute('aria-hidden', 'true');
+            document.getElementById('btnNSB').classList.remove('active');
+            document.getElementById('btnOfficial').classList.add('active');
         }
 
         if (cfdataModeNamespace === 'nsb') {
