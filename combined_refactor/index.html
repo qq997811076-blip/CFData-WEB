@@ -5108,6 +5108,10 @@ copyModalMode = mode;
 
                 case 'error':
                     recordWebDebugError('server_error', msg.data);
+                    const nsbURLStatus = document.getElementById('nsbIPImportStatus');
+                    if (nsbURLStatus && nsbURLStatus.textContent === '正在获取 URL 内容…') {
+                        nsbURLStatus.textContent = 'URL 获取失败：' + String(msg.data || '未知错误');
+                    }
                     isStoppingTask = false;
                     if (String(msg.data || '').includes('已有任务正在运行')) {
                         if (officialAutoSpeedPending && officialAutoStage === 'test') {
