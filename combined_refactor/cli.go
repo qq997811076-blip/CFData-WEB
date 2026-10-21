@@ -1012,7 +1012,7 @@ func runOfficialCLI(cfg *cliConfig) error {
 
 	session := newCLISession(cfg)
 	if err := session.runTaskSync(func(ctx context.Context, session *appSession) {
-		runOfficialTask(ctx, session, cfg.ipType, cfg.threads, cfg.port, cfg.delay, scanMode)
+		runOfficialTask(ctx, session, cfg.ipType, cfg.threads, cfg.port, cfg.delay, scanMode, nil)
 	}); err != nil {
 		return cliTaskError(err)
 	}
