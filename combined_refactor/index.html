@@ -2637,9 +2637,16 @@ table td,
                 try { nsbSaveIPs(nsbExtractIPs(await file.text()), '文件导入'); } catch (e) { showNoticeCard('文件读取失败：' + e.message); }
             });
             document.getElementById('nsbIPClipboardImport').addEventListener('click', async () => {
-                if (!navigator.clipboard || !navigator.clipboard.readText) { showNoticeCard('当前环境不支持读取系统剪切板，请检查浏览器权限或安全连接'); return; }
                 let content = '';
-                try { content = await navigator.clipboard.readText(); } catch (e) { showNoticeCard('读取系统剪切板失败，请允许剪切板权限后重试'); return; }
+                try {
+                    if (window.CFDataAndroid && typeof window.CFDataAndroid.readClipboardText === 'function') {
+                        content = window.CFDataAndroid.readClipboardText() || '';
+                    } else if (navigator.clipboard && navigator.clipboard.readText) {
+                        content = await navigator.clipboard.readText();
+                    } else {
+                        showNoticeCard('当前环境不支持读取系统剪切板'); return;
+                    }
+                } catch (e) { showNoticeCard('读取系统剪切板失败，请重试'); return; }
                 if (!content.trim()) { showNoticeCard('系统剪切板为空'); return; }
                 nsbSaveIPs(nsbExtractIPs(content), '剪切板导入');
             });
