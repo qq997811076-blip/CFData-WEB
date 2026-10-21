@@ -14,8 +14,10 @@ on:
       - delete-all-nsb-from-baseline-39418922471
       - nsb-import-ip-sources
       - nsb-url-scan-before-start-39536735727
+      - nsb-native-url-fetch-reference-39546331944
     paths:
       - ".github/workflows/build-apk-only.yml"
+      - "app/src/main/java/com/cfdata/web/MainActivity.java"
       - "combined_refactor/index.html"
       - "combined_refactor/protocol.go"
       - "combined_refactor/server.go"
