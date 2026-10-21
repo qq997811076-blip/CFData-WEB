@@ -2329,7 +2329,7 @@ table td,
                 official: {
                     scanMode: selVal('officialScanMode'),
                     ipType: selVal('officialIpType'),
-                    port: selVal('officialTestPort'),
+                    port: val('officialTestPort'),
                     threads: val('officialThreads'),
                     delay: val('officialDelay'),
                     speedMin: val('officialSpeedMin'),
@@ -2339,7 +2339,23 @@ table td,
                     targetDC: val('officialTargetDC'),
                     speedUrl: resolveSpeedTestUrl('officialSpeedUrl', 'officialSpeedUrlPreset'),
                 },
-
+                nsb: {
+                    sourceUrl: val('nsbSourceUrl'),
+                    fallbackPort: val('nsbFallbackPort'),
+                    threads: val('nsbThreads'),
+                    delay: val('nsbDelay'),
+                    resultLimit: val('nsbResultLimit'),
+                    speedMin: val('nsbSpeedMin'),
+                    speedLimit: val('nsbSpeedLimit'),
+                    enableSpeed: selVal('nsbEnableSpeed'),
+                    speedConcurrency: val('nsbSpeedTest'),
+                    targetDC: val('nsbTargetDC'),
+                    compactView: selVal('nsbCompactView'),
+                    tls: selVal('nsbTls'),
+                    scanMode: selVal('nsbScanMode'),
+                    speedUrl: resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset'),
+                    autoUploadAccount: selVal('nsbAutoUploadAccount'),
+                },
             };
         }
 
@@ -2365,9 +2381,26 @@ table td,
 
             if (o.speedUrl) applySpeedUrlConfig('officialSpeedUrl', 'officialSpeedUrlPreset', o.speedUrl);
             syncOfficialSpeedConfigState();
-
             updateOfficialAutoSpeedControls();
 
+            const n = config.nsb || {};
+            setValue('nsbSourceUrl', n.sourceUrl);
+            setValue('nsbFallbackPort', n.fallbackPort);
+            setValue('nsbThreads', n.threads);
+            setValue('nsbDelay', n.delay);
+            setValue('nsbResultLimit', n.resultLimit);
+            setValue('nsbSpeedMin', n.speedMin);
+            setValue('nsbSpeedLimit', n.speedLimit);
+            setValue('nsbEnableSpeed', n.enableSpeed);
+            setValue('nsbSpeedTest', n.speedConcurrency);
+            setValue('nsbTargetDC', n.targetDC);
+            setValue('nsbCompactView', n.compactView);
+            setValue('nsbTls', n.tls);
+            setValue('nsbScanMode', n.scanMode);
+            setValue('nsbAutoUploadAccount', n.autoUploadAccount);
+            if (n.speedUrl) applySpeedUrlConfig('nsbSpeedUrl', 'nsbSpeedUrlPreset', n.speedUrl);
+            if (typeof syncNSBSpeedConfigState === 'function') syncNSBSpeedConfigState();
+            if (typeof updateNSBSpeedControls === 'function') updateNSBSpeedControls();
         }
 
         function saveConfigToLS() {
