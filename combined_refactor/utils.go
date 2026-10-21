@@ -254,16 +254,34 @@ func getRandomIPv6s(ipList []string) []string {
 }
 
 
-// extractImportedIPv4s extracts valid IPv4 addresses from imported text.
+// extractImportedIPv4s follows the reference import behavior: recognize IPv4/CIDR tokens,
+// expand bounded CIDR ranges, and preserve first-seen order while deduplicating.
 func extractImportedIPv4s(content string) []string {
-	matches := regexp.MustCompile("(?:[0-9]{1,3}\\.){3}[0-9]{1,3}").FindAllString(content, -1)
-	seen := make(map[string]bool, len(matches))
-	ips := make([]string, 0, len(matches))
-	for _, candidate := range matches {
-		ip := net.ParseIP(candidate)
-		if ip == nil || ip.To4() == nil || seen[candidate] { continue }
-		seen[candidate] = true
-		ips = append(ips, candidate)
+	tokenRE := regexp.MustCompile(`(?<![0-9.])([0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*/\s*[0-9]{1,2})?)(?![0-9./])`)
+	seen := make(map[string]struct{})
+	var ips []string
+	for _, match := range tokenRE.FindAllStringSubmatch(content, -1) {
+		token := strings.ReplaceAll(strings.TrimSpace(match[1]), " ", "")
+		if strings.Contains(token, "/") {
+			_, network, err := net.ParseCIDR(token)
+			if err != nil || network.IP.To4() == nil { continue }
+			ones, bits := network.Mask.Size()
+			if bits != 32 || ones < 0 || ones > 32 { continue }
+			count := uint64(1) << uint(32-ones)
+			if count > 1<<20 { continue }
+			base4 := network.IP.To4()
+			start := uint64(base4[0])<<24 | uint64(base4[1])<<16 | uint64(base4[2])<<8 | uint64(base4[3])
+			for offset := uint64(0); offset < count; offset++ {
+				v := uint32(start + offset)
+				ip := net.IPv4(byte(v>>24), byte(v>>16), byte(v>>8), byte(v)).String()
+				if _, ok := seen[ip]; !ok { seen[ip] = struct{}{}; ips = append(ips, ip) }
+			}
+			continue
+		}
+		ip := net.ParseIP(token)
+		if ip == nil || ip.To4() == nil { continue }
+		canonical := ip.To4().String()
+		if _, ok := seen[canonical]; !ok { seen[canonical] = struct{}{}; ips = append(ips, canonical) }
 	}
 	return ips
 }
