@@ -1,4 +1,5 @@
 name: Build Android APK Only
+# Trigger integration build for the latest same-page NSB integration
 
 on:
   workflow_dispatch:
