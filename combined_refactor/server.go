@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net"
 	"net/url"
+	"regexp"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -23,6 +25,24 @@ const (
 	wsWriteDeadline = 10 * time.Second
 	wsReadDeadline  = 90 * time.Second
 )
+
+// extractNetworkIPv4 extracts valid, unique IPv4 addresses from downloaded URL text.
+func extractNetworkIPv4(content string) []string {
+	pattern := regexp.MustCompile(`[0-9]{1,3}(?:\.[0-9]{1,3}){3}`)
+	matches := pattern.FindAllStringIndex(content, -1)
+	seen := make(map[string]bool)
+	ips := make([]string, 0)
+	for _, match := range matches {
+		start, end := match[0], match[1]
+		if start > 0 { c := content[start-1]; if (c >= '0' && c <= '9') || c == '.' { continue } }
+		if end < len(content) { c := content[end]; if (c >= '0' && c <= '9') || c == '.' { continue } }
+		parsed := net.ParseIP(content[start:end])
+		if parsed == nil || parsed.To4() == nil { continue }
+		ip := parsed.To4().String()
+		if !seen[ip] { seen[ip] = true; ips = append(ips, ip) }
+	}
+	return ips
+}
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -181,24 +201,31 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		"import_ip_url": func(data json.RawMessage) {
 			var params importIPURLRequest
 			if err := json.Unmarshal(data, &params); err != nil { session.sendWSMessage("error", "URL 参数解析失败"); return }
-			u := strings.TrimSpace(params.URL)
-			parsed, err := url.ParseRequestURI(u)
-			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-				session.sendWSMessage("error", "请输入有效的 http:// 或 https:// URL"); return
+			rawURLs := strings.FieldsFunc(params.URL, func(r rune) bool { return r == '\n' || r == '\r' || r == ',' || r == ';' })
+			if len(rawURLs) == 0 { session.sendWSMessage("error", "请至少输入一个网络 URL"); return }
+			seen := make(map[string]bool)
+			allIPs := make([]string, 0)
+			validURLs := make([]string, 0, len(rawURLs))
+			var failures []string
+			for _, rawURL := range rawURLs {
+				u := strings.TrimSpace(rawURL); if u == "" { continue }
+				parsed, err := url.ParseRequestURI(u)
+				if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Hostname() == "" { failures = append(failures, u+": URL 无效"); continue }
+				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+				if err != nil { cancel(); failures = append(failures, u+": 创建请求失败"); continue }
+				req.Header.Set("User-Agent", "Mozilla/5.0")
+				resp, err := (&http.Client{Timeout: 60*time.Second}).Do(req)
+				if err != nil { cancel(); failures = append(failures, u+": 下载失败"); continue }
+				if resp.StatusCode < 200 || resp.StatusCode >= 300 { failures = append(failures, fmt.Sprintf("%s: HTTP %d", u, resp.StatusCode)); resp.Body.Close(); cancel(); continue }
+				body, readErr := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024+1)); resp.Body.Close(); cancel()
+				if readErr != nil { failures = append(failures, u+": 读取内容失败"); continue }
+				if len(body) > 50*1024*1024 { failures = append(failures, u+": 内容超过 50 MiB"); continue }
+				validURLs = append(validURLs, u)
+				for _, ip := range extractNetworkIPv4(string(body)) { if !seen[ip] { seen[ip] = true; allIPs = append(allIPs, ip) } }
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-			if err != nil { session.sendWSMessage("error", "创建 URL 请求失败: "+err.Error()); return }
-			req.Header.Set("User-Agent", "Mozilla/5.0")
-			resp, err := (&http.Client{Timeout: 20*time.Second}).Do(req)
-			if err != nil { session.sendWSMessage("error", "URL 获取失败: "+err.Error()); return }
-			defer resp.Body.Close()
-			if resp.StatusCode < 200 || resp.StatusCode >= 300 { session.sendWSMessage("error", fmt.Sprintf("URL 返回 HTTP %d", resp.StatusCode)); return }
-			body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024+1))
-			if err != nil { session.sendWSMessage("error", "读取 URL 内容失败: "+err.Error()); return }
-			if len(body) > 5*1024*1024 { session.sendWSMessage("error", "URL 内容超过 5 MiB 限制"); return }
-			session.sendWSMessage("ip_source_content", map[string]string{"url": u, "content": string(body)})
+			if len(allIPs) == 0 { if len(failures) > 0 { session.sendWSMessage("error", "网络 URL 未取得有效 IPv4："+strings.Join(failures, "；")) } else { session.sendWSMessage("error", "网络 URL 内容中没有有效 IPv4") }; return }
+			session.sendWSMessage("ip_source_content", map[string]string{"url": strings.Join(validURLs, "\n"), "content": strings.Join(allIPs, "\n"), "failed": strings.Join(failures, "；")})
 		},
 		"start_test": func(data json.RawMessage) {
 			var params startTestRequest
