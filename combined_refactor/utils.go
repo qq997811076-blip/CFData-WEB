@@ -257,11 +257,20 @@ func getRandomIPv6s(ipList []string) []string {
 // extractImportedIPv4s follows the reference import behavior: recognize IPv4/CIDR tokens,
 // expand bounded CIDR ranges, and preserve first-seen order while deduplicating.
 func extractImportedIPv4s(content string) []string {
-	tokenRE := regexp.MustCompile(`(?<![0-9.])([0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*/\s*[0-9]{1,2})?)(?![0-9./])`)
+	tokenRE := regexp.MustCompile(`([0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*/\s*[0-9]{1,2})?)`)
 	seen := make(map[string]struct{})
 	var ips []string
-	for _, match := range tokenRE.FindAllStringSubmatch(content, -1) {
-		token := strings.ReplaceAll(strings.TrimSpace(match[1]), " ", "")
+	for _, match := range tokenRE.FindAllStringSubmatchIndex(content, -1) {
+		start, end := match[0], match[1]
+		if start > 0 {
+			prev := content[start-1]
+			if (prev >= '0' && prev <= '9') || prev == '.' { continue }
+		}
+		if end < len(content) {
+			next := content[end]
+			if (next >= '0' && next <= '9') || next == '.' || next == '/' { continue }
+		}
+		token := strings.ReplaceAll(strings.TrimSpace(content[match[2]:match[3]]), " ", "")
 		if strings.Contains(token, "/") {
 			_, network, err := net.ParseCIDR(token)
 			if err != nil || network.IP.To4() == nil { continue }
