@@ -2058,6 +2058,10 @@ table td,
 
     <script>
         let ws;
+        let nsbURLImportQueue = [];
+        let nsbURLImportIndex = 0;
+        let nsbURLImportPending = false;
+        let nsbURLSkipOnNextStart = false;
         let defaultSpeedTestUrl = "speed.okl.abrdns.com";
         let isTaskRunning = false;
         let isStoppingTask = false;
@@ -2620,15 +2624,58 @@ table td,
             if (nsbControls) nsbControls.prepend(nsbImportPanel);
             const nsbGetIPs = () => { try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
             const nsbExtractIPs = (content) => {
-                const found = String(content || '').match(/(?:\d{1,3}\.){3}\d{1,3}/g) || [];
-                return [...new Set(found.filter(ip => { const p = ip.split('.').map(Number); return p.length === 4 && p.every(n => n >= 0 && n <= 255) && p.join('.') === ip; }))];
+                const found = new Set();
+                const validIPv4 = (value) => {
+                    const parts = value.split('.');
+                    if (parts.length !== 4 || parts.some(part => !/^\\d{1,3}$/.test(part))) return null;
+                    const nums = parts.map(Number);
+                    if (nums.some(n => n < 0 || n > 255)) return null;
+                    return nums.join('.');
+                };
+                for (const line of String(content || '').split(/\\r?\\n/)) {
+                    const match = /^\\s*([0-9]{1,3}(?:\\.[0-9]{1,3}){3}(?:\\s*\\/\\s*[0-9]{1,2})?)/.exec(line);
+                    if (!match) continue;
+                    const token = match[1].replace(/\\s*\\/\\s*/, '/');
+                    const parts = token.split('/');
+                    const ip = validIPv4(parts[0]);
+                    if (!ip) continue;
+                    if (parts.length === 1) { found.add(ip); continue; }
+                    const prefix = Number(parts[1]);
+                    if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) continue;
+                    const octets = ip.split('.').map(Number);
+                    const value = (((octets[0] << 24) >>> 0) + (octets[1] << 16) + (octets[2] << 8) + octets[3]) >>> 0;
+                    const count = 2 ** (32 - prefix);
+                    if (count > 1048576) continue;
+                    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+                    const network = (value & mask) >>> 0;
+                    for (let i = 0; i < count; i++) {
+                        const current = (network + i) >>> 0;
+                        found.add([current >>> 24, (current >>> 16) & 255, (current >>> 8) & 255, current & 255].join('.'));
+                    }
+                }
+                return [...found];
             };
+            window.cfdataNsbExtractIPs = nsbExtractIPs;
             const nsbSaveIPs = (newIPs, source) => {
                 const merged = [...new Set([...nsbGetIPs(), ...newIPs])];
                 localStorage.setItem('cfdata-nsb:importedIPs', JSON.stringify(merged));
                 const status = document.getElementById('nsbIPImportStatus');
                 if (status) status.textContent = source + '完成：本次识别 ' + newIPs.length + ' 个有效 IPv4，累计保存唯一 IPv4：' + merged.length;
                 log('[飞标优选] ' + source + '完成，累计唯一 IPv4：' + merged.length);
+            };
+            window.onNsbIPURLFetchResult = (result) => {
+                const currentURL = nsbURLImportQueue[nsbURLImportIndex] || (result && result.url) || '';
+                if (!result || !result.ok) {
+                    log('[飞标优选] 网络 URL 读取失败，跳过并继续：' + currentURL + '；原因：' + String(result && result.error || '未知错误'));
+                } else {
+                    const ips = nsbExtractIPs(result.content || '');
+                    nsbSaveIPs(ips, 'URL 导入');
+                    log('[飞标优选] URL 来源读取成功：' + currentURL + '；本次识别 IPv4：' + ips.length);
+                }
+                if (nsbURLImportPending) {
+                    nsbURLImportIndex++;
+                    startNextNsbURLImport();
+                }
             };
             document.getElementById('nsbIPImportStatus').textContent = '已导入唯一 IPv4：' + nsbGetIPs().length;
             document.getElementById('nsbIPFile').addEventListener('change', async () => {
@@ -3734,7 +3781,50 @@ startOfficialTask();
             startStopWatchdog();
         }
 
+        function startNextNsbURLImport() {
+            if (nsbURLImportIndex >= nsbURLImportQueue.length) {
+                nsbURLImportPending = false;
+                nsbURLSkipOnNextStart = true;
+                const status = document.getElementById('nsbIPImportStatus');
+                const count = (() => { try { return JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]').length; } catch (_) { return 0; } })();
+                if (status) status.textContent = '网络 URL 读取完成：已处理 ' + nsbURLImportQueue.length + ' 个地址；已导入唯一 IPv4：' + count;
+                log('[飞标优选] 网络 URL 读取流程完成，开始扫描');
+                startOfficialTask();
+                return;
+            }
+            const currentURL = nsbURLImportQueue[nsbURLImportIndex];
+            const status = document.getElementById('nsbIPImportStatus');
+            if (status) status.textContent = '正在读取网络 URL（' + (nsbURLImportIndex + 1) + '/' + nsbURLImportQueue.length + '）：' + currentURL;
+            if (window.CFDataAndroid && typeof window.CFDataAndroid.fetchNsbIPURL === 'function') {
+                window.CFDataAndroid.fetchNsbIPURL(currentURL);
+                return;
+            }
+            if (!wsSend({ type: 'import_ip_url', data: { url: currentURL } })) {
+                log('[飞标优选] URL 请求未发送成功，跳过：' + currentURL);
+                nsbURLImportIndex++;
+                startNextNsbURLImport();
+            }
+        }
+
         function startOfficialTask() {
+            if (cfdataModeNamespace === 'nsb') {
+                if (nsbURLSkipOnNextStart) {
+                    nsbURLSkipOnNextStart = false;
+                } else {
+                    const rawURLs = document.getElementById('nsbIPURL')?.value || '';
+                    const urls = [...new Set(rawURLs.split(/\\r?\\n/).map(value => value.trim()).filter(Boolean))];
+                    localStorage.setItem('cfdata-nsb:importedIPURLs', rawURLs);
+                    if (urls.length > 0) {
+                        if (nsbURLImportPending) return;
+                        nsbURLImportQueue = urls;
+                        nsbURLImportIndex = 0;
+                        nsbURLImportPending = true;
+                        log('[飞标优选] 扫描前开始读取 ' + urls.length + ' 个网络 URL');
+                        startNextNsbURLImport();
+                        return;
+                    }
+                }
+            }
             const ipType = cfdataModeNamespace === 'nsb' ? 0 : parseInt(document.getElementById('officialIpType').value);
             const threads = parseInt(document.getElementById('officialThreads').value) || 100;
             const port = parseInt(document.getElementById('officialTestPort').value) || 443;
@@ -4894,14 +4984,17 @@ copyModalMode = mode;
         function handleMessage(msg) {
             if (msg && msg.type === 'ip_source_content') {
                 const content = msg.data && msg.data.content || '';
-                const found = (String(content).match(/(?:\d{1,3}\.){3}\d{1,3}/g) || []);
-                const ips = [...new Set(found.filter(ip => { const p = ip.split('.').map(Number); return p.length === 4 && p.every(n => n >= 0 && n <= 255) && p.join('.') === ip; }))];
+                const ips = window.cfdataNsbExtractIPs ? window.cfdataNsbExtractIPs(content) : [];
                 const existing = (() => { try { return JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); } catch (_) { return []; } })();
                 const merged = [...new Set([...existing, ...ips])];
                 localStorage.setItem('cfdata-nsb:importedIPs', JSON.stringify(merged));
                 const status = document.getElementById('nsbIPImportStatus');
                 if (status) status.textContent = 'URL 导入完成：本次识别 ' + ips.length + ' 个有效 IPv4，累计保存唯一 IPv4：' + merged.length;
                 log('[飞标优选] URL 导入完成，累计唯一 IPv4：' + merged.length);
+                if (nsbURLImportPending && !(window.CFDataAndroid && typeof window.CFDataAndroid.fetchNsbIPURL === 'function')) {
+                    nsbURLImportIndex++;
+                    startNextNsbURLImport();
+                }
                 return;
             }
 
