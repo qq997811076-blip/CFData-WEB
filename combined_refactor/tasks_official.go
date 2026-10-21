@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -310,7 +311,7 @@ func measureHTTPTTFB(ctx context.Context, ip string, port int, effectiveDelay in
 	return ttfb, ""
 }
 
-func runOfficialTask(ctx context.Context, session *appSession, ipType int, scanMaxThreads int, port int, delay int, scanMode string, customIPs []string) {
+func runOfficialTask(ctx context.Context, session *appSession, ipType int, scanMaxThreads int, port int, delay int, scanMode string, customIPs []string, customURLs []string) {
 	filename := "ips-v4.txt"
 	apiURL := "https://www.baipiao.eu.org/cloudflare/ips-v4"
 	if ipType == 6 {
@@ -320,9 +321,53 @@ func runOfficialTask(ctx context.Context, session *appSession, ipType int, scanM
 
 	var ipList []string
 	if ipType == 0 {
-		ipList = append([]string(nil), customIPs...)
+		// 参考版流程：每次扫描都合并已保存的导入 IP 与已配置 URL 来源。
+		ipList = append(ipList, extractImportedIPv4s(strings.Join(customIPs, "\n"))...)
+		seen := make(map[string]struct{}, len(ipList))
+		unique := make([]string, 0, len(ipList))
+		for _, ip := range ipList {
+			if _, ok := seen[ip]; ok { continue }
+			seen[ip] = struct{}{}
+			unique = append(unique, ip)
+		}
+		ipList = unique
+		for _, sourceURL := range customURLs {
+			sourceURL = strings.TrimSpace(sourceURL)
+			parsed, err := url.ParseRequestURI(sourceURL)
+			if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+				session.sendWSMessage("log", "跳过无效 IP 来源 URL: "+sourceURL)
+				continue
+			}
+			fetchCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+			req, err := http.NewRequestWithContext(fetchCtx, http.MethodGet, sourceURL, nil)
+			if err == nil {
+				req.Header.Set("User-Agent", "Mozilla/5.0")
+				var resp *http.Response
+				resp, err = (&http.Client{Timeout: 20*time.Second}).Do(req)
+				if err == nil {
+					if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+						err = fmt.Errorf("HTTP %d", resp.StatusCode)
+					} else {
+						var body []byte
+						body, err = io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024+1))
+						if err == nil && len(body) > 5*1024*1024 { err = fmt.Errorf("内容超过 5 MiB") }
+						if err == nil {
+							for _, ip := range extractImportedIPv4s(string(body)) {
+								if _, ok := seen[ip]; !ok {
+									seen[ip] = struct{}{}
+									ipList = append(ipList, ip)
+								}
+							}
+						}
+					}
+					resp.Body.Close()
+				}
+			}
+			cancel()
+			if err != nil { session.sendWSMessage("log", "IP 来源获取失败 "+sourceURL+": "+err.Error()) }
+		}
 		if len(ipList) == 0 {
-			session.sendWSMessage("error", "请先通过文件、剪切板或 URL 导入有效 IPv4 地址。")
+			session.sendWSMessage("error", "没有可扫描的有效 IPv4 地址。请检查已导入 IP、剪贴板或 URL 来源。")
 			return
 		}
 	} else {
