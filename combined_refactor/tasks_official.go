@@ -310,7 +310,7 @@ func measureHTTPTTFB(ctx context.Context, ip string, port int, effectiveDelay in
 	return ttfb, ""
 }
 
-func runOfficialTask(ctx context.Context, session *appSession, ipType int, scanMaxThreads int, port int, delay int, scanMode string) {
+func runOfficialTask(ctx context.Context, session *appSession, ipType int, scanMaxThreads int, port int, delay int, scanMode string, customIPs []string) {
 	filename := "ips-v4.txt"
 	apiURL := "https://www.baipiao.eu.org/cloudflare/ips-v4"
 	if ipType == 6 {
@@ -318,21 +318,29 @@ func runOfficialTask(ctx context.Context, session *appSession, ipType int, scanM
 		apiURL = "https://www.baipiao.eu.org/cloudflare/ips-v6"
 	}
 
-	content, err := getIPListContent(filename, apiURL)
-	if err != nil {
-		session.sendWSMessage("error", err.Error())
-		return
-	}
-
-	ipList, err := parseIPList(content)
-	if err != nil {
-		session.sendWSMessage("error", "解析 IP 列表失败: "+err.Error())
-		return
-	}
-	if ipType == 6 {
-		ipList = getRandomIPv6s(ipList)
+	var ipList []string
+	if ipType == 0 {
+		ipList = append([]string(nil), customIPs...)
+		if len(ipList) == 0 {
+			session.sendWSMessage("error", "请先通过文件、剪切板或 URL 导入有效 IPv4 地址。")
+			return
+		}
 	} else {
-		ipList = getRandomIPv4s(ipList)
+		content, err := getIPListContent(filename, apiURL)
+		if err != nil {
+			session.sendWSMessage("error", err.Error())
+			return
+		}
+		ipList, err = parseIPList(content)
+		if err != nil {
+			session.sendWSMessage("error", "解析 IP 列表失败: "+err.Error())
+			return
+		}
+		if ipType == 6 {
+			ipList = getRandomIPv6s(ipList)
+		} else {
+			ipList = getRandomIPv4s(ipList)
+		}
 	}
 	session.sendWSMessage("log", fmt.Sprintf("开始扫描：%d 条记录", len(ipList)))
 
