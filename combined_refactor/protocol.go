@@ -9,6 +9,7 @@ type wsRequest struct {
 
 type startTaskRequest struct {
 	CustomIPs []string `json:"customIPs"`
+	CustomURLs []string `json:"customURLs"`
 	IPType            int     `json:"ipType"`
 	Threads           int     `json:"threads"`
 	Port              int     `json:"port"`
