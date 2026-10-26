@@ -3483,7 +3483,24 @@ function matchesQualifiedFilter(row, filter) {
             testResultsCount = 0;
             autoUploadKeys = new Set();
             updateBadge('testCount', 0);
-            testData = [];
+            if (cfdataModeNamespace === 'nsb') {
+                const existingTestByIP = new Map(testData.map((row) => [row.IP, row]));
+                testData = scanData.map((row) => existingTestByIP.get(row.IP) || ({
+                    IP: row.IP,
+                    Port: row.Port || parseInt(document.getElementById('officialTestPort').value) || 443,
+                    DataCenter: row.DataCenter || '',
+                    DCCountry: row.DCCountry || '',
+                    Region: row.Region || '',
+                    City: row.City || '',
+                    LossRate: 0,
+                    MinLatency: (parseFloat(row.LatencyStr) || 0) * 1000000,
+                    MaxLatency: (parseFloat(row.LatencyStr) || 0) * 1000000,
+                    AvgLatency: (parseFloat(row.LatencyStr) || 0) * 1000000,
+                    Speed: ''
+                }));
+            } else {
+                testData = [];
+            }
             officialSpeedEnabledForResults = false;
             officialContinueSpeedUnlocked = false;
             setOfficialTestQualifiedFilter('all');
@@ -3525,7 +3542,13 @@ function matchesQualifiedFilter(row, filter) {
 
         function addTestResult(res, render = true) {
             testResultsCount++;
-            testData.push(res);
+            if (cfdataModeNamespace === 'nsb') {
+                const existingIndex = testData.findIndex((row) => row.IP === res.IP);
+                if (existingIndex >= 0) testData[existingIndex] = { ...testData[existingIndex], ...res };
+                else testData.push(res);
+            } else {
+                testData.push(res);
+            }
             updateBadge('testCount', getFilteredOfficialTestData().length);
             if (render && matchesOfficialQualifiedFilter(res, officialTestQualifiedFilter)) renderTestRow(res);
             updateBatchSpeedButton();
