@@ -403,7 +403,7 @@ public class MainActivity extends Activity {
                 } finally {
                     if (connection != null) connection.disconnect();
                 }
-                final String script = "(function(r){if(typeof window.onNsbIPURLFetchResult===\\\"function\\\"){window.onNsbIPURLFetchResult(r);return;}for(var i=0;i<window.frames.length;i++){try{var f=window.frames[i];if(f&&typeof f.onNsbIPURLFetchResult===\\\"function\\\"){f.onNsbIPURLFetchResult(r);return;}}catch(e){}}})(" + result.toString() + ");";
+                final String script = "(function(r){if(typeof window.onNsbIPURLFetchResult==='function'){window.onNsbIPURLFetchResult(r);return;}for(var i=0;i<window.frames.length;i++){try{var f=window.frames[i];if(f&&typeof f.onNsbIPURLFetchResult==='function'){f.onNsbIPURLFetchResult(r);return;}}catch(e){}}})(" + result.toString() + ");";
                 mainHandler.post(() -> {
                     if (webView != null) webView.evaluateJavascript(script, null);
                 });
