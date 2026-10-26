@@ -3471,7 +3471,7 @@ function matchesQualifiedFilter(row, filter) {
                 tbody.insertAdjacentHTML('beforeend', tr);
             });
             updateBadge('dcCount', dcList.length);
-            document.getElementById('dcSection').style.display = dcList.length ? 'block' : 'none';
+            document.getElementById('dcSection').style.display = cfdataModeNamespace === 'nsb' ? 'none' : (dcList.length ? 'block' : 'none');
         }
 
         function selectDC(dc) {
