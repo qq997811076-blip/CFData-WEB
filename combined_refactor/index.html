@@ -3491,7 +3491,7 @@ function matchesQualifiedFilter(row, filter) {
             document.querySelector('#testTable tbody').innerHTML = '';
             document.getElementById('currentTestDC').textContent = `测试中: ${dc}`;
             isTaskRunning = true;
-            runningTaskLabel = `官方优选 ${dc}`;
+            runningTaskLabel = cfdataModeNamespace === 'nsb' ? '非标优选详细测试' : `官方优选 ${dc}`;
             runningTaskMode = 'official';
             runningTaskTab = 'test';
             setStartLoading(getRunningButtonText());
@@ -5052,9 +5052,18 @@ copyModalMode = mode;
                     finishRunningTask('✨ 重新开始扫描');
                     if (currentMode === 'official') {
                         sortAndRenderScanResults();
-                        showDCSelection(msg.data);
-                        if (!wasStoppingScan) {
-                            completeProgressWithCurrentCount('扫描完成，选择数据中心');
+                        dcList = msg.data || [];
+                        if (cfdataModeNamespace === 'nsb') {
+                            if (!wasStoppingScan) {
+                                completeProgressWithCurrentCount('延迟扫描完成，自动开始详细测试');
+                                currentTestingDC = '';
+                                selectDC('');
+                            }
+                        } else {
+                            showDCSelection(dcList);
+                            if (!wasStoppingScan) {
+                                completeProgressWithCurrentCount('扫描完成，选择数据中心');
+                            }
                         }
                     }
                     break;
