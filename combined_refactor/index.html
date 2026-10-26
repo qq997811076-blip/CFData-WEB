@@ -2061,6 +2061,7 @@ table td,
         let nsbURLImportQueue = [];
         let nsbURLImportIndex = 0;
         let nsbURLImportPending = false;
+        let nsbRuntimeURLIPs = [];
         let nsbURLSkipOnNextStart = false;
         let defaultSpeedTestUrl = "speed.okl.abrdns.com";
         let isTaskRunning = false;
@@ -2669,8 +2670,10 @@ table td,
                     log('[飞标优选] 网络 URL 读取失败，跳过并继续：' + currentURL + '；原因：' + String(result && result.error || '未知错误'));
                 } else {
                     const ips = nsbExtractIPs(result.content || '');
-                    nsbSaveIPs(ips, 'URL 导入');
-                    log('[飞标优选] URL 来源读取成功：' + currentURL + '；本次识别 IPv4：' + ips.length);
+                    nsbRuntimeURLIPs = [...new Set([...nsbRuntimeURLIPs, ...ips])];
+                    const status = document.getElementById('nsbIPImportStatus');
+                    if (status) status.textContent = 'URL 实时读取完成：本次识别 ' + ips.length + ' 个有效 IPv4；当前 URL 共获取 ' + nsbRuntimeURLIPs.length + ' 个唯一 IPv4（仅本次运行使用，不保存 IP）';
+                    log('[飞标优选] URL 来源读取成功：' + currentURL + '；本次识别 IPv4：' + ips.length + '；当前运行累计：' + nsbRuntimeURLIPs.length + '（未保存到本地）');
                 }
                 if (nsbURLImportPending) {
                     nsbURLImportIndex++;
@@ -3791,8 +3794,7 @@ startOfficialTask();
                 nsbURLImportPending = false;
                 nsbURLSkipOnNextStart = true;
                 const status = document.getElementById('nsbIPImportStatus');
-                const count = (() => { try { return JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]').length; } catch (_) { return 0; } })();
-                if (status) status.textContent = '网络 URL 读取完成：已处理 ' + nsbURLImportQueue.length + ' 个地址；已导入唯一 IPv4：' + count;
+                if (status) status.textContent = '网络 URL 实时读取完成：已处理 ' + nsbURLImportQueue.length + ' 个地址；本次获取唯一 IPv4：' + nsbRuntimeURLIPs.length + '（未保存到本地）';
                 log('[飞标优选] 网络 URL 读取流程完成，开始扫描');
                 startOfficialTask();
                 return;
@@ -3820,6 +3822,7 @@ startOfficialTask();
                     const urls = [...new Set(rawURLs.split(/\r?\n/).map(value => value.trim()).filter(Boolean))];
                     localStorage.setItem('cfdata-nsb:importedIPURLs', rawURLs);
                     if (urls.length > 0) {
+                        nsbRuntimeURLIPs = [];
                         if (nsbURLImportPending) return;
                         nsbURLImportQueue = urls;
                         nsbURLImportIndex = 0;
@@ -3828,6 +3831,7 @@ startOfficialTask();
                         startNextNsbURLImport();
                         return;
                     }
+                    nsbRuntimeURLIPs = [];
                 }
             }
             const ipType = cfdataModeNamespace === 'nsb' ? 0 : parseInt(document.getElementById('officialIpType').value);
@@ -3876,7 +3880,7 @@ startOfficialTask();
 
             const taskData = {
                 threads, port, delay, scanMode: getScanMode(),
-                ...(cfdataModeNamespace === 'nsb' ? { customIPs: (() => { try { return JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); } catch (_) { return []; } })() } : {}),
+                ...(cfdataModeNamespace === 'nsb' ? { customIPs: (() => { let saved = []; try { const value = JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); if (Array.isArray(value)) saved = value; } catch (_) {} return [...new Set([...saved, ...nsbRuntimeURLIPs])]; })() } : {}),
                 autoSpeed: autoSpeed,
                 officialTargetDC: document.getElementById('officialTargetDC')?.value?.trim() || '',
                 officialSpeedPort: officialSpeedConfig.port,
@@ -4997,12 +5001,10 @@ copyModalMode = mode;
             if (msg && msg.type === 'ip_source_content') {
                 const content = msg.data && msg.data.content || '';
                 const ips = window.cfdataNsbExtractIPs ? window.cfdataNsbExtractIPs(content) : [];
-                const existing = (() => { try { return JSON.parse(localStorage.getItem('cfdata-nsb:importedIPs') || '[]'); } catch (_) { return []; } })();
-                const merged = [...new Set([...existing, ...ips])];
-                localStorage.setItem('cfdata-nsb:importedIPs', JSON.stringify(merged));
+                nsbRuntimeURLIPs = [...new Set([...nsbRuntimeURLIPs, ...ips])];
                 const status = document.getElementById('nsbIPImportStatus');
-                if (status) status.textContent = 'URL 导入完成：本次识别 ' + ips.length + ' 个有效 IPv4，累计保存唯一 IPv4：' + merged.length;
-                log('[飞标优选] URL 导入完成，累计唯一 IPv4：' + merged.length);
+                if (status) status.textContent = 'URL 实时读取完成：本次识别 ' + ips.length + ' 个有效 IPv4；当前运行累计唯一 IPv4：' + nsbRuntimeURLIPs.length + '（未保存到本地）';
+                log('[飞标优选] URL 实时读取完成，本次识别 IPv4：' + ips.length + '；当前运行累计：' + nsbRuntimeURLIPs.length + '（未保存到本地）');
                 if (nsbURLImportPending && !(window.CFDataAndroid && typeof window.CFDataAndroid.fetchNsbIPURL === 'function')) {
                     nsbURLImportIndex++;
                     startNextNsbURLImport();
