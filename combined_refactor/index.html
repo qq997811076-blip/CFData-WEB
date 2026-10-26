@@ -3501,6 +3501,21 @@ function matchesQualifiedFilter(row, filter) {
             } else {
                 testData = [];
             }
+
+            // 非标优选的延迟已在扫描阶段完成；进入详细测试只展示扫描结果，
+            // 不再启动 start_test，避免对同一批 IP 重复进行延迟测试。
+            if (cfdataModeNamespace === 'nsb') {
+                officialSpeedEnabledForResults = false;
+                officialContinueSpeedUnlocked = false;
+                setOfficialTestQualifiedFilter('all');
+                currentTestingDC = '';
+                isTaskRunning = false;
+                showDCSelection(dcList);
+                renderAllTestResults();
+                switchTab('test');
+                return;
+            }
+
             officialSpeedEnabledForResults = false;
             officialContinueSpeedUnlocked = false;
             setOfficialTestQualifiedFilter('all');
