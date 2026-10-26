@@ -3550,7 +3550,11 @@ function matchesQualifiedFilter(row, filter) {
                 testData.push(res);
             }
             updateBadge('testCount', getFilteredOfficialTestData().length);
-            if (render && matchesOfficialQualifiedFilter(res, officialTestQualifiedFilter)) renderTestRow(res);
+            if (cfdataModeNamespace === 'nsb') {
+                if (render) renderAllTestResults();
+            } else if (render && matchesOfficialQualifiedFilter(res, officialTestQualifiedFilter)) {
+                renderTestRow(res);
+            }
             updateBatchSpeedButton();
         }
 
