@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -28,16 +29,16 @@ func runWindowedSpeedTest(ctx context.Context, ip string, port int, customURL st
 
 	transport := &http.Transport{
 		DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
-			dialer := &net.Dialer{Timeout: 5 * time.Second}
+			dialer := &net.Dialer{Timeout: 2500 * time.Millisecond}
 			return dialer.DialContext(c, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)))
 		},
-		TLSHandshakeTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: 2500 * time.Millisecond,
 		TLSClientConfig:     tlsConfigWithRootCAs(parsedURL.Hostname()),
 		DisableCompression:  true,
 	}
 	client := http.Client{
 		Transport: wrapDebugTransport("official-speed", transport),
-		Timeout:   15 * time.Second,
+		Timeout:   5 * time.Second,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", parsedURL.String(), nil)
@@ -162,60 +163,106 @@ func isSpeedRateLimited(speedErr string) bool {
 	return strings.Contains(speedErr, "速率限制")
 }
 
-func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port int, limit int, speedMinMB float64, customURL string, onResult func(current, total, qualified int, result TestResult), onRateLimited func()) ([]TestResult, []TestResult) {
+func runOfficialSpeedTestsCore(ctx context.Context, results []TestResult, port int, limit int, speedMinMB float64, customURL string, maxWorkers int, onResult func(current, total, qualified int, result TestResult), onRateLimited func()) ([]TestResult, []TestResult) {
 	capacity := len(results)
 	if limit > 0 && limit < capacity {
 		capacity = limit
 	}
 	qualified := make([]TestResult, 0, capacity)
-	interSpeedPause := func() bool {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(1200 * time.Millisecond):
-			return true
+	if len(results) == 0 || limit <= 0 {
+		return results, qualified
+	}
+	if maxWorkers <= 0 {
+		maxWorkers = 5
+	}
+	maxWorkers = min(maxWorkers, len(results))
+
+	type speedDone struct {
+		idx int
+	}
+	jobs := make(chan int)
+	done := make(chan speedDone, maxWorkers)
+	var wg sync.WaitGroup
+	worker := func() {
+		defer wg.Done()
+		for idx := range jobs {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			speedMB, speedErr := runWindowedSpeedTest(ctx, results[idx].IP, port, customURL)
+			if ctx.Err() != nil {
+				return
+			}
+			if speedErr != "" {
+				results[idx].Speed = speedErr
+			} else {
+				results[idx].Speed = fmt.Sprintf("%.2fMB/s", speedMB)
+			}
+			select {
+			case done <- speedDone{idx: idx}:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}
+	for i := 0; i < maxWorkers; i++ {
+		wg.Add(1)
+		go worker()
+	}
+
+	next, inFlight, completed := 0, 0, 0
 	consecutiveRateLimited := 0
-	for i := range results {
+	rateLimited := false
+	canceled := false
+	shouldSend := func() bool {
+		return !rateLimited && next < len(results) && len(qualified)+inFlight < limit
+	}
+	for shouldSend() || inFlight > 0 {
+		var jobCh chan int
+		if shouldSend() {
+			jobCh = jobs
+		}
 		select {
 		case <-ctx.Done():
-			return results, qualified
-		default:
-		}
-		if limit > 0 && len(qualified) >= limit {
-			break
-		}
-		speedMB, speedErr := runWindowedSpeedTest(ctx, results[i].IP, port, customURL)
-		if speedErr != "" {
-			results[i].Speed = speedErr
-			if isSpeedRateLimited(speedErr) {
+			canceled = true
+			next = len(results)
+			inFlight = 0
+			goto finished
+		case item := <-done:
+			inFlight--
+			completed++
+			result := results[item.idx]
+			if isSpeedRateLimited(result.Speed) {
 				consecutiveRateLimited++
 			} else {
 				consecutiveRateLimited = 0
 			}
-		} else {
-			consecutiveRateLimited = 0
-			results[i].Speed = fmt.Sprintf("%.2fMB/s", speedMB)
-			if speedMB >= speedMinMB {
-				qualified = append(qualified, results[i])
+			if speed, ok := parseSpeedMBForSort(result.Speed); ok && speed >= speedMinMB {
+				qualified = append(qualified, result)
 			}
-		}
-		if onResult != nil {
-			if ctx.Err() != nil {
-				return results, qualified
+			if onResult != nil && ctx.Err() == nil {
+				onResult(completed, len(results), len(qualified), result)
 			}
-			onResult(i+1, len(results), len(qualified), results[i])
-		}
-		if !interSpeedPause() {
-			return results, qualified
-		}
-		if consecutiveRateLimited >= 3 {
-			if onRateLimited != nil {
-				onRateLimited()
+			if consecutiveRateLimited >= 3 {
+				rateLimited = true
+				next = len(results)
+				if onRateLimited != nil {
+					onRateLimited()
+				}
 			}
-			break
+		case jobCh <- next:
+			next++
+			inFlight++
 		}
+	}
+
+finished:
+	close(jobs)
+	wg.Wait()
+	if canceled || ctx.Err() != nil {
+		return results, qualified
 	}
 	return results, qualified
 }
