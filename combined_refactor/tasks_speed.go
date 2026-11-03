@@ -311,7 +311,7 @@ func runOfficialSpeedBatch(ctx context.Context, session *appSession, port int, c
 	}
 	sortOfficialTestResults(results)
 
-	session.sendWSMessage("log", fmt.Sprintf("开始测速：%d 条记录，目标上限=%d，测速阈值=%.2fMB/s", len(results), speedLimit, speedMin))
+	session.sendWSMessage("log", fmt.Sprintf("开始测速：%d 条记录，并发数=%d，目标上限=%d，测速阈值=%.2fMB/s", len(results), maxWorkers, speedLimit, speedMin))
 	session.sendWSMessage("official_speed_progress", map[string]interface{}{"current": 0, "total": len(results), "qualified": 0, "limit": speedLimit})
 	rateLimited := false
 	updated, qualified := runOfficialSpeedTestsCore(ctx, results, port, speedLimit, speedMin, customURL, maxWorkers, func(current, total, qualified int, result TestResult) {
