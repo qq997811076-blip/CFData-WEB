@@ -6,17 +6,6 @@ android {
     namespace "com.cfdata.web"
     compileSdk 35
 
-    signingConfigs {
-        release {
-            def storeFilePath = System.getenv("ANDROID_KEYSTORE_FILE")
-            if (storeFilePath) {
-                storeFile file(storeFilePath)
-                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("ANDROID_KEY_ALIAS")
-                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
-            }
-        }
-    }
 
     defaultConfig {
         applicationId "com.cfdata.web"
@@ -27,8 +16,8 @@ android {
     }
 
     buildTypes {
-        release {
-            signingConfig signingConfigs.release
+        debug {
+            signingConfig null
         }
     }
 
