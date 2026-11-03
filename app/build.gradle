@@ -6,7 +6,6 @@ android {
     namespace "com.cfdata.web"
     compileSdk 35
 
-
     defaultConfig {
         applicationId "com.cfdata.web"
         minSdk 26
@@ -15,9 +14,19 @@ android {
         versionName System.getenv("ANDROID_VERSION_NAME") ?: "1.0"
     }
 
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ["src/main/jniLibs"]
+        }
+    }
+
     buildTypes {
         debug {
+        }
+        unsigned {
+            initWith debug
             signingConfig null
+            matchingFallbacks = ["debug"]
         }
     }
 
