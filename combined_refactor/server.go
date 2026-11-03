@@ -133,6 +133,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if params.Threads <= 0 {
 				params.Threads = 100
 			}
+			if params.OfficialSpeedWorkers <= 0 { params.OfficialSpeedWorkers = 5 }
+			params.OfficialSpeedWorkers = min(params.OfficialSpeedWorkers, 100)
 			if params.Port <= 0 {
 				params.Port = 443
 			}
@@ -171,7 +173,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				results := append([]TestResult(nil), session.testResults...)
 				session.testMutex.Unlock()
 				if len(results) > 0 {
-					runOfficialSpeedBatch(ctx, session, params.OfficialSpeedPort, speedURL, params.OfficialSpeedLimit, params.OfficialSpeedMin, results, false)
+					runOfficialSpeedBatch(ctx, session, params.OfficialSpeedPort, speedURL, params.OfficialSpeedLimit, params.OfficialSpeedMin, params.OfficialSpeedWorkers, results, false)
 				}
 			})
 		},
@@ -223,11 +225,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if params.SpeedMin <= 0 {
 				params.SpeedMin = 0.1
 			}
+			if params.SpeedTest <= 0 { params.SpeedTest = 5 }
+			params.SpeedTest = min(params.SpeedTest, 100)
 			if strings.TrimSpace(params.URL) == "" {
 				params.URL = speedTestURL
 			}
-			session.startTaskNamed("官方批量测速", "official", map[string]interface{}{"port": params.Port, "url": params.URL, "speedLimit": params.SpeedLimit, "speedMin": params.SpeedMin, "skipTested": params.SkipTested}, func(ctx context.Context, session *appSession) {
-				runOfficialSpeedBatch(ctx, session, params.Port, params.URL, params.SpeedLimit, params.SpeedMin, params.Results, params.SkipTested)
+			session.startTaskNamed("官方批量测速", "official", map[string]interface{}{"port": params.Port, "url": params.URL, "speedLimit": params.SpeedLimit, "speedMin": params.SpeedMin, "speedTest": params.SpeedTest, "skipTested": params.SkipTested}, func(ctx context.Context, session *appSession) {
+				runOfficialSpeedBatch(ctx, session, params.Port, params.URL, params.SpeedLimit, params.SpeedMin, params.SpeedTest, params.Results, params.SkipTested)
 			})
 		},
 		"start_nsb_task": func(data json.RawMessage) {
