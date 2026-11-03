@@ -76,7 +76,6 @@ jobs:
           ANDROID_VERSION_NAME: ${{ steps.set-version.outputs.VERSION }}
         run: gradle assembleUnsigned --no-daemon
       - name: Verify unsigned APK and ARM64 backend
-        id: verify-apk
         shell: bash
         run: |
           set -euo pipefail
@@ -97,21 +96,9 @@ jobs:
           fi
           echo "APK: $apk_file ($(stat -c%s "$apk_file") bytes)"
           echo "Native library entries:"
-          unzip -Z1 "$apk_file" | grep -E '(^|/)lib/|libcfdata\.so      - name: Upload Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: asset-android-arm64-apk
-          path: release_assets/*
-          if-no-files-found: error
- || true
+          unzip -Z1 "$apk_file" | grep -E '(^|/)lib/|libcfdata\.so$' || true
 
-          if ! unzip -Z1 "$apk_file" | grep -Eq '^lib/arm64-v8a/libcfdata\.so      - name: Upload Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: asset-android-arm64-apk
-          path: release_assets/*
-          if-no-files-found: error
-; then
+          if ! unzip -Z1 "$apk_file" | grep -Eq '^lib/arm64-v8a/libcfdata\.so$'; then
             echo "::error::ARM64 backend missing; listing APK entries for diagnosis:"
             unzip -Z1 "$apk_file"
             exit 1
@@ -130,10 +117,8 @@ jobs:
             echo "Confirmed: APK has no verifiable APK signature."
           fi
 
-          echo "apk_path=$apk_file" >> "$GITHUB_OUTPUT"
+          echo "APK_PATH=$apk_file" >> "$GITHUB_ENV"
       - name: Prepare APK Artifact
-        env:
-          APK_PATH: ${{ steps.verify-apk.outputs.apk_path }}
         run: |
           set -euo pipefail
           mkdir -p release_assets
