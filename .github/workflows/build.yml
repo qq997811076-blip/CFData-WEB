@@ -76,30 +76,68 @@ jobs:
           ANDROID_VERSION_NAME: ${{ steps.set-version.outputs.VERSION }}
         run: gradle assembleUnsigned --no-daemon
       - name: Verify unsigned APK and ARM64 backend
+        id: verify-apk
         shell: bash
         run: |
           set -euo pipefail
-          apk_file="app/build/outputs/apk/unsigned/app-unsigned.apk"
-          test -s "$apk_file"
+
+          echo "Searching for the APK actually produced by Gradle..."
+          mapfile -t apk_candidates < <(find app/build/outputs -type f -name '*.apk' -print 2>/dev/null | sort)
+          if [ "${#apk_candidates[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one APK, found ${#apk_candidates[@]}."
+            echo "APK output files:"
+            find app/build/outputs -type f -print 2>/dev/null || true
+            exit 1
+          fi
+
+          apk_file="${apk_candidates[0]}"
+          if [ ! -s "$apk_file" ]; then
+            echo "::error::Gradle APK output is empty: $apk_file"
+            exit 1
+          fi
           echo "APK: $apk_file ($(stat -c%s "$apk_file") bytes)"
           echo "Native library entries:"
-          unzip -Z1 "$apk_file" | grep -E '(^|/)lib/|libcfdata\.so$' || true
-          if ! unzip -Z1 "$apk_file" | grep -Eq '^lib/arm64-v8a/libcfdata\.so$'; then
+          unzip -Z1 "$apk_file" | grep -E '(^|/)lib/|libcfdata\.so      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: asset-android-arm64-apk
+          path: release_assets/*
+          if-no-files-found: error
+ || true
+
+          if ! unzip -Z1 "$apk_file" | grep -Eq '^lib/arm64-v8a/libcfdata\.so      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: asset-android-arm64-apk
+          path: release_assets/*
+          if-no-files-found: error
+; then
             echo "::error::ARM64 backend missing; listing APK entries for diagnosis:"
             unzip -Z1 "$apk_file"
             exit 1
           fi
-          echo "APK signature verification (must fail for unsigned APK):"
-          if apksigner verify --verbose "$apk_file"; then
-            echo "::error::APK is signed; expected an unsigned APK"
+
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+          if [ -z "$apksigner" ] || [ ! -x "$apksigner" ]; then
+            echo "::error::apksigner was not found in Android SDK build-tools."
+            exit 1
+          fi
+          echo "APK signature verification (APK must remain unsigned):"
+          if "$apksigner" verify --verbose "$apk_file"; then
+            echo "::error::APK is signed; expected an unsigned APK."
             exit 1
           else
             echo "Confirmed: APK has no verifiable APK signature."
           fi
+
+          echo "apk_path=$apk_file" >> "$GITHUB_OUTPUT"
       - name: Prepare APK Artifact
+        env:
+          APK_PATH: ${{ steps.verify-apk.outputs.apk_path }}
         run: |
+          set -euo pipefail
           mkdir -p release_assets
-          cp app/build/outputs/apk/unsigned/app-unsigned.apk release_assets/cfdata-android-arm64.apk
+          cp "$APK_PATH" release_assets/cfdata-android-arm64.apk
           cd release_assets
           sha256sum cfdata-android-arm64.apk | awk '{print $1}' > cfdata-android-arm64.apk.sha256
       - name: Upload Artifact
