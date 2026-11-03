@@ -146,7 +146,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				scanMode = scanModeTCPing
 			}
 			autoSpeed := params.AutoSpeed && params.OfficialSpeedLimit > 0
-			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed}, func(ctx context.Context, session *appSession) {
+			session.startTaskNamed("官方优选扫描", "official", map[string]interface{}{"ipType": params.IPType, "threads": params.Threads, "port": params.Port, "delay": params.Delay, "scanMode": scanMode, "autoSpeed": autoSpeed, "officialSpeedWorkers": params.OfficialSpeedWorkers}, func(ctx context.Context, session *appSession) {
 				runOfficialTask(ctx, session, params.IPType, params.Threads, params.Port, params.Delay, scanMode)
 				if ctx.Err() != nil || !autoSpeed || !session.isBackgroundTask() {
 					return
