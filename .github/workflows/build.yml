@@ -1,4 +1,3 @@
-
 name: Build and Release
 
 on:
@@ -52,7 +51,7 @@ jobs:
           if [ -z "$version" ]; then
             version="v1.0"
           fi
-          echo "VERSION=$version" >> $GITHUB_OUTPUT
+          echo "VERSION=$version" >> "$GITHUB_OUTPUT"
 
       - name: Download CA Certificates
         run: |
@@ -67,6 +66,8 @@ jobs:
           GOARCH: arm64
           CGO_ENABLED: "0"
         run: |
+          mkdir -p ../app/src/main/jniLibs/arm64-v8a
+
           go build -trimpath \
             -ldflags "-s -w -X main.appVersion=${{ steps.set-version.outputs.VERSION }}" \
             -o ../app/src/main/jniLibs/arm64-v8a/libcfdata.so .
@@ -75,20 +76,27 @@ jobs:
         env:
           ANDROID_VERSION_NAME: ${{ steps.set-version.outputs.VERSION }}
         run: |
-          gradle assembleRelease --no-daemon
+          gradle assembleDebug --no-daemon
 
       - name: Verify APK Contains Backend
         run: |
-          unzip -l app/build/outputs/apk/release/app-release.apk | tee apk-contents.txt
+          apk_file="app/build/outputs/apk/debug/app-debug.apk"
+
+          test -f "$apk_file"
+
+          unzip -l "$apk_file" | tee apk-contents.txt
+
           grep -q "lib/arm64-v8a/libcfdata.so" apk-contents.txt
 
       - name: Prepare APK Artifact
         run: |
           mkdir -p release_assets
-          cp app/build/outputs/apk/release/app-release.apk \
+
+          cp app/build/outputs/apk/debug/app-debug.apk \
             release_assets/cfdata-android-arm64.apk
 
           cd release_assets
+
           sha256sum cfdata-android-arm64.apk \
             | awk '{print $1}' > cfdata-android-arm64.apk.sha256
 
