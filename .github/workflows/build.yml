@@ -71,11 +71,11 @@ jobs:
           mkdir -p ../app/src/main/jniLibs/arm64-v8a
           go build -trimpath -ldflags "-s -w -X main.appVersion=${{ steps.set-version.outputs.VERSION }}" -o ../app/src/main/jniLibs/arm64-v8a/libcfdata.so .
           test -s ../app/src/main/jniLibs/arm64-v8a/libcfdata.so
-      - name: Build unsigned APK
+      - name: Build APK
         env:
           ANDROID_VERSION_NAME: ${{ steps.set-version.outputs.VERSION }}
         run: gradle assembleUnsigned --no-daemon
-      - name: Verify unsigned APK and ARM64 backend
+      - name: Sign and Verify Installable APK
         shell: bash
         run: |
           set -euo pipefail
@@ -94,9 +94,7 @@ jobs:
             echo "::error::Gradle APK output is empty: $apk_file"
             exit 1
           fi
-          echo "APK: $apk_file ($(stat -c%s "$apk_file") bytes)"
-          echo "Native library entries:"
-          unzip -Z1 "$apk_file" | grep -E '(^|/)lib/|libcfdata\.so$' || true
+          echo "Unsigned APK: $apk_file ($(stat -c%s "$apk_file") bytes)"
 
           if ! unzip -Z1 "$apk_file" | grep -Eq '^lib/arm64-v8a/libcfdata\.so$'; then
             echo "::error::ARM64 backend missing; listing APK entries for diagnosis:"
@@ -109,15 +107,30 @@ jobs:
             echo "::error::apksigner was not found in Android SDK build-tools."
             exit 1
           fi
-          echo "APK signature verification (APK must remain unsigned):"
-          if "$apksigner" verify --verbose "$apk_file"; then
-            echo "::error::APK is signed; expected an unsigned APK."
-            exit 1
-          else
-            echo "Confirmed: APK has no verifiable APK signature."
-          fi
 
-          echo "APK_PATH=$apk_file" >> "$GITHUB_ENV"
+          # Generate a temporary Android debug key locally on the runner.
+          # No user-provided JKS, repository secret, or Release signing is used.
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/cfdata-debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -keyalg RSA -keysize 2048 -validity 10000
+
+          signed_apk="$RUNNER_TEMP/cfdata-android-arm64-signed.apk"
+          "$apksigner" sign \
+            --ks "$RUNNER_TEMP/cfdata-debug.keystore" \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --ks-key-alias androiddebugkey \
+            --out "$signed_apk" \
+            "$apk_file"
+
+          "$apksigner" verify --verbose --print-certs "$signed_apk"
+          test -s "$signed_apk"
+          echo "Signed APK: $signed_apk ($(stat -c%s "$signed_apk") bytes)"
+          echo "APK_PATH=$signed_apk" >> "$GITHUB_ENV"
       - name: Prepare APK Artifact
         run: |
           set -euo pipefail
