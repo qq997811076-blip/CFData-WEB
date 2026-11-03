@@ -24,9 +24,10 @@ android {
         debug {
         }
         unsigned {
-            initWith debug
+            // Inherit from release, not debug: AGP automatically signs debug variants.
+            initWith release
             signingConfig null
-            matchingFallbacks = ["debug"]
+            matchingFallbacks = ["release", "debug"]
         }
     }
 
