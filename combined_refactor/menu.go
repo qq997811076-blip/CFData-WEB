@@ -401,14 +401,6 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 		fileCfg.Debug = "all"
 	}
 
-	skipGeoIdx := boolChoiceIndex(fileCfg.SkipGeo)
-	idx, o = askChoice("跳过代理检测", "开启=运行前不再提示代理/VPN 环境警告，直接开始测试；选择后后续启动仅提示已跳过",
-		[]string{"开启", "关闭"}, skipGeoIdx)
-	if o != promptOK {
-		return o
-	}
-	fileCfg.SkipGeo = idx == 0
-
 	sectionHeader("扫描与测速")
 	if isNSB {
 		useURL := strings.TrimSpace(fileCfg.SourceURL) != "" && strings.TrimSpace(fileCfg.File) == ""
