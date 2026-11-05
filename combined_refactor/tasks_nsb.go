@@ -546,7 +546,7 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 	}
 	client := http.Client{
 		Transport: wrapDebugTransport("nsb-speed", transport),
-		Timeout:   6 * time.Second,
+		Timeout:   11 * time.Second,
 	}
 
 	speedCtx, cancel := context.WithCancel(ctx)
