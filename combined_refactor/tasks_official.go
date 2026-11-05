@@ -83,6 +83,7 @@ func scanOfficialIP(ctx context.Context, ip string, port int, delay int) (*ScanR
 	res := &ScanResult{
 		IP:          ip,
 		Port:        port,
+		TraceIP:     strings.TrimSpace(trace["ip"]),
 		DataCenter:  dataCenter,
 		DCCountry:   loc.Cca2,
 		Region:      loc.Region,
@@ -173,6 +174,7 @@ func scanOfficialHTTP(ctx context.Context, ip string, port int, delay int) (*Sca
 	res := &ScanResult{
 		IP:          ip,
 		Port:        port,
+		TraceIP:     strings.TrimSpace(trace["ip"]),
 		DataCenter:  dataCenter,
 		DCCountry:   loc.Cca2,
 		Region:      loc.Region,
@@ -518,8 +520,8 @@ func runDetailedTest(ctx context.Context, session *appSession, selectedDC string
 			res.DCCountry = scan.DCCountry
 			res.Region = scan.Region
 			res.City = scan.City
+			res.ASNNumber, _ = lookupASN(scan.TraceIP)
 		}
-		res.ASNNumber, _ = lookupASN(ip)
 		session.sendWSMessage("test_result", *res)
 
 		resMutex.Lock()
