@@ -523,7 +523,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 }
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
-	const speedWindow = 5 * time.Second
+	const speedWindow = 6 * time.Second
 	const speedMaxBytes = 200 * 1024 * 1024
 
 	scheme := "http"
