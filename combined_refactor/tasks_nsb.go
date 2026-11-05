@@ -791,7 +791,7 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 	})
 
 	if wasCanceled || ctx.Err() != nil {
-		session.sendWSMessage("log", "非标优选延迟扫描已终止，正在整理已扫描到的数据...")
+		return
 	}
 
 	if len(nsbResults) == 0 {
@@ -817,6 +817,9 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 	reallinkHost = strings.TrimSpace(reallinkHost)
 	if reallinkHost != "" && !wasCanceled && ctx.Err() == nil {
 		kept, _, _ := runNSBReallinkFilter(ctx, session, nsbResults, reallinkHost)
+		if ctx.Err() != nil {
+			return
+		}
 		nsbResults = kept
 		if len(nsbResults) == 0 {
 			session.sendWSMessage("error", "链路复验后未发现可用 IP")
@@ -861,8 +864,8 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 			res := &nsbResults[idx]
 			return runNSBDownloadSpeed(ctx, res.ipAddr, res.port, enableTLS, speedURL)
 		})
-		if speedCanceled {
-			wasCanceled = true
+		if speedCanceled || ctx.Err() != nil {
+			return
 		}
 		for i := range nsbResults {
 			if nsbResults[i].speedTested && nsbResults[i].speedText == "" {
@@ -883,18 +886,16 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 		}
 	}
 
-	if wasCanceled || ctx.Err() != nil {
-		session.sendWSMessage("log", "非标测速任务已终止，正在整理当前可用测速结果...")
-		completionStatus = "partial"
-		completionMessage = "任务已手动终止，已整理当前可用结果"
+	if ctx.Err() != nil {
+		return
 	}
 
 	if err := writeNSBCSV(outFile, nsbResults, speedTest, compact, scanMode); err != nil {
 		session.sendWSMessage("error", "导出 CSV 失败: "+err.Error())
 		return
 	}
-	if wasCanceled || ctx.Err() != nil {
-		session.sendWSMessage("nsb_csv_ready", map[string]interface{}{"file": outFile, "status": completionStatus, "message": completionMessage, "rows": len(nsbResults), "qualifiedCount": qualifiedCount})
+	if ctx.Err() != nil {
+		return
 	}
 
 	headers := nsbCSVHeaders(compact, scanMode)
@@ -1040,7 +1041,9 @@ func runNSBReallinkTask(ctx context.Context, session *appSession, rows []nsbScan
 	}
 
 	kept, _, _ := runNSBReallinkFilter(ctx, session, results, reallinkHost)
-	wasCanceled := ctx.Err() != nil
+	if ctx.Err() != nil {
+		return
+	}
 	results = kept
 	if len(results) == 0 {
 		session.sendWSMessage("error", "链路复验后未发现可用 IP")
@@ -1071,7 +1074,7 @@ func runNSBReallinkTask(ctx context.Context, session *appSession, rows []nsbScan
 			return runNSBDownloadSpeed(ctx, res.ipAddr, res.port, enableTLS, speedURL)
 		})
 		if speedCanceled || ctx.Err() != nil {
-			wasCanceled = true
+			return
 		}
 		for i := range results {
 			if results[i].speedTested && results[i].speedText == "" {
@@ -1100,12 +1103,15 @@ func runNSBReallinkTask(ctx context.Context, session *appSession, rows []nsbScan
 		session.sendWSMessage("nsb_scan_sorted", sortedRows)
 	}
 
+	if ctx.Err() != nil {
+		return
+	}
 	if err := writeNSBCSV(outFile, results, speedTest, compact, scanMode); err != nil {
 		session.sendWSMessage("error", "导出 CSV 失败: "+err.Error())
 		return
 	}
-	if wasCanceled {
-		session.sendWSMessage("nsb_csv_ready", map[string]interface{}{"file": outFile, "status": completionStatus, "message": completionMessage, "rows": len(results), "qualifiedCount": qualifiedCount})
+	if ctx.Err() != nil {
+		return
 	}
 	headers := nsbCSVHeaders(compact, scanMode)
 	csvRows := nsbCSVRows(results, speedTest > 0, compact, scanMode)
