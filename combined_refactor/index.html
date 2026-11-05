@@ -1979,7 +1979,7 @@
                 </div>
             </div>
 
-            <div class="section-box">
+            <div class="section-box" id="scanResultsSection" style="display:none;">
                 <h3 style="display:flex;justify-content:space-between;align-items:center;">
                     <span>扫描结果 <span class="badge" id="scanCount">0</span></span>
                     <span class="table-actions">
@@ -3186,6 +3186,8 @@
 
         function switchMode(mode) {
             currentMode = mode;
+            const scanResultsSection = document.getElementById('scanResultsSection');
+            if (scanResultsSection) scanResultsSection.style.display = mode === 'nsb' ? '' : 'none';
             modeOfficial.classList.toggle('active', mode === 'official');
             modeNSB.classList.toggle('active', mode === 'nsb');
 
