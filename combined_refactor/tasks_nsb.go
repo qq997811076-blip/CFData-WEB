@@ -662,7 +662,14 @@ func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent,
 		session.sendWSMessage("error", "备用端口必须为 1-65535")
 		return
 	}
-	ips, err := readIPsWithFallbackPort(tmpPath, fallbackPort)
+	var ips []string
+	if isNSBCSVInput(fileName) {
+		// CSV is now IP-only: scan all rows for IPv4/CIDR; ignore headers, columns and CSV ports.
+		ips, err = parseNSBCSVIPv4Inputs(fileContent, fallbackPort)
+	} else {
+		// Preserve the existing TXT/non-CSV parser without changes.
+		ips, err = readIPsWithFallbackPort(tmpPath, fallbackPort)
+	}
 	if err != nil {
 		session.sendWSMessage("error", "解析上传文件失败: "+err.Error())
 		return

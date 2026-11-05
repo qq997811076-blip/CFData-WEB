@@ -86,6 +86,98 @@ func defaultNSBPort(enableTLS bool) int {
 	return 80
 }
 
+// parseNSBCSVIPv4Inputs mirrors the reference CSV parser: scan every line for IPv4/CIDR tokens,
+// validate and expand them, then deduplicate while preserving first-seen order.
+const maxNSBCSVIPv4Expansion uint64 = 1_048_576
+
+func parseNSBCSVIPv4Inputs(content string, fallbackPort int) ([]string, error) {
+	if !isValidPort(fallbackPort) {
+		return nil, fmt.Errorf("备用端口无效: %d", fallbackPort)
+	}
+
+	tokenRegex := regexp.MustCompile(`[0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*/\s*[0-9]{1,2})?`)
+	unique := make(map[string]struct{})
+	items := make([]string, 0)
+	for _, line := range strings.Split(content, "\n") {
+		for _, match := range tokenRegex.FindAllStringIndex(line, -1) {
+			start, end := match[0], match[1]
+			// Go RE2 has no lookbehind/lookahead; apply the reference parser's
+			// (?<![0-9.]) and (?![0-9./]) boundaries explicitly.
+			if start > 0 {
+				prev := line[start-1]
+				if (prev >= '0' && prev <= '9') || prev == '.' {
+					continue
+				}
+			}
+			if end < len(line) {
+				next := line[end]
+				if (next >= '0' && next <= '9') || next == '.' || next == '/' {
+					continue
+				}
+			}
+
+			token := regexp.MustCompile(`\s*/\s*`).ReplaceAllString(strings.TrimSpace(line[start:end]), "/")
+			parts := strings.SplitN(token, "/", 2)
+			octets := strings.Split(parts[0], ".")
+			if len(octets) != 4 {
+				continue
+			}
+			var value uint64
+			valid := true
+			for _, octet := range octets {
+				n, err := strconv.Atoi(octet)
+				if err != nil || n < 0 || n > 255 {
+					valid = false
+					break
+				}
+				value = (value << 8) | uint64(n)
+			}
+			if !valid {
+				continue
+			}
+
+			prefix := 32
+			if len(parts) == 2 {
+				parsed, err := strconv.Atoi(parts[1])
+				if err != nil || parsed < 0 || parsed > 32 {
+					continue
+				}
+				prefix = parsed
+			}
+			hostBits := uint(32 - prefix)
+			count := uint64(1) << hostBits
+			if count > maxNSBCSVIPv4Expansion {
+				return nil, fmt.Errorf("CIDR 网段地址数量过大（%d），单个网段最多展开 %d 个；请拆分成较小网段后导入", count, maxNSBCSVIPv4Expansion)
+			}
+			mask := uint64(0)
+			if prefix > 0 {
+				mask = (uint64(0xFFFFFFFF) << hostBits) & 0xFFFFFFFF
+			}
+			network := value & mask
+			for offset := uint64(0); offset < count; offset++ {
+				ipValue := network + offset
+				ip := fmt.Sprintf("%d.%d.%d.%d",
+					(ipValue>>24)&255, (ipValue>>16)&255, (ipValue>>8)&255, ipValue&255)
+				key := fmt.Sprintf("%s %d", ip, fallbackPort)
+				if _, exists := unique[key]; exists {
+					continue
+				}
+				unique[key] = struct{}{}
+				items = append(items, key)
+			}
+		}
+	}
+	return items, nil
+}
+
+func isNSBCSVInput(fileName string) bool {
+	name := strings.TrimSpace(fileName)
+	if parsed, err := url.Parse(name); err == nil && parsed.Scheme != "" {
+		name = parsed.Path
+	}
+	return strings.HasSuffix(strings.ToLower(strings.TrimSpace(name)), ".csv")
+}
+
 func parseNSBInputs(content string, fallbackPort int) []string {
 	var endpoints []nsbEndpoint
 	seen := make(map[string]bool)
