@@ -864,60 +864,6 @@ func runSettingsWizard(fileCfg *cliFileConfig) int {
 		}
 	}
 
-	sectionHeader("edgetunnel 上传")
-	etIdx := boolChoiceIndex(fileCfg.EdgeTunnel)
-	idx, o = askChoice("edgetunnel 上传", "导出后是否自动上传到 edgetunnel 订阅", []string{"启用", "不启用"}, etIdx)
-	if o != promptOK {
-		return o
-	}
-	fileCfg.EdgeTunnel = idx == 0
-	if fileCfg.EdgeTunnel {
-		for {
-			v, o := askLine("edgetunnel 主机地址", displayOrEmpty(fileCfg.ETHost), "格式: https://example.com")
-			if o != promptOK {
-				return o
-			}
-			if v == "" {
-				if strings.TrimSpace(fileCfg.ETHost) != "" {
-					break
-				}
-				fmt.Println("    不能为空，请输入主机地址")
-				continue
-			}
-			fileCfg.ETHost = v
-			break
-		}
-		for {
-			v, o := askLine("edgetunnel 密码", displayOrEmpty(fileCfg.ETPassword), "登录 edgetunnel 管理页的密码")
-			if o != promptOK {
-				return o
-			}
-			if v == "" {
-				if strings.TrimSpace(fileCfg.ETPassword) != "" {
-					break
-				}
-				fmt.Println("    不能为空，请输入密码")
-				continue
-			}
-			fileCfg.ETPassword = v
-			break
-		}
-		modeIdx := 1
-		if strings.EqualFold(strings.TrimSpace(fileCfg.ETMode), "overwrite") {
-			modeIdx = 0
-		}
-		idx, o = askChoice("edgetunnel 上传模式", "覆盖=替换全部订阅内容；追加=保留原有内容并追加新结果",
-			[]string{"覆盖（overwrite）", "追加（append）"}, modeIdx)
-		if o != promptOK {
-			return o
-		}
-		if idx == 0 {
-			fileCfg.ETMode = "overwrite"
-		} else {
-			fileCfg.ETMode = "append"
-		}
-	}
-
 	fmt.Println(colorize("========== 参数设置完成 ==========", ansiBold+ansiCyan))
 	return promptOK
 }

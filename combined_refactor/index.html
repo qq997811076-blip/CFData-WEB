@@ -2063,18 +2063,6 @@
                             <option value="csv">CSV</option>
                         </select>
                     </div>
-                    <div class="modal-field">
-                        <label>文件名</label>
-                        <input id="resultFileName" type="text" value="cfdata-results">
-                    </div>
-                    <div class="modal-field">
-                        <label>开始行</label>
-                        <input id="resultStartRow" type="number" value="1" min="1" oninput="updateResultPreview()">
-                    </div>
-                    <div class="modal-field">
-                        <label>结束行</label>
-                        <input id="resultEndRow" type="number" value="20" min="1" oninput="updateResultPreview()">
-                    </div>
                     <div class="modal-field" id="resultIPTypeFilterField">
                         <label>IP 类型筛选</label>
                         <select id="resultIPTypeFilter" onchange="updateResultPreview()">
@@ -2086,9 +2074,7 @@
                     <div class="modal-field" id="resultQualifiedFilterField">
                         <label>导出合格结果</label>
                         <select id="resultQualifiedFilter" onchange="updateResultPreview()">
-                            <option value="all" selected>导出全部结果</option>
-                            <option value="qualified">仅导出合格</option>
-                            <option value="unqualified">仅导出不合格</option>
+                            <option value="qualified" selected>仅导出合格</option>
                         </select>
                     </div>
                     <div class="modal-field">
@@ -2189,46 +2175,11 @@
                         <label>上传失败提示</label>
                         <div class="upload-status" id="uploadProxyHint">上传失败？可在右上角设置菜单配置代理后重试；支持程序配置（socks5://、http:// 等）与系统环境变量代理，扫描测速不受影响。</div>
                     </div>
-                    <div class="modal-field edgetunnel-field">
-                        <label>edgetunnel 账户</label>
-                        <div class="github-account-row">
-                            <select id="edgetunnelAccountSelect" onchange="loadSelectedEdgetunnelAccount()"></select>
-                            <button class="action-btn" onclick="deleteSelectedEdgetunnelAccount()">删除</button>
-                        </div>
-                    </div>
-                    <div class="modal-field edgetunnel-field">
-                        <label>账户名称</label>
-                        <input id="edgetunnelAccountName" type="text" placeholder="例如 main-tunnel">
-                    </div>
-                    <div class="modal-field edgetunnel-field">
-                        <label>edgetunnel 域名</label>
-                        <input id="edgetunnelHost" type="text" placeholder="https://example.com">
-                    </div>
-                    <div class="modal-field edgetunnel-field">
-                        <label>密码</label>
-                        <input id="edgetunnelPassword" type="password" autocomplete="off" placeholder="edgetunnel 密码">
-                    </div>
-                    <div class="modal-field edgetunnel-field">
-                        <label>上传模式</label>
-                        <select id="edgetunnelMode">
-                            <option value="overwrite">覆盖上传</option>
-                            <option value="append">追加上传</option>
-                        </select>
-                    </div>
-                    <div class="modal-field full edgetunnel-field">
-                        <label class="inline-check"><input id="edgetunnelSavePassword" type="checkbox"> 保存密码到本机浏览器（使用 WebCrypto 加密存储）</label>
-                    </div>
-                    <div class="modal-field full edgetunnel-field">
-                        <label>上传状态</label>
-                        <div class="upload-status" id="edgetunnelUploadStatus">等待上传</div>
-                    </div>
                 </div>
             </div>
             <div class="modal-actions footer">
                 <button class="action-btn export-btn" onclick="downloadSelectedResults()">导出文件</button>
                 <button class="action-btn export-btn" onclick="uploadSelectedResultsToGitHub()">上传 GitHub</button>
-                <button class="action-btn export-btn" onclick="confirmEdgetunnelUpload('append')">上传 edgetunnel-追加</button>
-                <button class="action-btn export-btn" onclick="confirmEdgetunnelUpload('overwrite')">上传 edgetunnel-覆盖</button>
             </div>
         </div>
     </div>
@@ -2239,81 +2190,8 @@
                 <h3 id="copyModalTitle">一键复制</h3>
                 <button class="modal-close" onclick="closeCopyModal()">×</button>
             </div>
-            <div class="modal-body">
-                <div class="modal-grid">
-                    <div class="modal-field">
-                        <label>开始行</label>
-                        <input id="copyStartRow" type="number" value="1" min="1" oninput="updateCopyPreview()">
-                    </div>
-                    <div class="modal-field">
-                        <label>结束行</label>
-                        <input id="copyEndRow" type="number" value="20" min="1" oninput="updateCopyPreview()">
-                    </div>
-                    <div class="modal-field" id="copyIPTypeFilterField">
-                        <label>IP 类型筛选</label>
-                        <select id="copyIPTypeFilter" onchange="updateCopyPreview()">
-                            <option value="all" selected>复制全部类型</option>
-                            <option value="ipv4">仅复制IPV4</option>
-                            <option value="ipv6">仅复制IPV6</option>
-                        </select>
-                    </div>
-                    <div class="modal-field" id="copyQualifiedFilterField">
-                        <label>复制合格结果</label>
-                        <select id="copyQualifiedFilter" onchange="updateCopyPreview()">
-                            <option value="all" selected>复制全部结果</option>
-                            <option value="qualified">仅复制合格</option>
-                            <option value="unqualified">仅复制不合格</option>
-                        </select>
-                    </div>
-                    <div class="modal-field full">
-                        <label>输出示例</label>
-                        <pre class="result-preview" id="copyPreview">暂无预览</pre>
-                    </div>
-                    <div class="modal-field full">
-                        <div class="field-head">
-                            <label>字段选择</label>
-                            <div class="field-head-actions">
-                                <button class="action-btn" id="copySelectAllBtn" onclick="toggleAllCopyFields()">全选</button>
-                                <button class="action-btn" onclick="selectCopyIPPortOnly()">仅 IP:PORT</button>
-                                <button class="action-btn" onclick="selectDefaultCopyFields()">默认选择</button>
-                            </div>
-                        </div>
-                        <div class="field-picker" id="copyFieldPicker"></div>
-                    </div>
-                    <div class="modal-field full">
-                        <label>自定义字段</label>
-                        <input id="copyCustomFields" type="text" placeholder="标题:内容，多项用逗号分隔，例如 备注:测试版,归属:cfdata" oninput="handleCustomCopyFieldsChange()">
-                    </div>
-                    <div class="modal-field full">
-                        <label>TXT 字段分隔符</label>
-                        <div class="separator-row">
-                            <select id="copyTextSeparatorPreset" onchange="applyTextSeparatorPreset('copy', this.value)">
-                                <option value="-" selected>-</option>
-                                <option value="|">|</option>
-                                <option value="space">空格</option>
-                                <option value="~">~</option>
-                                <option value="_">_</option>
-                                <option value="/">/</option>
-                                <option value="&#92;">&#92;</option>
-                                <option value=",">,</option>
-                                <option value=".">.</option>
-                                <option value="custom">自定义</option>
-                            </select>
-                            <input id="copyTextSeparatorCustom" type="text" value="-" placeholder="自定义分隔符" oninput="markTextSeparatorCustom('copy')">
-                        </div>
-                    </div>
-                    <div class="modal-field full" id="copyIPv6BracketsField">
-                        <label class="inline-check"><input type="checkbox" id="copyIPv6Brackets" checked onchange="updateCopyPreview()"> IPv6 地址添加方括号</label>
-                    </div>
-                    <div class="modal-field full">
-                        <label>输出顺序</label>
-                        <div class="order-list" id="copyOrderList"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-actions footer">
-                <button class="action-btn export-btn" onclick="copyConfiguredResults(event)">复制结果</button>
-            </div>
+            <div class="modal-body"></div>
+
         </div>
     </div>
 
@@ -2469,19 +2347,14 @@
         let proxyCountryCheckTimer = null;
         let proxyWarningSinglePass = false;
         let resultModalMode = 'scan';
-        let copyModalMode = 'scan';
         let sortModalMode = 'official';
         let resultFieldOrder = [];
         let resultCustomFields = [];
-        let copyFieldOrder = [];
-        let copyCustomFields = [];
         let autoUploadKeys = new Set();
         let noticeConfirmAction = null;
         const githubAccountStorageKey = 'cfdata-github-accounts';
         const githubSessionTokens = new Map();
         const githubTokenCryptoSalt = 'cfdata-github-token-v1';
-        const edgetunnelAccountStorageKey = 'cfdata-edgetunnel-accounts';
-        const edgetunnelSessionPasswords = new Map();
 
         const LATENCY_COLORS = [
             { end: 50, color: '#1f8a3b' },
@@ -5107,8 +4980,6 @@
             document.getElementById('resultModalTitle').textContent = '结果操作';
             const formatSelect = document.getElementById('resultFormat');
             if (formatSelect && !formatSelect.value) formatSelect.value = 'txt';
-            const nameInput = document.getElementById('resultFileName');
-            if (nameInput && !nameInput.value.trim()) nameInput.value = resultModalMode === 'nsb' ? 'Cloudflare_NSB_Results' : (resultModalMode === 'test' ? 'Cloudflare_SpeedTest_Results' : 'Cloudflare_Scan_Results');
             const filterField = document.getElementById('resultIPTypeFilterField');
             if (filterField) filterField.style.display = resultModalMode === 'nsb' ? '' : 'none';
             const filterSelect = document.getElementById('resultIPTypeFilter');
@@ -5116,7 +4987,7 @@
             const qualifiedField = document.getElementById('resultQualifiedFilterField');
             if (qualifiedField) qualifiedField.style.display = '';
             const qualifiedSelect = document.getElementById('resultQualifiedFilter');
-            if (qualifiedSelect) qualifiedSelect.value = 'all';
+            if (qualifiedSelect) qualifiedSelect.value = 'qualified';
             if (!resultFieldOrder.length) resultFieldOrder = getDefaultResultFieldOrder(document.getElementById('resultFormat').value);
             renderGitHubAccounts();
             renderResultFieldOptions();
@@ -5348,7 +5219,6 @@
             const rows = getCurrentResultRows(resultModalMode);
             const available = RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).concat(resultCustomFields);
             document.querySelectorAll('.github-field').forEach((el) => el.style.display = '');
-            document.querySelectorAll('.edgetunnel-field').forEach((el) => el.style.display = '');
             document.getElementById('resultFieldPicker').innerHTML = available.map((f) => `<label class="field-pill"><input type="checkbox" value="${f.key}" ${resultFieldOrder.includes(f.key) ? 'checked' : ''} onchange="toggleResultField('${f.key}', this.checked)"> ${f.label}</label>`).join('');
             updateResultFieldQuickButtons();
             renderResultOrderList();
@@ -5535,134 +5405,6 @@
             renderGitHubAccounts();
         }
 
-        function getEdgetunnelAccounts() {
-            try {
-                const parsed = JSON.parse(localStorage.getItem(edgetunnelAccountStorageKey) || '[]');
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (_) {
-                return [];
-            }
-        }
-
-        function saveEdgetunnelAccounts(accounts) {
-            localStorage.setItem(edgetunnelAccountStorageKey, JSON.stringify(accounts));
-        }
-
-        function renderEdgetunnelAccounts() {
-            const select = document.getElementById('edgetunnelAccountSelect');
-            const accounts = getEdgetunnelAccounts();
-            const accountOptions = '<option value="">新账户/不使用保存配置</option>' + accounts.map((a, i) => `<option value="${i}">${escapeHTML(a.name || a.host || 'edgetunnel账户')}</option>`).join('');
-            if (select) select.innerHTML = accountOptions;
-        }
-
-        function normalizeEdgetunnelAccountKey(account) {
-            return account?.name || account?.host || '';
-        }
-
-        function loadSelectedEdgetunnelAccount() {
-            const select = document.getElementById('edgetunnelAccountSelect');
-            const idx = parseInt(select.value, 10);
-            if (Number.isNaN(idx)) {
-                clearEdgetunnelAccountInputs();
-                return;
-            }
-            const account = getEdgetunnelAccounts()[idx];
-            if (!account) return;
-            document.getElementById('edgetunnelAccountName').value = account.name || '';
-            document.getElementById('edgetunnelHost').value = account.host || '';
-            document.getElementById('edgetunnelMode').value = account.mode || 'overwrite';
-            document.getElementById('edgetunnelSavePassword').checked = !!account.passwordCipher || !!account.password || edgetunnelSessionPasswords.has(normalizeEdgetunnelAccountKey(account));
-            const accountKey = normalizeEdgetunnelAccountKey(account);
-            const sessionPassword = edgetunnelSessionPasswords.get(accountKey) || '';
-            document.getElementById('edgetunnelPassword').value = sessionPassword;
-            if (!sessionPassword && account.password) {
-                document.getElementById('edgetunnelPassword').value = account.password;
-                edgetunnelSessionPasswords.set(accountKey, account.password);
-            } else if (!sessionPassword && account.passwordCipher) {
-                decryptStoredEdgetunnelPassword(account).then((password) => {
-                    if (password) {
-                        edgetunnelSessionPasswords.set(accountKey, password);
-                        if (document.getElementById('edgetunnelAccountSelect').value === String(idx)) {
-                            document.getElementById('edgetunnelPassword').value = password;
-                        }
-                    }
-                });
-            }
-        }
-
-        function clearEdgetunnelAccountInputs() {
-            ['edgetunnelAccountName', 'edgetunnelHost', 'edgetunnelPassword'].forEach((id) => document.getElementById(id).value = '');
-            document.getElementById('edgetunnelMode').value = 'overwrite';
-            document.getElementById('edgetunnelSavePassword').checked = false;
-        }
-
-        function deleteSelectedEdgetunnelAccount() {
-            const select = document.getElementById('edgetunnelAccountSelect');
-            const idx = parseInt(select.value, 10);
-            if (Number.isNaN(idx)) return;
-            const accounts = getEdgetunnelAccounts();
-            const deleted = accounts[idx];
-            if (deleted) edgetunnelSessionPasswords.delete(normalizeEdgetunnelAccountKey(deleted));
-            accounts.splice(idx, 1);
-            saveEdgetunnelAccounts(accounts);
-            renderEdgetunnelAccounts();
-        }
-
-        async function getEdgetunnelPasswordCryptoKey(accountName) {
-            if (!crypto.subtle) return null;
-            const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(`${location.origin}|${accountName}|cfdata-edgetunnel-token-v1`), 'PBKDF2', false, ['deriveKey']);
-            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode('cfdata-edgetunnel-token-v1'), iterations: 120000, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-        }
-
-        async function encryptEdgetunnelPassword(accountName, password) {
-            const key = await getEdgetunnelPasswordCryptoKey(accountName);
-            if (!key) return '';
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(password));
-            return bytesToBase64(iv) + ':' + bytesToBase64(new Uint8Array(cipher));
-        }
-
-        async function decryptStoredEdgetunnelPassword(account) {
-            if (!account?.passwordCipher || !crypto.subtle) return '';
-            try {
-                const key = await getEdgetunnelPasswordCryptoKey(normalizeEdgetunnelAccountKey(account));
-                if (!key) return '';
-                const parts = account.passwordCipher.split(':');
-                if (parts.length !== 2) return '';
-                const iv = base64ToBytes(parts[0]);
-                const data = base64ToBytes(parts[1]);
-                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-                return new TextDecoder().decode(plain);
-            } catch (_) {
-                return '';
-            }
-        }
-
-        async function saveCurrentEdgetunnelAccount() {
-            const name = document.getElementById('edgetunnelAccountName').value.trim() || document.getElementById('edgetunnelHost').value.trim();
-            if (!name) return;
-            const host = document.getElementById('edgetunnelHost').value.trim();
-            const password = document.getElementById('edgetunnelPassword').value.trim();
-            const mode = document.getElementById('edgetunnelMode').value;
-            const rememberPassword = document.getElementById('edgetunnelSavePassword').checked;
-            const accounts = getEdgetunnelAccounts();
-            const next = { name, host, mode };
-            if (rememberPassword && password) {
-                edgetunnelSessionPasswords.set(name, password);
-                next.passwordCipher = await encryptEdgetunnelPassword(name, password);
-                if (!next.passwordCipher) {
-                    showNoticeCard('当前浏览器不支持 WebCrypto，无法安全保存密码；本次仍会上传，但不会持久保存密码');
-                }
-            } else {
-                edgetunnelSessionPasswords.delete(name);
-            }
-            const existing = accounts.findIndex((a) => a.name === name);
-            if (existing >= 0) accounts[existing] = next;
-            else accounts.push(next);
-            saveEdgetunnelAccounts(accounts);
-            renderEdgetunnelAccounts();
-        }
-
         function renderResultOrderList() {
             const byKey = Object.fromEntries(RESULT_FIELDS.concat(resultCustomFields).map((f) => [f.key, f]));
             document.getElementById('resultOrderList').innerHTML = resultFieldOrder.map((key, idx) => `<div class="order-item"><span>${byKey[key]?.label || key}</span><span><button onclick="moveResultField(${idx}, -1)">↑</button> <button onclick="moveResultField(${idx}, 1)">↓</button></span></div>`).join('');
@@ -5768,162 +5510,11 @@
         }
 
         function openCopyModal(mode) {
-            copyModalMode = currentMode === 'nsb' ? 'nsb' : mode;
-            document.getElementById('copyModalTitle').textContent = copyModalMode === 'nsb' ? '非标结果一键复制' : (copyModalMode === 'test' ? '官方详细测试一键复制' : '官方扫描结果一键复制');
-            const filterField = document.getElementById('copyIPTypeFilterField');
-            if (filterField) filterField.style.display = copyModalMode === 'nsb' ? '' : 'none';
-            const filterSelect = document.getElementById('copyIPTypeFilter');
-            if (filterSelect && copyModalMode !== 'nsb') filterSelect.value = 'all';
-            const qualifiedField = document.getElementById('copyQualifiedFilterField');
-            if (qualifiedField) qualifiedField.style.display = '';
-            const qualifiedSelect = document.getElementById('copyQualifiedFilter');
-            if (qualifiedSelect) qualifiedSelect.value = 'all';
-            const rows = getCopyRowsBeforeRange();
-            if (!rows.length) return showNoticeCard('暂无可复制结果');
-            if (!copyFieldOrder.length) copyFieldOrder = getDefaultResultFieldOrderFor(copyModalMode, 'txt');
-            renderCopyFieldOptions();
             document.getElementById('copyModalMask').classList.add('active');
         }
 
         function closeCopyModal() {
             document.getElementById('copyModalMask').classList.remove('active');
-        }
-
-        function getCopyRowsBeforeRange() {
-            const filter = document.getElementById('copyIPTypeFilter')?.value || 'all';
-            const qualified = document.getElementById('copyQualifiedFilter')?.value || 'all';
-            if (currentMode === 'nsb') {
-                return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
-            }
-            const rows = getCurrentResultRows(copyModalMode);
-            return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
-        }
-
-        function getSelectedCopyRows() {
-            const rows = getCopyRowsBeforeRange();
-            const start = Math.max(1, parseInt(document.getElementById('copyStartRow')?.value || '1', 10) || 1);
-            const end = Math.max(start, parseInt(document.getElementById('copyEndRow')?.value || '20', 10) || 20);
-            return rows.slice(start - 1, end).map((row) => {
-                const next = { ...row };
-                for (const field of copyCustomFields) next[field.key] = field.value;
-                return next;
-            });
-        }
-
-        function getAvailableCopyFieldKeys() {
-            const rows = getCopyRowsBeforeRange();
-            return RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).concat(copyCustomFields).map((f) => f.key);
-        }
-
-        function areAllCopyFieldsSelected() {
-            const available = getAvailableCopyFieldKeys();
-            return available.length > 0 && available.every((key) => copyFieldOrder.includes(key));
-        }
-
-        function updateCopyFieldQuickButtons() {
-            const btn = document.getElementById('copySelectAllBtn');
-            if (!btn) return;
-            btn.textContent = areAllCopyFieldsSelected() ? '全部选' : '全选';
-            btn.title = areAllCopyFieldsSelected() ? '恢复默认选择' : '选择全部可用字段';
-        }
-
-        function renderCopyFieldOptions() {
-            if (!copyFieldOrder.length) copyFieldOrder = getDefaultResultFieldOrderFor(copyModalMode, 'txt');
-            if (!copyFieldOrder.includes('ipport')) copyFieldOrder.unshift('ipport');
-            const rows = getCopyRowsBeforeRange();
-            const available = RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).concat(copyCustomFields);
-            document.getElementById('copyFieldPicker').innerHTML = available.map((f) => `<label class="field-pill"><input type="checkbox" value="${f.key}" ${copyFieldOrder.includes(f.key) ? 'checked' : ''} onchange="toggleCopyField('${f.key}', this.checked)"> ${f.label}</label>`).join('');
-            updateCopyFieldQuickButtons();
-            renderCopyOrderList();
-            updateCopyPreview();
-        }
-
-        function renderCopyOrderList() {
-            const byKey = Object.fromEntries(RESULT_FIELDS.concat(copyCustomFields).map((f) => [f.key, f]));
-            document.getElementById('copyOrderList').innerHTML = copyFieldOrder.map((key, idx) => `<div class="order-item"><span>${byKey[key]?.label || key}</span><span><button onclick="moveCopyField(${idx}, -1)">↑</button> <button onclick="moveCopyField(${idx}, 1)">↓</button></span></div>`).join('');
-            updateCopyPreview();
-        }
-
-        function handleCustomCopyFieldsChange() {
-            const next = parseResultCustomFields(document.getElementById('copyCustomFields')?.value || '');
-            const nextKeys = new Set(next.map((f) => f.key));
-            copyFieldOrder = copyFieldOrder.filter((key) => !copyCustomFields.some((f) => f.key === key) || nextKeys.has(key));
-            copyCustomFields = next;
-            for (const field of copyCustomFields) {
-                if (!copyFieldOrder.includes(field.key)) copyFieldOrder.push(field.key);
-            }
-            renderCopyFieldOptions();
-        }
-
-        function toggleCopyField(key, checked) {
-            if (checked && !copyFieldOrder.includes(key)) copyFieldOrder.push(key);
-            if (!checked) copyFieldOrder = copyFieldOrder.filter((k) => k !== key);
-            renderCopyOrderList();
-        }
-
-        function moveCopyField(index, delta) {
-            const next = index + delta;
-            if (next < 0 || next >= copyFieldOrder.length) return;
-            [copyFieldOrder[index], copyFieldOrder[next]] = [copyFieldOrder[next], copyFieldOrder[index]];
-            renderCopyFieldOptions();
-        }
-
-        function toggleAllCopyFields() {
-            if (areAllCopyFieldsSelected()) {
-                selectDefaultCopyFields();
-                return;
-            }
-            copyFieldOrder = getAvailableCopyFieldKeys();
-            renderCopyFieldOptions();
-        }
-
-        function selectCopyIPPortOnly() {
-            copyFieldOrder = ['ipport'];
-            renderCopyFieldOptions();
-        }
-
-        function selectDefaultCopyFields() {
-            copyFieldOrder = getDefaultResultFieldOrderFor(copyModalMode, 'txt');
-            renderCopyFieldOptions();
-        }
-
-        function buildCopyContent() {
-            const rows = getSelectedCopyRows();
-            if (!rows.length) throw new Error('暂无可复制结果');
-            const fields = copyFieldOrder.length ? copyFieldOrder : getDefaultResultFieldOrderFor(copyModalMode, 'txt');
-            return buildResultContent('txt', rows, fields, getTextSeparator('copy'), useIPv6BracketsFor('copy'));
-        }
-
-        function buildCopyPreview() {
-            const rows = getSelectedCopyRows();
-            if (!rows.length) return '暂无预览';
-            const fields = copyFieldOrder.length ? copyFieldOrder : getDefaultResultFieldOrderFor(copyModalMode, 'txt');
-            const first = rows[0];
-            const ipport = first.ip ? formatIPPort(first.ip, first.port, useIPv6BracketsFor('copy')) : (first.ipport || `${first.ip || ''}:${first.port || ''}`);
-            const extras = fields.filter((key) => key !== 'ipport').map((key) => first[key]).filter((value) => String(value ?? '').trim() !== '');
-            const separator = getTextSeparator('copy');
-            return extras.length ? `${ipport}#${extras.join(separator)}` : ipport;
-        }
-
-        function updateCopyPreview() {
-            const el = document.getElementById('copyPreview');
-            if (!el) return;
-            try {
-                el.textContent = buildCopyPreview();
-            } catch (err) {
-                el.textContent = err.message || '预览失败';
-            }
-        }
-
-        function copyConfiguredResults(event) {
-            let content;
-            try {
-                content = buildCopyContent();
-            } catch (err) {
-                showNoticeCard(err.message || '暂无可复制结果');
-                return;
-            }
-            copyToClipboard(content, event);
         }
 
         function getCurrentResultRows(mode) {
@@ -5935,7 +5526,7 @@
         function getCurrentExportRows(mode) {
             const rows = getCurrentResultRows(mode);
             const filter = document.getElementById('resultIPTypeFilter')?.value || 'all';
-            const qualified = document.getElementById('resultQualifiedFilter')?.value || 'all';
+            const qualified = 'qualified';
             if (currentMode === 'nsb') {
                 return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified) && exportLatencyLossMatch(row));
             }
@@ -6031,8 +5622,7 @@
         }
 
         function updateTextSeparatorPreview(prefix) {
-            if (prefix === 'copy') updateCopyPreview();
-            else updateResultPreview();
+            updateResultPreview();
         }
 
         function getTextSeparator(prefix) {
@@ -6057,10 +5647,7 @@
         }
 
         function getSelectedResultRows() {
-            const rows = getCurrentExportRows(resultModalMode);
-            const start = Math.max(1, parseInt(document.getElementById('resultStartRow')?.value || '1', 10) || 1);
-            const end = Math.max(start, parseInt(document.getElementById('resultEndRow')?.value || '20', 10) || 20);
-            return rows.slice(start - 1, end).map((row) => {
+            return getCurrentExportRows(resultModalMode).map((row) => {
                 const next = { ...row };
                 for (const field of resultCustomFields) next[field.key] = field.value;
                 return next;
@@ -6127,44 +5714,6 @@
             wsSend({ type: 'github_upload', data: payload });
         }
 
-        function setEdgetunnelUploadStatus(text, type = '') {
-            const el = document.getElementById('edgetunnelUploadStatus');
-            if (!el) return;
-            el.textContent = text;
-            el.classList.remove('error', 'success');
-            if (type) el.classList.add(type);
-        }
-
-        function confirmEdgetunnelUpload(mode) {
-            const msg = '使用 edgetunnel 上传前，请确认你的 edgetunnel 已将优选订阅模式设置为「自定义订阅」（支持汇聚订阅），否则 edgetunnel 将无法下发正确内容。\n\n另外，不建议上传过多的优选地址，节点并不是越多越好，建议精选延迟低、稳定性好的节点上传。';
-            showConfirmCard(msg, function() {
-                uploadSelectedResultsToEdgetunnel(mode);
-            }, 'edgetunnel 上传提示');
-        }
-
-        async function uploadSelectedResultsToEdgetunnel(mode) {
-            const el = document.getElementById('edgetunnelUploadStatus');
-            el.textContent = '准备上传...';
-            el.className = 'upload-status';
-            const host = document.getElementById('edgetunnelHost').value.trim();
-            const password = document.getElementById('edgetunnelPassword').value.trim();
-            if (!host) return showNoticeCard('Host 不能为空');
-            if (!password) return showNoticeCard('密码不能为空');
-            await saveCurrentEdgetunnelAccount();
-            const format = document.getElementById('resultFormat').value;
-            let content;
-            try {
-                const quickFile = await readQuickUploadFile();
-                content = quickFile ? quickFile.content : buildSelectedResultContent(format);
-            } catch (err) {
-                showNoticeCard(err.message || '暂无可操作结果');
-                return;
-            }
-            setEdgetunnelUploadStatus('正在上传...', 'success');
-            wsSend({ type: 'edgetunnel_upload', data: { host, password, content, mode } });
-            log(`已提交 edgetunnel ${mode === 'append' ? '追加' : '覆盖'}上传请求`);
-        }
-
         function renderRawURLCopy(rawURL) {
             if (!rawURL) return;
             const el = document.getElementById('githubUploadStatus');
@@ -6195,7 +5744,7 @@
                 showNoticeCard(err.message || '暂无可操作结果');
                 return;
             }
-            const name = document.getElementById('resultFileName').value.trim() || 'cfdata-results';
+            const name = 'cfdata-results';
             downloadFile(content, name, format);
         }
 
@@ -6443,26 +5992,6 @@
                         setGitHubUploadStatus(msg.data.message || 'GitHub 上传失败', 'error');
                     }
                     log(msg.data.message || 'GitHub 上传失败');
-                    break;
-
-                case 'edgetunnel_upload_result':
-                    setEdgetunnelUploadStatus('上传成功', 'success');
-                    log('edgetunnel 上传完成');
-                    showNoticeCard('edgetunnel 上传完成');
-                    break;
-
-                case 'edgetunnel_upload_status':
-                    setEdgetunnelUploadStatus(msg.data.message || 'edgetunnel 上传中', 'success');
-                    break;
-
-                case 'edgetunnel_upload_error':
-                    recordWebDebugError('edgetunnel_upload_error', msg.data?.message || msg.data || 'edgetunnel 上传失败');
-                    if (msg.data.silent) {
-                        showNoticeCard(msg.data.message || 'edgetunnel 自动上传失败');
-                    } else {
-                        setEdgetunnelUploadStatus(msg.data.message || 'edgetunnel 上传失败', 'error');
-                    }
-                    log(msg.data.message || 'edgetunnel 上传失败');
                     break;
 
                 case 'nsb_progress':
@@ -6745,9 +6274,9 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             connect();
+            localStorage.removeItem('cfdata-edgetunnel-accounts');
             initializeUI();
             renderGitHubAccounts();
-            renderEdgetunnelAccounts();
             switchMode('official');
             initThemeFromStorage();
         });

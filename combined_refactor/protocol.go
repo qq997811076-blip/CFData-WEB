@@ -89,13 +89,6 @@ type startNSBSpeedBatchRequest struct {
 	Compact    bool             `json:"compact"`
 }
 
-type edgetunnelUploadRequest struct {
-	Host     string `json:"host"`
-	Password string `json:"password"`
-	Content  string `json:"content"`
-	Mode     string `json:"mode"`
-	Silent   bool   `json:"silent"`
-}
 
 type githubUploadRequest struct {
 	Token   string `json:"token"`
