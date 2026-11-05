@@ -7,6 +7,7 @@ on:
       - fix/nsb-speed-timeout-align-from-41970526128
       - cleanup/result-actions-edgetunnel-from-41981386015
       - fix/nsb-stop-immediate-from-41998957285
+      - remove-proxy-country-warning-from-42021083710
     paths:
       - "combined_refactor/**"
       - "app/**"
