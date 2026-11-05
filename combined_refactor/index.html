@@ -5255,7 +5255,6 @@
                 select.innerHTML = accountOptions;
                 if (previousAccountIndex !== '' && accounts[Number(previousAccountIndex)]) select.value = previousAccountIndex;
             }
-            const defaultIndex = getCurrentGitHubAccountIndex(accounts);
             const renderAutoSelect = (elementId, page) => {
                 const autoSelect = document.getElementById(elementId);
                 if (!autoSelect) return;
@@ -5282,9 +5281,7 @@
                         if (['overwrite', 'append'].includes(action) && accounts.some((a) => getGitHubAccountRepo(a) && getGitHubAccountStableId(a) === id)) selectedValue = savedValue;
                     }
                 }
-                if (!selectedValue && defaultIndex >= 0) selectedValue = `${getGitHubAccountStableId(accounts[defaultIndex])}:overwrite`;
                 autoSelect.value = selectedValue;
-                if (selectedValue !== savedValue) saveAutoUploadSelection(page, selectedValue);
             };
             renderAutoSelect('nsbAutoUploadAccount', 'nsb');
             renderAutoSelect('officialAutoUploadAccount', 'official');
