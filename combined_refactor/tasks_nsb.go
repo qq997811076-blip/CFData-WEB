@@ -94,8 +94,7 @@ func resolveHostToIPs(ctx context.Context, host string, maxIPs int) ([]string, e
 }
 
 func scanNSBEntryHTTP(ctx context.Context, item string, fallbackPort int, enableTLS bool, delay int, targetDC string, inputIndex int) (*iptestResult, *nsbFailureRecord) {
-	mul := latencyMultiplier(scanModeHTTPing, enableTLS)
-	effectiveDelay := int(float64(delay) * mul)
+	effectiveDelay := delay
 
 	parts := strings.Fields(item)
 	if len(parts) < 1 || len(parts) > 2 {
@@ -129,7 +128,7 @@ func scanNSBEntryHTTP(ctx context.Context, item string, fallbackPort int, enable
 	if delay > 0 {
 		if time.Since(start).Milliseconds() > int64(effectiveDelay) {
 			conn.Close()
-			return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "超过延迟阈值", detail: fmt.Sprintf("connect=%dms, effective_delay=%dms", time.Since(start).Milliseconds(), effectiveDelay)}
+			return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "超过延迟阈值", detail: fmt.Sprintf("connect=%dms, delay_limit=%dms", time.Since(start).Milliseconds(), effectiveDelay)}
 		}
 	}
 
@@ -176,7 +175,7 @@ func scanNSBEntryHTTP(ctx context.Context, item string, fallbackPort int, enable
 
 	if delay > 0 && reqDuration.Milliseconds() > int64(effectiveDelay) {
 		resp.Body.Close()
-		return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "TTFB超过延迟阈值", detail: fmt.Sprintf("ttfb=%dms, effective_delay=%dms", reqDuration.Milliseconds(), effectiveDelay)}
+		return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "TTFB超过延迟阈值", detail: fmt.Sprintf("ttfb=%dms, delay_limit=%dms", reqDuration.Milliseconds(), effectiveDelay)}
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
