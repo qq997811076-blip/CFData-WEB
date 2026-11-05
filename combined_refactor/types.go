@@ -79,6 +79,7 @@ type ScanResult struct {
 type TestResult struct {
 	IP         string
 	Port       int
+	ASNNumber  string
 	DataCenter string
 	DCCountry  string
 	Region     string

@@ -2225,6 +2225,10 @@
                         <label>丢包低于（%，100=不限制）</label>
                         <input id="sortFilterLoss" type="number" min="0" max="100" step="0.01" value="100">
                     </div>
+                    <div class="modal-field">
+                        <label>ASN号码</label>
+                        <input id="sortFilterASN" type="number" min="1" step="1" value="" placeholder="输入 ASN 号码">
+                    </div>
                 </div>
                 <div class="sort-modal-section-title" style="margin-top:14px;">排序</div>
                 <div class="modal-grid">
@@ -2313,6 +2317,7 @@
         let officialTestQualifiedFilter = 'all';
         let officialTestLatencyFilter = 0;
         let officialTestLossFilter = 100;
+        let sortASNFilter = '';
         let officialSpeedMinValue = 0.1;
         let officialSpeedEnabledForResults = false;
         let officialAutoSpeedPending = false;
@@ -5153,6 +5158,8 @@
             if (ipTypeField) ipTypeField.style.display = sortModalMode === 'nsb' ? '' : 'none';
             const latencyInput = document.getElementById('sortFilterLatency');
             const lossInput = document.getElementById('sortFilterLoss');
+            const asnInput = document.getElementById('sortFilterASN');
+            if (asnInput) asnInput.value = sortASNFilter;
             if (sortModalMode === 'nsb') {
                 const ipTypeSelect = document.getElementById('sortFilterIPType');
                 if (ipTypeSelect) ipTypeSelect.value = nsbTableIPTypeFilter;
@@ -5175,6 +5182,8 @@
             if (!Number.isFinite(lossFilter)) lossFilter = 100;
             lossFilter = Math.min(100, Math.max(0, lossFilter));
             if (lossFilter <= 0) lossFilter = 0.01;
+            const asnInput = document.getElementById('sortFilterASN');
+            sortASNFilter = String(asnInput?.value || '').trim();
             const qualifiedSelect = document.getElementById('sortFilterQualified');
             if (sortModalMode === 'nsb') {
                 nsbTableIPTypeFilter = normalizeIPTypeFilter(document.getElementById('sortFilterIPType')?.value || 'all');
@@ -5244,7 +5253,19 @@
             return { rank: 2, value: 0 };
         }
 
+        function normalizeASNNumber(value) {
+            return String(value ?? '').trim().toUpperCase().replace(/^AS/, '').replace(/[^0-9]/g, '');
+        }
+
+        function matchesASNPriority(row, filterValue) {
+            const targetASN = normalizeASNNumber(filterValue);
+            if (!targetASN) return false;
+            const rowASN = normalizeASNNumber(row?.asnNumber || row?.ASNNumber || '');
+            return rowASN !== '' && rowASN === targetASN;
+        }
+
         function compareSortableRows(a, b, priorities) {
+            if (a.asnMatch !== b.asnMatch) return a.asnMatch ? -1 : 1;
             for (const key of priorities) {
                 const result = compareSortValues(a.row, b.row, key);
                 if (result !== 0) return result;
@@ -5292,7 +5313,10 @@
         }
 
         function applyOfficialTestSort(priorities) {
-            testData = testData.map((item, index) => ({ item, index, row: officialTestSortObject(item) }))
+            testData = testData.map((item, index) => {
+                const row = officialTestSortObject(item);
+                return { item, index, row, asnMatch: matchesASNPriority(row, sortASNFilter) };
+            })
                 .sort((a, b) => compareSortableRows(a, b, priorities))
                 .map((entry) => entry.item);
             if (currentMode === 'official') renderAllTestResults();
@@ -5304,6 +5328,7 @@
                 lossRate: `${(item.LossRate || 0) * 100}%`,
                 latency: [Math.round((item.MinLatency || 0) / 1_000_000), Math.round((item.MaxLatency || 0) / 1_000_000), Math.round((item.AvgLatency || 0) / 1_000_000)],
                 speed: item.Speed || '未测速',
+                asnNumber: item.ASNNumber || '',
             };
         }
 
@@ -5313,12 +5338,16 @@
                 const lossIndex = normalizedHeaders.indexOf('丢包率');
                 const latencyIndex = normalizedHeaders.indexOf('网络延迟');
                 const speedIndex = normalizedHeaders.indexOf('下载速度');
-                nsbRows = nsbRows.map((item, index) => ({ item, index, row: { lossRate: item[lossIndex], latency: item[latencyIndex], speed: item[speedIndex] } }))
+                const asnIndex = normalizedHeaders.indexOf('ASN号码');
+                nsbRows = nsbRows.map((item, index) => {
+                    const row = { lossRate: item[lossIndex], latency: item[latencyIndex], speed: item[speedIndex], asnNumber: asnIndex >= 0 ? item[asnIndex] : '' };
+                    return { item, index, row, asnMatch: matchesASNPriority(row, sortASNFilter) };
+                })
                     .sort((a, b) => compareSortableRows(a, b, priorities))
                     .map((entry) => entry.item);
                 renderScanRowsCSV(nsbHeaders, nsbRows);
             } else {
-                nsbLiveRows = nsbLiveRows.map((item, index) => ({ item, index, row: item }))
+                nsbLiveRows = nsbLiveRows.map((item, index) => ({ item, index, row: item, asnMatch: matchesASNPriority(item, sortASNFilter) }))
                     .sort((a, b) => compareSortableRows(a, b, priorities))
                     .map((entry) => entry.item);
                 rebuildNSBLiveIndex();
@@ -5881,6 +5910,7 @@
                 latency: `${(r.AvgLatency / 1_000_000).toFixed(0)}ms`,
                 speed: r.Speed || '未测速',
                 lossRate: r.LossRate != null ? `${(r.LossRate * 100).toFixed(0)}%` : '',
+                asnNumber: r.ASNNumber || '',
             };
         }
 

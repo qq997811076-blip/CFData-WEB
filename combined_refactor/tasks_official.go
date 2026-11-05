@@ -519,6 +519,7 @@ func runDetailedTest(ctx context.Context, session *appSession, selectedDC string
 			res.Region = scan.Region
 			res.City = scan.City
 		}
+		res.ASNNumber, _ = lookupASN(ip)
 		session.sendWSMessage("test_result", *res)
 
 		resMutex.Lock()
