@@ -1789,7 +1789,7 @@
                 </div>
                 <div class="option-item full-width">
                     <span class="label">⬆ 自动上传</span>
-                    <select id="officialAutoUploadAccount"></select>
+                    <select id="officialAutoUploadAccount" onchange="saveAutoUploadSelection('official', this.value)"></select>
                 </div>
             </div>
 
@@ -1910,7 +1910,7 @@
                 </div>
                 <div class="option-item full-width">
                     <span class="label">⬆ 自动上传</span>
-                    <select id="nsbAutoUploadAccount"></select>
+                    <select id="nsbAutoUploadAccount" onchange="saveAutoUploadSelection('nsb', this.value)"></select>
                 </div>
             </div>
 
@@ -5221,15 +5221,59 @@
             return String(account?.repo || '').split('/').pop();
         }
 
+        function getCurrentGitHubAccountIndex(accounts) {
+            const selectValue = document.getElementById('githubAccountSelect')?.value || '';
+            const selectedIndex = parseInt(selectValue, 10);
+            if (Number.isInteger(selectedIndex) && accounts[selectedIndex]) return selectedIndex;
+            const owner = document.getElementById('githubAccountName')?.value?.trim() || '';
+            const repo = document.getElementById('githubRepo')?.value?.trim() || '';
+            const matchedIndex = accounts.findIndex((account) =>
+                getGitHubAccountOwner(account) === owner &&
+                getGitHubAccountRepo(account) === repo
+            );
+            return matchedIndex >= 0 ? matchedIndex : (accounts.length ? 0 : -1);
+        }
+
+        function saveAutoUploadSelection(page, value) {
+            try {
+                localStorage.setItem(`cfdata-auto-upload-${page}`, value || '');
+            } catch (_) {}
+        }
+
         function renderGitHubAccounts() {
             const select = document.getElementById('githubAccountSelect');
             const accounts = getGitHubAccounts();
+            const previousAccountIndex = select ? select.value : '';
             const accountOptions = '<option value="">新账户/不使用保存配置</option>' + accounts.map((a, i) => `<option value="${i}">${escapeHTML(getGitHubAccountOwner(a) || a.repo || 'GitHub账户')} ${a.tokenHash ? '(' + escapeHTML(a.tokenHash.slice(0, 10)) + ')' : ''}</option>`).join('');
-            if (select) select.innerHTML = accountOptions;
-            const autoSelect = document.getElementById('nsbAutoUploadAccount');
-            if (autoSelect) autoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(getGitHubAccountOwner(a) || a.repo || 'GitHub账户')} - TXT</option>`).join('');
-            const officialAutoSelect = document.getElementById('officialAutoUploadAccount');
-            if (officialAutoSelect) officialAutoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(getGitHubAccountOwner(a) || a.repo || 'GitHub账户')} - TXT</option>`).join('');
+            if (select) {
+                select.innerHTML = accountOptions;
+                if (previousAccountIndex !== '' && accounts[Number(previousAccountIndex)]) select.value = previousAccountIndex;
+            }
+
+            const defaultIndex = getCurrentGitHubAccountIndex(accounts);
+            const renderAutoSelect = (elementId, page) => {
+                const autoSelect = document.getElementById(elementId);
+                if (!autoSelect) return;
+                const options = ['<option value="">关闭自动上传</option>'];
+                accounts.forEach((account, index) => {
+                    const owner = escapeHTML(getGitHubAccountOwner(account) || account.name || 'GitHub账户');
+                    options.push(`<option value="${index}:overwrite">${owner} - 覆盖</option>`);
+                    options.push(`<option value="${index}:append">${owner} - 追加</option>`);
+                });
+                autoSelect.innerHTML = options.join('');
+                let savedValue = '';
+                try {
+                    savedValue = localStorage.getItem(`cfdata-auto-upload-${page}`) || '';
+                } catch (_) {}
+                const validSaved = /^\d+:(overwrite|append)$/.test(savedValue) &&
+                    !!accounts[parseInt(savedValue.split(':')[0], 10)];
+                autoSelect.value = validSaved
+                    ? savedValue
+                    : (defaultIndex >= 0 ? `${defaultIndex}:overwrite` : '');
+                if (!validSaved) saveAutoUploadSelection(page, autoSelect.value);
+            };
+            renderAutoSelect('nsbAutoUploadAccount', 'nsb');
+            renderAutoSelect('officialAutoUploadAccount', 'official');
         }
 
         function normalizeGitHubAccountKey(account) {
@@ -5703,9 +5747,16 @@
 
         async function autoUploadResults(value, mode, logPrefix) {
             if (!value) return;
-            const idx = parseInt(value.split(':')[0], 10);
-            const format = 'txt';
-            const account = getGitHubAccounts()[idx];
+            const [indexText, action] = value.split(':');
+            const idx = parseInt(indexText, 10);
+            const appendMode = action === 'append';
+            if (!Number.isInteger(idx) || !['overwrite', 'append'].includes(action)) return;
+            const accounts = getGitHubAccounts();
+            const account = accounts[idx];
+            if (!account || !account.repo) {
+                log('自动上传失败: 已保存账户缺少仓库配置');
+                return;
+            }
             const accountKey = normalizeGitHubAccountKey(account);
             let token = githubSessionTokens.get(accountKey) || '';
             if (!token && account?.token) {
@@ -5714,37 +5765,58 @@
                 token = await decryptStoredGitHubToken(account);
                 if (token) githubSessionTokens.set(accountKey, token);
             }
-            if (!account || !token || !account.repo) {
-                log('自动上传失败: 已保存账户缺少 token 或仓库配置');
+            if (!token) {
+                log('自动上传失败: 已保存账户缺少 Token');
                 return;
             }
-            const fields = getDefaultResultFieldOrderFor(mode, format || 'txt');
-            let rows = getCurrentResultRows(mode);
+
+            const pageMode = mode === 'nsb' ? 'nsb' : 'official';
+            sortModalMode = pageMode;
+            publishSortFilterControls();
+            if (!getSortPriorities().length) {
+                log('自动上传失败: 请先配置筛选排序的排序优先级');
+                return;
+            }
+            applySortModal();
+
+            resultModalMode = mode === 'nsb' ? 'nsb' : 'test';
+            const formatSelect = document.getElementById('resultFormat');
+            if (formatSelect) formatSelect.value = 'txt';
+            const ipTypeSelect = document.getElementById('resultIPTypeFilter');
+            if (ipTypeSelect) ipTypeSelect.value = 'all';
+            const qualifiedSelect = document.getElementById('resultQualifiedFilter');
+            if (qualifiedSelect) qualifiedSelect.value = 'qualified';
+            if (!resultFieldOrder.length) {
+                resultFieldOrder = getDefaultResultFieldOrderFor(resultModalMode, 'txt');
+            }
+
+            const rows = getSelectedResultRows();
             if (!rows.length) {
-                log('自动上传跳过: 没有可上传结果');
+                log('自动上传跳过: 筛选后没有可上传结果');
                 return;
             }
-            const content = buildResultContent('txt', rows, fields);
-            const repo = getGitHubAccountRepo(account);
+
+            const owner = getGitHubAccountOwner(account);
+            const repoName = getGitHubAccountRepo(account);
             const path = (account.path || 'results/ip.txt').replace(/\.(csv|txt)$/i, '.txt');
-            const uploadKey = `${mode}:${idx}:${format || 'txt'}:${path}`;
+            const uploadKey = `${mode}:${idx}:${action}:txt:${path}`;
             if (autoUploadKeys.has(uploadKey)) {
                 log(`自动上传已跳过重复提交: ${path}`);
                 return;
             }
             autoUploadKeys.add(uploadKey);
-            const payload = {
-                token,
-                owner: getGitHubAccountOwner(account), repo,
-                branch: account.branch || 'main',
-                path,
-                message: account.message || 'update cfdata results',
-                content,
-                append: false,
-                silent: true,
-            };
-            sendGitHubUpload(payload);
-            log(`${logPrefix}: ${account.name || account.repo} ${format || 'txt'}`);
+
+            const accountSelect = document.getElementById('githubAccountSelect');
+            if (accountSelect) accountSelect.value = String(idx);
+            document.getElementById('githubAccountName').value = owner;
+            document.getElementById('githubRepo').value = repoName;
+            document.getElementById('githubToken').value = token;
+            document.getElementById('githubBranch').value = account.branch || 'main';
+            document.getElementById('githubPath').value = path;
+            document.getElementById('githubMessage').value = account.message || 'update cfdata results';
+
+            await uploadSelectedResultsToGitHub(appendMode);
+            log(`${logPrefix}: ${owner} - ${appendMode ? '追加' : '覆盖'}`);
         }
 
         function downloadFile(content, nameBase, ext) {
