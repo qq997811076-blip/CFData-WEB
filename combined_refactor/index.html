@@ -5271,7 +5271,7 @@
                 let savedValue = '';
                 try { savedValue = localStorage.getItem(`cfdata-auto-upload-${page}`) || ''; } catch (_) {}
                 let selectedValue = '';
-                const legacy = savedValue.match(/^(\\d+):(overwrite|append)$/);
+                const legacy = savedValue.match(/^(\d+):(overwrite|append)$/);
                 if (legacy) {
                     const oldAccount = accounts[parseInt(legacy[1], 10)];
                     if (oldAccount && getGitHubAccountRepo(oldAccount)) selectedValue = `${getGitHubAccountStableId(oldAccount)}:${legacy[2]}`;
@@ -5816,7 +5816,7 @@
             const appendMode = action === 'append';
             if (!['overwrite', 'append'].includes(action)) return;
             const accounts = getGitHubAccounts();
-            let idx = /^\\d+$/.test(accountReference) ? parseInt(accountReference, 10) :
+            let idx = /^\d+$/.test(accountReference) ? parseInt(accountReference, 10) :
                 accounts.findIndex((item) => getGitHubAccountStableId(item) === accountReference);
             const account = accounts[idx];
             if (!account || !getGitHubAccountRepo(account)) {
