@@ -2489,15 +2489,18 @@
             return nums.join('.');
         }
 
-        // 按参考版 g 的规则展开 IPv4/CIDR；单个网段最多展开 1,048,576 个地址。
-        function expandNSBIPv4Token(token) {
+        // 按参考版 g 的规则逐个生成 IPv4/CIDR；不创建整个网段的结果数组。
+        function* expandNSBIPv4Token(token) {
             const normalized = String(token || '').trim().replace(/\s*\/\s*/g, '/');
             const parts = normalized.split('/', 2);
             const baseIP = validNSBIPv4(parts[0]);
-            if (!baseIP) return [];
-            if (parts.length === 1) return [baseIP];
+            if (!baseIP) return;
+            if (parts.length === 1) {
+                yield baseIP;
+                return;
+            }
             const prefix = Number(parts[1]);
-            if (!/^\d+$/.test(parts[1]) || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return [];
+            if (!/^\d+$/.test(parts[1]) || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return;
             const count = 2 ** (32 - prefix);
             if (count > NSB_MAX_CIDR_EXPANSION) {
                 throw new Error('CIDR 网段地址数量过大（' + count + '），单个网段最多展开 ' + NSB_MAX_CIDR_EXPANSION + ' 个；请拆分成较小网段后导入');
@@ -2507,36 +2510,57 @@
             const hostBits = 32 - prefix;
             const mask = prefix === 0 ? 0n : ((0xffffffffn << BigInt(hostBits)) & 0xffffffffn);
             const network = value & mask;
-            const result = new Array(count);
             for (let index = 0; index < count; index++) {
                 const current = network + BigInt(index);
-                result[index] = [
+                yield [
                     Number((current >> 24n) & 255n),
                     Number((current >> 16n) & 255n),
                     Number((current >> 8n) & 255n),
                     Number(current & 255n),
                 ].join('.');
             }
-            return result;
         }
 
-        // 逐行读取行首 IPv4/CIDR，展开并按首次出现顺序去重。
-        function parseNSBClipboardImported(content) {
-            const found = [];
+        // 逐行流式展开；每批最多写入 5,000 个 IP，去重顺序与原逻辑一致。
+        async function parseNSBClipboardImported(content, existingSet) {
             const tokenPattern = /^([0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*\/\s*[0-9]{1,2})?)/;
+            const seen = new Set();
+            const batch = [];
+            const savedChunks = [];
+            let duplicates = 0;
+            let overlaps = 0;
+            let added = 0;
+
+            const flushBatch = async () => {
+                if (!batch.length) return;
+                await saveNSBClipboardIPs(nsbClipboardDB, batch);
+                savedChunks.push(batch.join('\n'));
+                batch.length = 0;
+                updateNSBClipboardStats('剪切板导入处理中：已新增 ' + added + ' 个 IP…');
+                // 让出主线程，避免大网段展开期间页面无响应。
+                await new Promise(resolve => setTimeout(resolve, 0));
+            };
+
             for (const line of String(content || '').split(/\r?\n/)) {
                 const match = line.trimStart().match(tokenPattern);
                 if (!match) continue;
-                found.push(...expandNSBIPv4Token(match[1]));
+                for (const ip of expandNSBIPv4Token(match[1])) {
+                    if (seen.has(ip)) {
+                        duplicates++;
+                        continue;
+                    }
+                    seen.add(ip);
+                    if (existingSet.has(ip)) {
+                        overlaps++;
+                        continue;
+                    }
+                    batch.push(ip);
+                    added++;
+                    if (batch.length >= NSB_CLIPBOARD_BATCH_SIZE) await flushBatch();
+                }
             }
-            const unique = [];
-            const seen = new Set();
-            let duplicates = 0;
-            for (const ip of found) {
-                if (seen.has(ip)) duplicates++;
-                else { seen.add(ip); unique.push(ip); }
-            }
-            return { ips: unique, duplicates };
+            await flushBatch();
+            return { duplicates, overlaps, added, newIPText: savedChunks.join('\n') };
         }
 
         function updateNSBClipboardStats(message) {
@@ -2567,19 +2591,19 @@
             }
             try {
                 await nsbClipboardDBReady;
-                const parsed = parseNSBClipboardImported(clipboardText);
-                if (!parsed.ips.length) {
+                const previousSet = new Set(nsbClipboardImportedIPs.split(/\r?\n/).filter(Boolean));
+                const previousCount = previousSet.size;
+                const parsed = await parseNSBClipboardImported(clipboardText, previousSet);
+                if (!parsed.added && !parsed.overlaps && !parsed.duplicates) {
                     showNoticeCard('剪切板中没有识别到有效的 IPv4 或 CIDR');
                     return;
                 }
-                const previous = nsbClipboardImportedIPs ? nsbClipboardImportedIPs.split(/\r?\n/).filter(Boolean) : [];
-                const previousSet = new Set(previous);
-                const overlaps = parsed.ips.filter(ip => previousSet.has(ip)).length;
-                const newIPs = parsed.ips.filter(ip => !previousSet.has(ip));
-                await saveNSBClipboardIPs(nsbClipboardDB, newIPs);
-                nsbClipboardImportedIPs = previous.concat(newIPs).join('\n');
-                updateNSBClipboardStats('剪切板重复：' + (parsed.duplicates + overlaps) + '；本次新增：' + newIPs.length + '；累计保存唯一 IPv4：' + (previous.length + newIPs.length));
-                log('剪切板导入完成：新增 ' + newIPs.length + ' 个，累计 ' + (previous.length + newIPs.length) + ' 个唯一 IPv4');
+                if (parsed.newIPText) {
+                    nsbClipboardImportedIPs += (nsbClipboardImportedIPs ? '\n' : '') + parsed.newIPText;
+                }
+                const totalCount = previousCount + parsed.added;
+                updateNSBClipboardStats('剪切板重复：' + (parsed.duplicates + parsed.overlaps) + '；本次新增：' + parsed.added + '；累计保存唯一 IPv4：' + totalCount);
+                log('剪切板导入完成：新增 ' + parsed.added + ' 个，累计 ' + totalCount + ' 个唯一 IPv4');
             } catch (error) {
                 try {
                     await nsbClipboardDBReady;
