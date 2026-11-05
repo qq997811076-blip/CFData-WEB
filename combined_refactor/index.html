@@ -3584,6 +3584,7 @@
         }
 
         function resetStoppedTaskUI(message = '已手动终止') {
+            const stoppedMode = runningTaskMode || currentMode;
             clearStopWatchdog();
             isStoppingTask = false;
             officialAutoSpeedPending = false;
@@ -3599,13 +3600,15 @@
             updateBatchSpeedButton();
             updateNSBSpeedButtons();
             finishCompactIPv4();
-            showDCSelection(dcList);
             const status = document.getElementById('currentTestDC');
-            if (status && runningTaskMode !== 'nsb') status.textContent = message;
-            if (currentMode === 'official' && document.getElementById('test').classList.contains('active')) {
-                renderAllTestResults();
-            } else {
-                renderCurrentScanResults();
+            if (stoppedMode !== 'nsb') {
+                showDCSelection(dcList);
+                if (status) status.textContent = message;
+                if (currentMode === 'official' && document.getElementById('test').classList.contains('active')) {
+                    renderAllTestResults();
+                } else {
+                    renderCurrentScanResults();
+                }
             }
             progressBar.style.background = 'var(--warning-color)';
             progressBar.style.width = '100%';
@@ -5904,6 +5907,7 @@
                     break;
 
                 case 'nsb_progress':
+                    if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
                     if (currentMode === 'nsb') {
                         const p = msg.data || {};
                         const percent = parseFloat(p.percent || 0);
@@ -5917,6 +5921,7 @@
                     }
                     break;
                 case 'nsb_scan_result':
+                    if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
                     if (nsbBatchSpeedRunning) {
                         updateNSBDisplayedResult(msg.data || {});
                     } else {
@@ -5924,6 +5929,7 @@
                     }
                     break;
                 case 'nsb_scan_sorted':
+                    if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
                     nsbLiveRows = [];
                     nsbLiveIndex = {};
                     nsbLiveRowElements = {};
@@ -5931,6 +5937,7 @@
                     if (currentMode === 'nsb') renderAllNSBLiveRows();
                     break;
                 case 'nsb_speed_complete':
+                    if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
                     if (isStoppingTask) {
                         resetStoppedTaskUI('已手动终止');
                         log('任务已手动终止');
@@ -5947,6 +5954,7 @@
                     break;
 
                 case 'nsb_csv_ready':
+                    if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
                     finishRunningTask('✨ 开始扫描与测试');
                     nsbStopHandledByComplete = true;
                     progressBar.style.background = 'var(--warning-color)';
@@ -5957,6 +5965,7 @@
                     break;
 
                 case 'nsb_csv_complete':
+                    if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
                     const wasStoppingNSB = isStoppingTask;
                     finishRunningTask('✨ 开始扫描与测试');
                     nsbReallinkRunning = false;
