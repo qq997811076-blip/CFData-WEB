@@ -6,6 +6,7 @@ on:
       - main
       - fix/nsb-speed-timeout-align-from-41970526128
       - cleanup/result-actions-edgetunnel-from-41981386015
+      - fix/nsb-stop-immediate-from-41998957285
     paths:
       - "combined_refactor/**"
       - "app/**"
