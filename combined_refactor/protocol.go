@@ -98,5 +98,6 @@ type githubUploadRequest struct {
 	Path    string `json:"path"`
 	Message string `json:"message"`
 	Content string `json:"content"`
+	Append  bool   `json:"append"`
 	Silent  bool   `json:"silent"`
 }

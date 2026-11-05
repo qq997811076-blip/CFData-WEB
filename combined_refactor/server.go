@@ -549,6 +549,18 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 const githubUploadMaxAttempts = 3
 
 func uploadGitHubContentWithRetry(ctx context.Context, params githubUploadRequest, onAttempt func(attempt, total int, err error)) (string, error) {
+	if params.Append {
+		apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", url.PathEscape(strings.TrimSpace(params.Owner)), url.PathEscape(strings.TrimSpace(params.Repo)), escapeGitHubContentPath(strings.Trim(strings.TrimSpace(params.Path), "/")))
+		_, existing, err := getGitHubContent(ctx, apiURL, strings.TrimSpace(params.Token), strings.TrimSpace(params.Branch))
+		if err != nil {
+			return "", err
+		}
+		if existing != "" && !strings.HasSuffix(existing, "\n") && !strings.HasSuffix(existing, "\r") {
+			existing += "\n"
+		}
+		params.Content = existing + params.Content
+		params.Append = false
+	}
 	var lastErr error
 	for attempt := 1; attempt <= githubUploadMaxAttempts; attempt++ {
 		if onAttempt != nil {
@@ -633,6 +645,47 @@ func githubRawURL(params githubUploadRequest) string {
 	}
 	path := strings.Trim(strings.TrimSpace(params.Path), "/")
 	return fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/refs/heads/%s/%s", url.PathEscape(strings.TrimSpace(params.Owner)), url.PathEscape(strings.TrimSpace(params.Repo)), url.PathEscape(branch), escapeGitHubContentPath(path))
+}
+
+func getGitHubContent(ctx context.Context, apiURL, token, branch string) (string, string, error) {
+	requestURL := apiURL + "?ref=" + url.QueryEscape(branch)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return "", "", err
+	}
+	setGitHubHeaders(req, token)
+	resp, err := managementHTTPClient(0).Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return "", "", nil
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		data, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return "", "", fmt.Errorf("读取 GitHub 文件失败 %s: %s", resp.Status, strings.TrimSpace(string(data)))
+	}
+	var payload struct {
+		SHA      string `json:"sha"`
+		Content  string `json:"content"`
+		Encoding string `json:"encoding"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return "", "", err
+	}
+	content := ""
+	if payload.Content != "" {
+		if payload.Encoding != "base64" {
+			return "", "", fmt.Errorf("GitHub 文件编码不支持: %s", payload.Encoding)
+		}
+		decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(payload.Content, "\n", ""))
+		if err != nil {
+			return "", "", fmt.Errorf("解码 GitHub 原文件失败: %w", err)
+		}
+		content = string(decoded)
+	}
+	return payload.SHA, content, nil
 }
 
 func getGitHubContentSHA(ctx context.Context, apiURL, token, branch string) (string, error) {

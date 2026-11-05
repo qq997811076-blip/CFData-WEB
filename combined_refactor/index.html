@@ -2087,10 +2087,6 @@
                         </div>
                         <div class="field-picker" id="resultFieldPicker"></div>
                     </div>
-                    <div class="modal-field full">
-                        <label>自定义字段</label>
-                        <input id="resultCustomFields" type="text" placeholder="标题:内容，多项用逗号分隔，例如 备注:测试版,归属:cfdata" oninput="handleCustomResultFieldsChange()">
-                    </div>
 
                     <div class="modal-field full" id="resultIPv6BracketsField">
                         <label class="inline-check"><input type="checkbox" id="resultIPv6Brackets" checked onchange="updateResultPreview()"> IPv6 地址添加方括号</label>
@@ -2107,16 +2103,16 @@
                         </div>
                     </div>
                     <div class="modal-field github-field">
-                        <label>账户名称</label>
-                        <input id="githubAccountName" type="text" placeholder="例如 main-account">
+                        <label>GitHub 用户名</label>
+                        <input id="githubAccountName" type="text" placeholder="例如 qq997811076-blip">
                     </div>
                     <div class="modal-field github-field">
                         <label>GitHub Token</label>
                         <input id="githubToken" type="password" autocomplete="off" placeholder="repo 权限 token">
                     </div>
                     <div class="modal-field github-field">
-                        <label>仓库 owner/repo</label>
-                        <input id="githubRepo" type="text" placeholder="owner/repo">
+                        <label>仓库名称</label>
+                        <input id="githubRepo" type="text" placeholder="例如 repo">
                     </div>
                     <div class="modal-field github-field">
                         <label>分支</label>
@@ -2145,8 +2141,9 @@
                 </div>
             </div>
             <div class="modal-actions footer">
-                <button class="action-btn export-btn" onclick="downloadSelectedResults()">导出文件</button>
-                <button class="action-btn export-btn" onclick="uploadSelectedResultsToGitHub()">上传 GitHub</button>
+                <button class="action-btn export-btn" style="width:100%" onclick="copySelectedResults()">一键复制</button>
+                <button class="action-btn export-btn" style="width:100%" onclick="uploadSelectedResultsToGitHub(false)">上传 GitHub（覆盖）</button>
+                <button class="action-btn export-btn" style="width:100%" onclick="uploadSelectedResultsToGitHub(true)">上传 GitHub（追加）</button>
             </div>
         </div>
     </div>
@@ -2316,7 +2313,6 @@
         let resultModalMode = 'scan';
         let sortModalMode = 'official';
         let resultFieldOrder = [];
-        let resultCustomFields = [];
         let autoUploadKeys = new Set();
         let noticeConfirmAction = null;
         const githubAccountStorageKey = 'cfdata-github-accounts';
@@ -5144,7 +5140,7 @@
         }
 
         function getDefaultResultFieldOrderFor(mode, format) {
-            return ['ipport', 'dc', 'dcCountry', 'speed'];
+            return ['ipport', 'dc', 'loc', 'speed'];
         }
 
         function getAllResultFieldOrder() {
@@ -5178,7 +5174,7 @@
             const bracketsField = document.getElementById('resultIPv6BracketsField');
             if (bracketsField) bracketsField.style.display = format === 'txt' ? '' : 'none';
             const rows = getCurrentResultRows(resultModalMode);
-            const available = RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).concat(resultCustomFields);
+            const available = RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== ''));
             document.querySelectorAll('.github-field').forEach((el) => el.style.display = '');
             document.getElementById('resultFieldPicker').innerHTML = available.map((f) => `<label class="field-pill"><input type="checkbox" value="${f.key}" ${resultFieldOrder.includes(f.key) ? 'checked' : ''} onchange="toggleResultField('${f.key}', this.checked)"> ${f.label}</label>`).join('');
             updateResultFieldQuickButtons();
@@ -5215,9 +5211,9 @@
             const accountOptions = '<option value="">新账户/不使用保存配置</option>' + accounts.map((a, i) => `<option value="${i}">${escapeHTML(a.name || a.repo || 'GitHub账户')} ${a.tokenHash ? '(' + escapeHTML(a.tokenHash.slice(0, 10)) + ')' : ''}</option>`).join('');
             if (select) select.innerHTML = accountOptions;
             const autoSelect = document.getElementById('nsbAutoUploadAccount');
-            if (autoSelect) autoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option><option value="${i}:csv">${escapeHTML(a.name || a.repo || 'GitHub账户')} - CSV</option>`).join('');
+            if (autoSelect) autoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option>`).join('');
             const officialAutoSelect = document.getElementById('officialAutoUploadAccount');
-            if (officialAutoSelect) officialAutoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option><option value="${i}:csv">${escapeHTML(a.name || a.repo || 'GitHub账户')} - CSV</option>`).join('');
+            if (officialAutoSelect) officialAutoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option>`).join('');
         }
 
         function normalizeGitHubAccountKey(account) {
@@ -5249,7 +5245,7 @@
             const account = getGitHubAccounts()[idx];
             if (!account) return;
             document.getElementById('githubAccountName').value = account.name || '';
-            document.getElementById('githubRepo').value = account.repo || '';
+            document.getElementById('githubRepo').value = String(account.repo || '').split('/').pop();
             document.getElementById('githubBranch').value = account.branch || 'main';
             document.getElementById('githubPath').value = account.path || '';
             document.getElementById('githubMessage').value = account.message || 'update cfdata results';
@@ -5337,14 +5333,14 @@
         }
 
         async function saveCurrentGitHubAccount(payload) {
-            const name = document.getElementById('githubAccountName').value.trim() || payload.repo;
+            const name = document.getElementById('githubAccountName').value.trim();
             if (!name) return;
             const rememberToken = document.getElementById('githubSaveToken').checked;
             const accounts = getGitHubAccounts();
             const tokenHash = await sha256Hex(payload.token);
             const next = {
                 name,
-                repo: `${payload.owner}/${payload.repo}`,
+                repo: payload.repo,
                 branch: payload.branch,
                 path: payload.path,
                 message: payload.message,
@@ -5367,53 +5363,9 @@
         }
 
         function renderResultOrderList() {
-            const byKey = Object.fromEntries(RESULT_FIELDS.concat(resultCustomFields).map((f) => [f.key, f]));
+            const byKey = Object.fromEntries(RESULT_FIELDS.map((f) => [f.key, f]));
             document.getElementById('resultOrderList').innerHTML = resultFieldOrder.map((key, idx) => `<div class="order-item"><span>${byKey[key]?.label || key}</span><span><button onclick="moveResultField(${idx}, -1)">↑</button> <button onclick="moveResultField(${idx}, 1)">↓</button></span></div>`).join('');
             updateResultPreview();
-        }
-
-        function parseResultCustomFields(spec) {
-            const seen = new Map();
-            return String(spec || '').split(',').map((part) => {
-                let item = part.trim();
-                let key = '';
-                const eq = item.indexOf('=');
-                if (eq >= 0) {
-                    key = item.slice(0, eq).trim().toLowerCase();
-                    item = item.slice(eq + 1).trim();
-                }
-                const rest = item;
-                const colon = rest.indexOf(':');
-                if (colon < 0) return null;
-                const label = rest.slice(0, colon).trim();
-                const value = rest.slice(colon + 1).trim();
-                if (!label || !value) return null;
-                if (!key) key = label.toLowerCase();
-                const baseKey = key;
-                const used = seen.get(baseKey) || 0;
-            if (used > 0) {
-                let count = used;
-                do {
-                    key = `${baseKey}${count}`;
-                    count++;
-                } while (seen.has(key));
-            }
-            key = key.replace(/[\s,:#]/g, '_');
-            seen.set(baseKey, used + 1);
-                if (key !== baseKey) seen.set(key, (seen.get(key) || 0) + 1);
-                return { key, label, value };
-            }).filter(Boolean);
-        }
-
-        function handleCustomResultFieldsChange() {
-            const next = parseResultCustomFields(document.getElementById('resultCustomFields')?.value || '');
-            const nextKeys = new Set(next.map((f) => f.key));
-            resultFieldOrder = resultFieldOrder.filter((key) => !resultCustomFields.some((f) => f.key === key) || nextKeys.has(key));
-            resultCustomFields = next;
-            for (const field of resultCustomFields) {
-                if (!resultFieldOrder.includes(field.key)) resultFieldOrder.push(field.key);
-            }
-            renderResultFieldOptions();
         }
 
         function toggleResultField(key, checked) {
@@ -5436,7 +5388,7 @@
 
         function getAvailableResultFieldKeys() {
             const rows = getCurrentResultRows(resultModalMode);
-            return RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).concat(resultCustomFields).map((f) => f.key);
+            return RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).map((f) => f.key);
         }
 
         function areAllResultFieldsSelected() {
@@ -5561,7 +5513,7 @@
                     return extras.length ? `${ipport}#${extras.join(textSeparator)}` : ipport;
                 }).join('\n') + '\n';
             }
-            const byKey = Object.fromEntries(RESULT_FIELDS.concat(resultCustomFields).map((f) => [f.key, f]));
+            const byKey = Object.fromEntries(RESULT_FIELDS.map((f) => [f.key, f]));
             const headers = fields.map((k) => byKey[k]?.label || k);
             const body = rows.map((r) => fields.map((k) => formatCSVCell(r[k])).join(',')).join('\n');
             return headers.join(',') + '\n' + body + '\n';
@@ -5570,7 +5522,6 @@
         function getSelectedResultRows() {
             return getCurrentExportRows(resultModalMode).map((row) => {
                 const next = { ...row };
-                for (const field of resultCustomFields) next[field.key] = field.value;
                 return next;
             });
         }
@@ -5606,7 +5557,7 @@
                 const extras = fields.filter((k) => k !== 'ipport').map((k) => first[k]).filter((v) => String(v ?? '').trim() !== '');
                 return extras.length ? `${ipport}#${extras.join('-')}` : ipport;
             }
-            const byKey = Object.fromEntries(RESULT_FIELDS.concat(resultCustomFields).map((f) => [f.key, f]));
+            const byKey = Object.fromEntries(RESULT_FIELDS.map((f) => [f.key, f]));
             const headers = fields.map((k) => byKey[k]?.label || k).join(',');
             const values = fields.map((k) => formatCSVCell(first[k])).join(',');
             return `${headers}\n${values}`;
@@ -5644,20 +5595,36 @@
             el.innerHTML = `上传完成：<span class="copy-ip" onclick="copyToClipboard('${jsURL}', event)" title="点击复制 Raw 地址">${safeURL}</span>`;
         }
 
-        function downloadSelectedResults() {
-            const format = 'txt';
+        async function copySelectedResults() {
             let content;
             try {
-                content = buildSelectedResultContent(format);
+                content = buildSelectedResultContent('txt');
             } catch (err) {
                 showNoticeCard(err.message || '暂无可操作结果');
                 return;
             }
-            const name = 'cfdata-results';
-            downloadFile(content, name, format);
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(content);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = content;
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-999999px';
+                    textarea.style.top = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    const copied = document.execCommand('copy');
+                    textarea.remove();
+                    if (!copied) throw new Error('剪贴板写入失败');
+                }
+                showNoticeCard('复制成功');
+            } catch (err) {
+                showNoticeCard('复制失败: ' + (err.message || '无法访问剪贴板'));
+            }
         }
 
-        async function uploadSelectedResultsToGitHub() {
+        async function uploadSelectedResultsToGitHub(appendMode = false) {
             const format = 'txt';
             let content;
             try {
@@ -5666,15 +5633,18 @@
                 showNoticeCard(err.message || '暂无可操作结果');
                 return;
             }
-            const repoParts = document.getElementById('githubRepo').value.trim().split('/');
-            if (repoParts.length !== 2 || !repoParts[0] || !repoParts[1]) return showNoticeCard('仓库格式应为 owner/repo');
+            const owner = document.getElementById('githubAccountName').value.trim();
+            const repo = document.getElementById('githubRepo').value.trim();
+            if (!owner) return showNoticeCard('GitHub 用户名不能为空');
+            if (!repo || repo.includes('/')) return showNoticeCard('仓库名称只填写 repo，不需要填写用户名或路径');
             const payload = {
                 token: document.getElementById('githubToken').value.trim(),
-                owner: repoParts[0], repo: repoParts[1],
+                owner, repo,
                 branch: document.getElementById('githubBranch').value.trim() || 'main',
                 path: document.getElementById('githubPath').value.trim() || 'results/ip.txt',
                 message: document.getElementById('githubMessage').value.trim() || 'update cfdata results',
                 content,
+                append: !!appendMode,
             };
             if (!payload.token) return showNoticeCard('Token 不能为空');
             await saveCurrentGitHubAccount(payload);
@@ -5694,8 +5664,8 @@
 
         async function autoUploadResults(value, mode, logPrefix) {
             if (!value) return;
-            const [idxText, format] = value.split(':');
-            const idx = parseInt(idxText, 10);
+            const idx = parseInt(value.split(':')[0], 10);
+            const format = 'txt';
             const account = getGitHubAccounts()[idx];
             const accountKey = normalizeGitHubAccountKey(account);
             let token = githubSessionTokens.get(accountKey) || '';
@@ -5715,9 +5685,9 @@
                 log('自动上传跳过: 没有可上传结果');
                 return;
             }
-            const content = buildResultContent(format || 'txt', rows, fields);
-            const repoParts = account.repo.split('/');
-            const path = (account.path || `results/ip.${format || 'txt'}`).replace(/\.(csv|txt)$/i, `.${format || 'txt'}`);
+            const content = buildResultContent('txt', rows, fields);
+            const repo = String(account.repo || '').split('/').pop();
+            const path = (account.path || 'results/ip.txt').replace(/\.(csv|txt)$/i, '.txt');
             const uploadKey = `${mode}:${idx}:${format || 'txt'}:${path}`;
             if (autoUploadKeys.has(uploadKey)) {
                 log(`自动上传已跳过重复提交: ${path}`);
@@ -5726,11 +5696,12 @@
             autoUploadKeys.add(uploadKey);
             const payload = {
                 token,
-                owner: repoParts[0], repo: repoParts[1],
+                owner: account.name, repo,
                 branch: account.branch || 'main',
                 path,
                 message: account.message || 'update cfdata results',
                 content,
+                append: false,
                 silent: true,
             };
             sendGitHubUpload(payload);
