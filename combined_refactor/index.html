@@ -2140,7 +2140,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-actions footer">
+            <div class="modal-actions footer" style="display:flex;flex-direction:column;gap:10px">
                 <button class="action-btn export-btn" style="width:100%" onclick="copySelectedResults()">一键复制</button>
                 <button class="action-btn export-btn" style="width:100%" onclick="uploadSelectedResultsToGitHub(false)">上传 GitHub（覆盖）</button>
                 <button class="action-btn export-btn" style="width:100%" onclick="uploadSelectedResultsToGitHub(true)">上传 GitHub（追加）</button>
@@ -4920,7 +4920,7 @@
             { key: 'originalInput', label: '原始输入' },
             { key: 'dc', label: '数据中心', txt: true },
             { key: 'dcCountry', label: '落地区域', txt: true },
-            { key: 'loc', label: '源IP位置' },
+            { key: 'loc', label: '源 IP 位置' },
             { key: 'region', label: '地区', txt: true },
             { key: 'city', label: '城市' },
             { key: 'asnNumber', label: 'ASN号码' },
@@ -5604,9 +5604,14 @@
                 return;
             }
             try {
+                let copied = false;
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(content);
-                } else {
+                    try {
+                        await navigator.clipboard.writeText(content);
+                        copied = true;
+                    } catch (_) {}
+                }
+                if (!copied) {
                     const textarea = document.createElement('textarea');
                     textarea.value = content;
                     textarea.style.position = 'fixed';
@@ -5614,10 +5619,10 @@
                     textarea.style.top = '0';
                     document.body.appendChild(textarea);
                     textarea.select();
-                    const copied = document.execCommand('copy');
+                    copied = document.execCommand('copy');
                     textarea.remove();
-                    if (!copied) throw new Error('剪贴板写入失败');
                 }
+                if (!copied) throw new Error('剪贴板写入失败');
                 showNoticeCard('复制成功');
             } catch (err) {
                 showNoticeCard('复制失败: ' + (err.message || '无法访问剪贴板'));

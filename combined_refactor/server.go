@@ -550,6 +550,9 @@ const githubUploadMaxAttempts = 3
 
 func uploadGitHubContentWithRetry(ctx context.Context, params githubUploadRequest, onAttempt func(attempt, total int, err error)) (string, error) {
 	if params.Append {
+		if strings.TrimSpace(params.Branch) == "" {
+			params.Branch = "main"
+		}
 		apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", url.PathEscape(strings.TrimSpace(params.Owner)), url.PathEscape(strings.TrimSpace(params.Repo)), escapeGitHubContentPath(strings.Trim(strings.TrimSpace(params.Path), "/")))
 		_, existing, err := getGitHubContent(ctx, apiURL, strings.TrimSpace(params.Token), strings.TrimSpace(params.Branch))
 		if err != nil {
@@ -679,7 +682,7 @@ func getGitHubContent(ctx context.Context, apiURL, token, branch string) (string
 		if payload.Encoding != "base64" {
 			return "", "", fmt.Errorf("GitHub 文件编码不支持: %s", payload.Encoding)
 		}
-		decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(payload.Content, "\n", ""))
+		decoded, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(payload.Content), ""))
 		if err != nil {
 			return "", "", fmt.Errorf("解码 GitHub 原文件失败: %w", err)
 		}
