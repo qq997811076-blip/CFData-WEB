@@ -522,7 +522,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 }
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
-	const speedWindow = 6 * time.Second
+	const speedWindow = 2 * time.Second
 	const speedMaxBytes = 200 * 1024 * 1024
 
 	scheme := "http"
@@ -633,7 +633,11 @@ done:
 		return 0, "测速耗时异常: duration<=0"
 	}
 
-	return float64(written) / duration.Seconds() / 1024 / 1024, ""
+	speedMB := float64(written) / duration.Seconds() / 1024 / 1024
+	if speedMB < 0.09 {
+		return speedMB, "下载速度低于最低门槛 0.09MB/s"
+	}
+	return speedMB, ""
 }
 
 func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string, reallinkHost string) {

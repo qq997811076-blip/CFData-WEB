@@ -62,7 +62,7 @@ func runWindowedSpeedTest(ctx context.Context, ip string, port int, customURL st
 	buf := make([]byte, 32*1024)
 	var totalBytes int64
 
-	timeout := time.After(6 * time.Second)
+	timeout := time.After(2 * time.Second)
 	measuredStart := time.Now()
 
 	readerCtx, readerCancel := context.WithCancel(ctx)
@@ -126,7 +126,11 @@ loop:
 	if duration == 0 {
 		duration = 1
 	}
-	return float64(totalBytes) / duration / 1024 / 1024, ""
+	speedMB := float64(totalBytes) / duration / 1024 / 1024
+	if speedMB < 0.09 {
+		return speedMB, "下载速度低于最低门槛 0.09MB/s"
+	}
+	return speedMB, ""
 }
 
 func formatSpeedHTTPFailure(statusCode int) string {
