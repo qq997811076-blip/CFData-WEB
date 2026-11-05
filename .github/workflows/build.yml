@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - fix/nsb-speed-timeout-align-from-41970526128
     paths:
       - "combined_refactor/**"
       - "app/**"

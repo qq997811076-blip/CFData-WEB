@@ -38,7 +38,7 @@ func runWindowedSpeedTest(ctx context.Context, ip string, port int, customURL st
 	}
 	client := http.Client{
 		Transport: wrapDebugTransport("official-speed", transport),
-		Timeout:   5 * time.Second,
+		Timeout:   6 * time.Second,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", parsedURL.String(), nil)

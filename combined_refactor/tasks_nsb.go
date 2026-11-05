@@ -330,7 +330,7 @@ func scanNSBEntry(ctx context.Context, item string, fallbackPort int, enableTLS 
 	if err != nil {
 		return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "Trace请求失败", detail: err.Error()}
 	}
-	duration := time.Since(start)
+	duration := time.Since(measuredStart)
 	if duration > maxDuration {
 		resp.Body.Close()
 		return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "Trace请求超时", detail: fmt.Sprintf("duration=%dms, max=%dms", duration.Milliseconds(), maxDuration.Milliseconds())}
@@ -523,7 +523,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 }
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
-	const speedWindow = 10 * time.Second
+	const speedWindow = 6 * time.Second
 	const speedMaxBytes = 200 * 1024 * 1024
 
 	scheme := "http"
@@ -538,15 +538,15 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 
 	transport := &http.Transport{
 		DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
-			return dialContextWithTimeout(c, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)), 5*time.Second)
+			return dialContextWithTimeout(c, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)), 2500*time.Millisecond)
 		},
-		TLSHandshakeTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: 2500 * time.Millisecond,
 		TLSClientConfig:     tlsConfigWithRootCAs(parsedURL.Hostname()),
 		DisableCompression:  true,
 	}
 	client := http.Client{
 		Transport: wrapDebugTransport("nsb-speed", transport),
-		Timeout:   speedWindow + 5*time.Second,
+		Timeout:   6 * time.Second,
 	}
 
 	speedCtx, cancel := context.WithCancel(ctx)
@@ -560,7 +560,6 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Accept-Encoding", "identity")
 
-	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, "测速请求失败: " + err.Error()
@@ -571,6 +570,7 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 		return 0, formatSpeedHTTPFailure(resp.StatusCode)
 	}
 
+	measuredStart := time.Now()
 	buf := make([]byte, 32*1024)
 	type readChunk struct {
 		n   int
@@ -620,12 +620,6 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 				}
 			}
 			if chunk.err != nil {
-				if chunk.err != io.EOF {
-					cancel()
-					resp.Body.Close()
-					<-readerDone
-					return 0, "测速下载失败: " + chunk.err.Error()
-				}
 				cancel()
 				resp.Body.Close()
 				<-readerDone
@@ -635,12 +629,12 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 	}
 
 done:
-	duration := time.Since(start)
+	duration := time.Since(measuredStart)
 	if duration <= 0 {
 		return 0, "测速耗时异常: duration<=0"
 	}
 
-	return float64(written) / duration.Seconds() / 1024, ""
+	return float64(written) / duration.Seconds() / 1024 / 1024, ""
 }
 
 func runNSBTask(ctx context.Context, session *appSession, fileName, fileContent, outFile string, maxThreads, fallbackPort, speedTest int, speedURL string, enableTLS bool, delay int, resultLimit int, targetDC string, speedMin float64, speedLimit int, compact bool, scanMode string, reallinkHost string) {
@@ -1074,9 +1068,9 @@ func runNSBReallinkTask(ctx context.Context, session *appSession, rows []nsbScan
 		}
 		for i := range results {
 			if results[i].speedTested && results[i].speedText == "" {
-				results[i].speedText = fmt.Sprintf("%.2fMB/s", results[i].downloadSpeed/1024)
+				results[i].speedText = fmt.Sprintf("%.2fMB/s", results[i].downloadSpeed)
 			}
-			if results[i].speedTested && results[i].downloadSpeed/1024 >= speedMin {
+			if results[i].speedTested && results[i].downloadSpeed >= speedMin {
 				results[i].speedQualified = true
 				qualifiedCount++
 			}
@@ -1163,9 +1157,9 @@ func runNSBSpeedBatch(ctx context.Context, session *appSession, rows []nsbScanMe
 	qualifiedCount := 0
 	for i := range results {
 		if results[i].speedTested && results[i].speedText == "" {
-			results[i].speedText = fmt.Sprintf("%.2fMB/s", results[i].downloadSpeed/1024)
+			results[i].speedText = fmt.Sprintf("%.2fMB/s", results[i].downloadSpeed)
 		}
-		if results[i].speedTested && results[i].downloadSpeed/1024 >= speedMin {
+		if results[i].speedTested && results[i].downloadSpeed >= speedMin {
 			results[i].speedQualified = true
 			qualifiedCount++
 		}
@@ -1296,8 +1290,8 @@ func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers,
 			if speedErr != "" {
 				results[idx].speedText = "测速失败"
 			} else {
-				results[idx].speedText = fmt.Sprintf("%.2fMB/s", speed/1024)
-				results[idx].speedQualified = speed/1024 >= speedMin
+				results[idx].speedText = fmt.Sprintf("%.2fMB/s", speed)
+				results[idx].speedQualified = speed >= speedMin
 			}
 			select {
 			case done <- speedDone{idx: idx, err: speedErr}:
