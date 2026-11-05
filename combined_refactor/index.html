@@ -1112,6 +1112,23 @@
             font-weight: 700;
         }
 
+        .github-account-heading {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 0;
+        }
+
+        .github-account-heading label {
+            margin: 0;
+        }
+
+        .github-import-btn {
+            min-height: 28px;
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
         .field-head {
             display: flex;
             align-items: center;
@@ -2096,7 +2113,10 @@
                         <div class="order-list" id="resultOrderList"></div>
                     </div>
                     <div class="modal-field github-field">
-                        <label>GitHub 账户</label>
+                        <div class="github-account-heading">
+                            <label>GitHub 账户</label>
+                            <button class="action-btn github-import-btn" type="button" onclick="importGitHubConfigFromClipboard()">剪切板导入</button>
+                        </div>
                         <div class="github-account-row">
                             <select id="githubAccountSelect" onchange="loadSelectedGitHubAccount()"></select>
                             <button class="action-btn" onclick="deleteSelectedGitHubAccount()">删除</button>
@@ -5360,6 +5380,82 @@
             else accounts.push(next);
             saveGitHubAccounts(accounts);
             renderGitHubAccounts();
+        }
+
+        async function importGitHubConfigFromClipboard() {
+            let clipboardText = '';
+            try {
+                if (window.CFDataAndroid && typeof window.CFDataAndroid.readClipboardText === 'function') {
+                    clipboardText = String(window.CFDataAndroid.readClipboardText() || '');
+                }
+                if (!clipboardText.trim() && navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                    clipboardText = String(await navigator.clipboard.readText() || '');
+                }
+            } catch (error) {
+                showNoticeCard('读取剪贴板失败，请检查剪贴板读取权限');
+                return;
+            }
+
+            if (!clipboardText.trim()) {
+                showNoticeCard('剪贴板为空，或当前环境无法读取剪贴板');
+                return;
+            }
+
+            const fieldDefinitions = [
+                { key: 'token', label: 'GitHub token', pattern: /^\\s*github\\s*token\\s*[:：]\\s*(.*?)\\s*$/i },
+                { key: 'owner', label: 'GitHub 用户名', pattern: /^\\s*github\\s*用户名\\s*[:：]\\s*(.*?)\\s*$/i },
+                { key: 'branch', label: '分支', pattern: /^\\s*分支\\s*[:：]\\s*(.*?)\\s*$/i },
+                { key: 'path', label: '目标路径', pattern: /^\\s*目标路径\\s*[:：]\\s*(.*?)\\s*$/i },
+                { key: 'repo', label: '仓库名称', pattern: /^\\s*仓库名称\\s*[:：]\\s*(.*?)\\s*$/i },
+            ];
+            const values = {};
+            clipboardText.replace(/^\\uFEFF/, '').split(/\\r?\\n/).forEach((line) => {
+                for (const field of fieldDefinitions) {
+                    const match = line.match(field.pattern);
+                    if (match) {
+                        values[field.key] = match[1].trim();
+                        break;
+                    }
+                }
+            });
+
+            const missing = fieldDefinitions.filter((field) => !values[field.key]).map((field) => field.label);
+            if (missing.length) {
+                showNoticeCard('剪贴板配置不完整，缺少或为空的字段：\\n' + missing.join('、'));
+                return;
+            }
+
+            const payload = {
+                token: values.token,
+                repo: values.repo,
+                branch: values.branch,
+                path: values.path,
+                message: document.getElementById('githubMessage').value.trim() || 'update cfdata results',
+            };
+            document.getElementById('githubToken').value = values.token;
+            document.getElementById('githubAccountName').value = values.owner;
+            document.getElementById('githubBranch').value = values.branch;
+            document.getElementById('githubPath').value = values.path;
+            document.getElementById('githubRepo').value = values.repo;
+
+            try {
+                await saveCurrentGitHubAccount(payload);
+                const accounts = getGitHubAccounts();
+                const tokenHash = await sha256Hex(values.token);
+                const savedIndex = accounts.findIndex((account) =>
+                    account.name === values.owner &&
+                    account.repo === values.repo &&
+                    account.tokenHash === tokenHash
+                );
+                if (savedIndex >= 0) {
+                    document.getElementById('githubAccountSelect').value = String(savedIndex);
+                    loadSelectedGitHubAccount();
+                }
+                scheduleGitHubConfigDraftSave(true);
+                showNoticeCard('剪切板配置导入成功，已保存为 GitHub 账号');
+            } catch (error) {
+                showNoticeCard('导入并保存 GitHub 配置失败：' + (error?.message || '未知错误'));
+            }
         }
 
         function renderResultOrderList() {
