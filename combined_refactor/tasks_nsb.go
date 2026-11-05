@@ -523,7 +523,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 }
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
-	const speedWindow = 10 * time.Second
+	const speedWindow = 5 * time.Second
 	const speedMaxBytes = 200 * 1024 * 1024
 
 	scheme := "http"
@@ -538,15 +538,15 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 
 	transport := &http.Transport{
 		DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
-			return dialContextWithTimeout(c, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)), 5*time.Second)
+			return dialContextWithTimeout(c, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)), 2500*time.Millisecond)
 		},
-		TLSHandshakeTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: 2500 * time.Millisecond,
 		TLSClientConfig:     tlsConfigWithRootCAs(parsedURL.Hostname()),
 		DisableCompression:  true,
 	}
 	client := http.Client{
 		Transport: wrapDebugTransport("nsb-speed", transport),
-		Timeout:   speedWindow + 5*time.Second,
+		Timeout:   5 * time.Second,
 	}
 
 	speedCtx, cancel := context.WithCancel(ctx)
