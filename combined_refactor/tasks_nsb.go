@@ -1400,7 +1400,7 @@ func nsbCSVRows(results []iptestResult, includeSpeed bool, compact bool, scanMod
 
 func nsbCSVHeaders(compact bool, scanMode string) []string {
 	if compact {
-		return []string{"IP地址", "端口号", "TLS", "丢包率", "扫描方式", "网络延迟", "下载速度", "出站IP", "IP类型", "原始输入", "数据中心", "源IP位置", "地区", "城市", "ASN号码", "ASN组织"}
+		return []string{"IP地址", "端口号", "扫描方式", "IP类型", "数据中心", "源IP位置", "网络延迟", "下载速度"}
 	}
 	headers := []string{"IP地址", "端口号", "TLS", "丢包率", "扫描方式", "网络延迟", "下载速度", "出站IP", "IP类型", "原始输入", "数据中心", "源IP位置", "地区", "城市", "ASN号码", "ASN组织"}
 	headers = append(headers, "访问协议", "TLS版本", "SNI", "HTTP版本", "WARP", "Gateway", "RBI", "密钥交换", "时间戳")
@@ -1423,20 +1423,12 @@ func nsbCSVRow(res iptestResult, includeSpeed bool, compact bool, scanMode strin
 		return []string{
 			res.ipAddr,
 			strconv.Itoa(res.port),
-			strconv.FormatBool(res.visitScheme == "https"),
-			fmt.Sprintf("%.0f%%", res.lossRate*100),
 			scanModeLabel(scanMode),
-			res.latency,
-			speed,
-			res.outboundIP,
 			res.ipType,
-			res.originalInput,
 			res.dataCenter,
 			res.locCode,
-			res.region,
-			res.city,
-			fallbackDash(res.asnNumber),
-			fallbackDash(res.asnOrg),
+			res.latency,
+			speed,
 		}
 	}
 	row := []string{

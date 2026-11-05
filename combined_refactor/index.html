@@ -2444,6 +2444,7 @@
         let officialAutoStage = '';
         let officialBatchSpeedRunning = false;
         let nsbBatchSpeedRunning = false;
+        let nsbSingleSpeedKey = '';
         let nsbContinueSpeedUnlocked = false;
         let officialTestCompletePending = false;
         let officialSpeedEndedByRateLimit = false;
@@ -3899,16 +3900,13 @@
             if (preset) preset.value = 'default';
         }
 
-        function getNSBRelinkHost(followAutoSpeed = false) {
+        function getNSBRelinkHost() {
             const preset = document.getElementById('nsbRelinkPreset');
             const input = document.getElementById('nsbRelinkHost');
-            if (preset && preset.value === 'off') {
-                if (followAutoSpeed) return NSB_RELINK_DEFAULT_HOST;
-                return '';
-            }
+            if (preset && preset.value === 'off') return '';
             if (preset && preset.value === 'custom') {
                 const custom = (input && input.value ? input.value : '').trim();
-                return custom || NSB_RELINK_DEFAULT_HOST;
+                return custom === '已关闭' || custom === '公共探针' ? '' : custom;
             }
             return NSB_RELINK_DEFAULT_HOST;
         }
@@ -3927,7 +3925,11 @@
                 showNoticeCard('当前没有可复验的非标结果');
                 return;
             }
-            const probeHost = getNSBRelinkHost() || NSB_RELINK_DEFAULT_HOST;
+            const probeHost = getNSBRelinkHost();
+            if (!probeHost) {
+                showNoticeCard('请先选择公共探针或填写手动探针域名');
+                return;
+            }
             showConfirmCard(`确认开始链路复验？将对 ${rows.length} 个候选进行真实链路验证（TCP+TLS+HTTP），不可用的候选将从结果中剔除。`, () => {
                 const speedCfg = syncNSBSpeedConfigState();
                 const outFile = document.getElementById('nsbOutFile')?.value.trim() || 'ip.csv';
@@ -4105,7 +4107,12 @@
                     const speedVal = parseFloat(rawVal);
                     const color = speedStatus === 'untested' ? 'inherit' : (speedVal > SPEED_GREEN ? '#10b981' : (speedVal > 0 ? '#f59e0b' : '#ef4444'));
                     const cls = speedQualified ? '' : ' class="speed-unqualified"';
-                    return `<td${cls} style="color:${color}; font-weight:600;"><span class="speed-cell-content"><span>${val}</span>${renderSpeedStatusTag(speedStatus)}</span></td>`;
+                    const rowIP = ipIndex >= 0 ? String(r[ipIndex] || '') : '';
+                    const rowPort = portIndex >= 0 ? String(r[portIndex] || '') : '';
+                    const rowKey = rowIP + ':' + rowPort;
+                    const busy = nsbSingleSpeedKey === rowKey;
+                    const action = rowIP && rowPort ? `<button type="button" style="margin-left:6px;padding:3px 7px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-color);color:var(--primary-color);font-size:12px;cursor:pointer;" ${busy ? 'disabled' : ''} onclick="startNSBSingleSpeed('${escapeJSString(rowIP)}','${escapeJSString(rowPort)}',this)">${busy ? '测速中' : '测速'}</button>` : '';
+                    return `<td${cls} style="color:${color}; font-weight:600;"><span class="speed-cell-content"><span>${val}</span>${renderSpeedStatusTag(speedStatus)}${action}</span></td>`;
                 } else {
                     return `<td>${val}</td>`;
                 }
@@ -4139,7 +4146,7 @@
         }
 
         const NSB_LIVE_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织', '访问协议', 'TLS版本', 'SNI', 'HTTP版本', 'WARP', 'Gateway', 'RBI', '密钥交换', '时间戳'];
-        const NSB_COMPACT_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织'];
+        const NSB_COMPACT_HEADERS = ['IP地址', '端口号', '扫描方式', 'IP类型', '数据中心', '源IP位置', '网络延迟', '下载速度'];
 
         function normalizeNSBHeader(header) {
             if (header === 'IP') return 'IP地址';
@@ -4728,6 +4735,63 @@
             return true;
         }
 
+        function startNSBSingleSpeed(ip, port, button) {
+            if (currentMode !== 'nsb' || isTaskRunning || nsbBatchSpeedRunning || nsbReallinkRunning || nsbSingleSpeedKey) {
+                showNoticeCard('当前有任务正在运行，请等待完成后再测速');
+                return;
+            }
+            const row = getNSBSpeedTargetRows().find((item) => String(item.ip) === String(ip) && String(item.port) === String(port));
+            if (!row) {
+                showNoticeCard('未找到当前行的测速目标');
+                return;
+            }
+            const cfg = syncNSBSpeedConfigState();
+            nsbSingleSpeedKey = String(ip) + ':' + String(port);
+            isTaskRunning = true;
+            isStoppingTask = false;
+            runningTaskLabel = '非标单行测速';
+            runningTaskMode = 'nsb';
+            runningTaskTab = 'scan';
+            setStartLoading('单行测速中...');
+            resetProgress();
+            progressBox.style.display = 'block';
+            if (!wsSend({ type: 'start_nsb_speed_single', data: { result: row, speedURL: cfg.speedURL, enableTLS: cfg.enableTLS } })) {
+                nsbSingleSpeedKey = '';
+                isTaskRunning = false;
+                finishRunningTask('✨ 开始扫描与测试');
+                showNoticeCard('连接未就绪，请等待重连后再试');
+                renderAllNSBLiveRows();
+                return;
+            }
+            if (button) {
+                button.disabled = true;
+                button.textContent = '测速中';
+            }
+        }
+
+        function updateNSBSingleSpeedResult(data) {
+            const ip = String(data?.ip || '').trim();
+            const port = String(data?.port || '').trim();
+            if (!ip || !port) return;
+            const speed = String(data?.speed || '测速失败');
+            if (nsbRows.length) {
+                const headers = nsbHeaders.map(normalizeNSBHeader);
+                const ipIndex = headers.indexOf('IP地址');
+                const portIndex = headers.indexOf('端口号');
+                const speedIndex = headers.indexOf('下载速度');
+                const row = nsbRows.find((item) => String(item[ipIndex] || '').trim() === ip && String(item[portIndex] || '').trim() === port);
+                if (row && speedIndex >= 0) row[speedIndex] = speed;
+                renderScanRowsCSV(nsbHeaders, nsbRows);
+            } else {
+                const idx = nsbLiveIndex[ip + ':' + port];
+                if (idx !== undefined) {
+                    nsbLiveRows[idx].speed = speed;
+                    updateNSBLiveRowElement(nsbLiveRows[idx]);
+                }
+            }
+            nsbSingleSpeedKey = '';
+        }
+
         function startNSBBatchSpeed(continued = false) {
             if (requireProxyWarning(() => startNSBBatchSpeed(continued))) return false;
             if (nsbBatchSpeedRunning) return false;
@@ -5047,7 +5111,7 @@
                     speedLimit,
                     compact,
                     scanMode: getScanMode(),
-                    relinkHost: getNSBRelinkHost(speedTest > 0),
+                    relinkHost: speedTest > 0 ? getNSBRelinkHost() : '',
                 }
             })) {
                 finishRunningTask('✨ 开始扫描与测试');
@@ -6483,6 +6547,9 @@
                     nsbLiveRowElements = {};
                     (msg.data || []).forEach((row) => addNSBLiveResult(row || {}, false));
                     if (currentMode === 'nsb') renderAllNSBLiveRows();
+                    break;
+                case 'nsb_single_speed_result':
+                    updateNSBSingleSpeedResult(msg.data || {});
                     break;
                 case 'nsb_speed_complete':
                     if (isStoppingTask) {

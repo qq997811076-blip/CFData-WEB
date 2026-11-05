@@ -364,6 +364,37 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				runNSBSpeedBatch(ctx, session, params.Results, params.SpeedTest, params.SpeedURL, params.EnableTLS, params.SpeedMin, params.SpeedLimit, params.SkipTested, params.Compact)
 			})
 		},
+		"start_nsb_speed_single": func(data json.RawMessage) {
+			var params struct {
+				Result    nsbScanMessage `json:"result"`
+				SpeedURL  string         `json:"speedURL"`
+				EnableTLS bool           `json:"enableTLS"`
+			}
+			if err := json.Unmarshal(data, &params); err != nil {
+				session.sendWSMessage("error", "start_nsb_speed_single 参数解析失败")
+				return
+			}
+			result, ok := nsbMessageToResult(params.Result)
+			if !ok {
+				session.sendWSMessage("error", "单行测速目标无效")
+				return
+			}
+			if strings.TrimSpace(params.SpeedURL) == "" {
+				params.SpeedURL = speedTestURL
+			}
+			session.startTaskNamed("非标单行测速", "nsb", map[string]interface{}{"ip": result.ipAddr, "port": result.port}, func(ctx context.Context, session *appSession) {
+				speed, speedErr := runNSBDownloadSpeed(ctx, result.ipAddr, result.port, params.EnableTLS, params.SpeedURL)
+				if ctx.Err() != nil {
+					return
+				}
+				if speedErr != "" {
+					result.speedText = speedErr
+				} else {
+					result.speedText = fmt.Sprintf("%.2fMB/s", speed/1024)
+				}
+				session.sendWSMessage("nsb_single_speed_result", map[string]interface{}{"ip": result.ipAddr, "port": result.port, "speed": result.speedText})
+			})
+		},
 		"stop_task": func(data json.RawMessage) {
 			if backgroundSession := currentBackgroundTaskSession(); backgroundSession != nil {
 				if session != backgroundSession {
