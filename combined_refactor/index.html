@@ -2297,15 +2297,6 @@
         let runningTaskMode = '';
         let runningTaskTab = 'scan';
         let stopWatchdogTimer = null;
-        let cfCountry = '检测失败';
-        let proxyWarningRequired = false;
-        let proxyGeoCheckOK = true;
-        let proxyWarningBypassed = false;
-        let proxyWarningPendingAction = null;
-        let proxyWarningCountdownTimer = null;
-        let proxyCountryCheckPending = false;
-        let proxyCountryCheckTimer = null;
-        let proxyWarningSinglePass = false;
         let resultModalMode = 'scan';
         let sortModalMode = 'official';
         let resultFieldOrder = [];
@@ -2888,7 +2879,6 @@
         });
 
         function startCompactIPv4() {
-            if (requireProxyWarning(() => startCompactIPv4())) return;
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 showNoticeCard('与服务端的连接尚未就绪，请等待"已连接服务器"后再试');
                 return;
@@ -3024,130 +3014,6 @@
         function confirmNoticeCard() {
             const action = noticeConfirmAction;
             closeNoticeCard();
-            if (typeof action === 'function') action();
-        }
-
-        function requireProxyWarning(action) {
-            if (proxyWarningSinglePass) {
-                proxyWarningSinglePass = false;
-                return false;
-            }
-            if (proxyWarningBypassed) return false;
-            if (proxyCountryCheckPending) return true;
-            proxyWarningPendingAction = action;
-            proxyCountryCheckPending = true;
-            if (proxyCountryCheckTimer) window.clearTimeout(proxyCountryCheckTimer);
-            proxyCountryCheckTimer = window.setTimeout(() => {
-                proxyCountryCheckPending = false;
-                proxyCountryCheckTimer = null;
-                cfCountry = '检测失败';
-                proxyGeoCheckOK = false;
-                proxyWarningRequired = true;
-                log('代理检测警告：地区验证超时，已阻止自动开始测试');
-                showProxyWarningModal();
-            }, 8000);
-            if (!wsSend({ type: 'check_proxy_country', data: {} })) {
-                proxyCountryCheckPending = false;
-                window.clearTimeout(proxyCountryCheckTimer);
-                proxyCountryCheckTimer = null;
-                proxyWarningPendingAction = null;
-                showNoticeCard('连接未就绪，请等待重连后再试');
-            }
-            return true;
-        }
-
-        function handleProxyCountryResult(data) {
-            cfCountry = normalizeProxyCountry(data);
-            proxyWarningRequired = !!data?.proxyWarning;
-            proxyGeoCheckOK = data?.geoCheckOK !== false;
-            proxyCountryCheckPending = false;
-            if (proxyCountryCheckTimer) {
-                window.clearTimeout(proxyCountryCheckTimer);
-                proxyCountryCheckTimer = null;
-            }
-            if (proxyWarningRequired) {
-                log(`代理检测警告：当前网络标签 ${cfCountry}`);
-                showProxyWarningModal();
-                return;
-            }
-            const action = proxyWarningPendingAction;
-            proxyWarningPendingAction = null;
-            proxyWarningSinglePass = true;
-            if (typeof action === 'function') action();
-        }
-
-        function normalizeProxyCountry(data) {
-            const value = String(data?.cfCountry || '').trim().toUpperCase();
-            if (value) return value;
-            return data?.skipGeoCheck ? 'SKIPPED' : '检测失败';
-        }
-
-        function requireCachedProxyWarning(action) {
-            if (!proxyWarningRequired || proxyWarningBypassed) return false;
-            proxyWarningPendingAction = action;
-            showProxyWarningModal();
-            return true;
-        }
-
-        function showProxyWarningModal() {
-            const mask = document.getElementById('noticeCardMask');
-            const btn = document.getElementById('proxyWarningContinueBtn');
-            const titleEl = document.getElementById('noticeCardTitle');
-            const messageEl = document.getElementById('noticeCardMessage');
-            const actions = document.getElementById('noticeCardActions');
-            if (!mask || !titleEl || !messageEl || !actions) return;
-            titleEl.textContent = '代理检测警告';
-            messageEl.textContent = [
-                `读取到的网络标签：${cfCountry || '未知'}`,
-                proxyGeoCheckOK ? '检测到您当前很可能处于代理/VPN环境中。' : '地区验证失败，无法确认当前是否处于代理/VPN环境中。',
-                '在代理状态下进行的 IP 优选测试结果将不准确。',
-                '建议关闭代理软件后刷新页面重新测试。',
-            ].join('\n');
-            actions.innerHTML = '<button class="action-btn danger-btn" onclick="cancelProxyWarning()">停止测速</button><button class="action-btn export-btn" id="proxyWarningContinueBtn" onclick="confirmProxyWarning()" disabled>强制继续 (5)</button>';
-            mask.classList.add('active');
-            let remaining = 5;
-            const nextBtn = document.getElementById('proxyWarningContinueBtn');
-            if (!nextBtn) return;
-            nextBtn.disabled = true;
-            nextBtn.textContent = `强制继续 (${remaining})`;
-            if (proxyWarningCountdownTimer) window.clearInterval(proxyWarningCountdownTimer);
-            proxyWarningCountdownTimer = window.setInterval(() => {
-                remaining--;
-                if (remaining <= 0) {
-                    window.clearInterval(proxyWarningCountdownTimer);
-                    proxyWarningCountdownTimer = null;
-                    nextBtn.disabled = false;
-                    nextBtn.textContent = '强制继续';
-                    return;
-                }
-                nextBtn.textContent = `强制继续 (${remaining})`;
-            }, 1000);
-        }
-
-        function hideProxyWarningModal() {
-            const mask = document.getElementById('noticeCardMask');
-            if (mask) mask.classList.remove('active');
-            if (proxyWarningCountdownTimer) {
-                window.clearInterval(proxyWarningCountdownTimer);
-                proxyWarningCountdownTimer = null;
-            }
-            noticeConfirmAction = null;
-        }
-
-        function cancelProxyWarning() {
-            hideProxyWarningModal();
-            proxyWarningPendingAction = null;
-            proxyCountryCheckPending = false;
-            log(`代理检测警告：已取消测速（当前网络标签 ${cfCountry || '未知'}）`);
-        }
-
-        function confirmProxyWarning() {
-            const action = proxyWarningPendingAction;
-            proxyWarningBypassed = true;
-            proxyWarningPendingAction = null;
-            hideProxyWarningModal();
-            log(`代理检测警告：用户强制继续（当前网络标签 ${cfCountry || '未知'}）`);
-            proxyWarningSinglePass = true;
             if (typeof action === 'function') action();
         }
 
@@ -4339,7 +4205,6 @@
         }
 
         function selectDC(dc) {
-            if (requireProxyWarning(() => selectDC(dc))) return;
             if (isTaskRunning && currentTestingDC !== '') return;
             const port = parseInt(document.getElementById('officialTestPort').value);
             const delay = parseInt(document.getElementById('officialDelay').value) || 500;
@@ -4429,7 +4294,6 @@
         }
 
         function runSpeedTest(ip) {
-            if (requireProxyWarning(() => runSpeedTest(ip))) return;
             syncOfficialSpeedConfigState();
             if (isTaskRunning || officialBatchSpeedRunning) {
                 log('当前已有任务运行，单个测速已忽略');
@@ -4535,7 +4399,6 @@
         }
 
         function startOfficialBatchSpeed(auto = false, continued = false) {
-            if (requireProxyWarning(() => startOfficialBatchSpeed(auto, continued))) return false;
             if (officialBatchSpeedRunning) return false;
             if (!testData.length) {
                 if (!auto) showNoticeCard('请先完成数据中心详细测试');
@@ -4575,7 +4438,6 @@
         }
 
         function startNSBBatchSpeed(continued = false) {
-            if (requireProxyWarning(() => startNSBBatchSpeed(continued))) return false;
             if (nsbBatchSpeedRunning) return false;
             if (currentMode !== 'nsb') {
                 showNoticeCard('请切换到非标模式后再测速');
@@ -4700,7 +4562,6 @@
                 return;
             }
 
-            if (requireProxyWarning(() => startTask())) return;
 
             if (currentMode === 'official') {
                 startOfficialTask();
@@ -5899,12 +5760,7 @@
                 case 'init_config':
                     defaultSpeedTestUrl = msg.data.speedTestURL || defaultSpeedTestUrl;
                     webDebugMode = !!msg.data.debug;
-                    cfCountry = normalizeProxyCountry(msg.data || {});
-                    proxyWarningRequired = !!msg.data.proxyWarning;
-                    proxyGeoCheckOK = msg.data.geoCheckOK !== false;
-                    proxyWarningBypassed = false;
                     if (webDebugMode) log('调试模式已开启，错误将输出到程序 log');
-                    if (proxyWarningRequired) log(`代理检测警告：当前网络标签 ${cfCountry}`);
                     const speedDefault = msg.data.speedTestDefault || msg.data.speedTestURL || AUTO_SPEED_URL_VALUE;
                     defaultSpeedTestUrl = speedDefault || defaultSpeedTestUrl;
                     applySpeedUrlConfig('officialSpeedUrl', 'officialSpeedUrlPreset', speedDefault);
@@ -5929,9 +5785,6 @@
                     break;
                 case 'version_info':
                     renderVersionInfo(msg.data || {});
-                    break;
-                case 'proxy_country_result':
-                    handleProxyCountryResult(msg.data || {});
                     break;
                 case 'config_data':
                     applyConfigValues(mapCLIConfigToForm(msg.data));
