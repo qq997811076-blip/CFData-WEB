@@ -2389,10 +2389,96 @@
         }
 
         const NSB_CLIPBOARD_STORAGE_KEY = 'cfdata-nsb-clipboard-imported-ips';
+        const NSB_CLIPBOARD_DB_NAME = 'cfdata-nsb-clipboard-ip-store';
+        const NSB_CLIPBOARD_DB_VERSION = 1;
+        const NSB_CLIPBOARD_BATCH_SIZE = 5000;
         const NSB_MAX_CIDR_EXPANSION = 1048576;
-        let nsbClipboardImportedIPs = (() => {
-            try { return localStorage.getItem(NSB_CLIPBOARD_STORAGE_KEY) || ''; }
-            catch (_) { return ''; }
+        let nsbClipboardDB = null;
+        let nsbClipboardImportedIPs = '';
+
+        function openNSBClipboardDB() {
+            return new Promise((resolve, reject) => {
+                let request;
+                try {
+                    request = window.indexedDB.open(NSB_CLIPBOARD_DB_NAME, NSB_CLIPBOARD_DB_VERSION);
+                } catch (error) {
+                    reject(error);
+                    return;
+                }
+                request.onupgradeneeded = () => {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains('ips')) {
+                        const store = db.createObjectStore('ips', { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('ip', 'ip', { unique: true });
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error || new Error('打开 IndexedDB 失败'));
+                request.onblocked = () => reject(new Error('IndexedDB 正被其他页面占用，请关闭其他 CFData-WEB 页面后重试'));
+            });
+        }
+
+        function readAllNSBClipboardIPs(db) {
+            return new Promise((resolve, reject) => {
+                const values = [];
+                let transaction;
+                try {
+                    transaction = db.transaction('ips', 'readonly');
+                    const request = transaction.objectStore('ips').openCursor();
+                    request.onsuccess = () => {
+                        const cursor = request.result;
+                        if (!cursor) {
+                            resolve(values);
+                            return;
+                        }
+                        values.push(cursor.value.ip);
+                        cursor.continue();
+                    };
+                    request.onerror = () => reject(request.error || new Error('读取剪贴板 IP 失败'));
+                    transaction.onerror = () => reject(transaction.error || new Error('读取剪贴板 IP 事务失败'));
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        function writeNSBClipboardIPBatch(db, ips) {
+            return new Promise((resolve, reject) => {
+                let transaction;
+                try {
+                    transaction = db.transaction('ips', 'readwrite');
+                    const store = transaction.objectStore('ips');
+                    for (const ip of ips) store.add({ ip });
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error || new Error('保存剪贴板 IP 失败'));
+                    transaction.onabort = () => reject(transaction.error || new Error('保存剪贴板 IP 已中止'));
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        async function saveNSBClipboardIPs(db, ips) {
+            for (let offset = 0; offset < ips.length; offset += NSB_CLIPBOARD_BATCH_SIZE) {
+                await writeNSBClipboardIPBatch(db, ips.slice(offset, offset + NSB_CLIPBOARD_BATCH_SIZE));
+            }
+        }
+
+        const nsbClipboardDBReady = (async () => {
+            if (!window.indexedDB) throw new Error('当前 WebView 不支持 IndexedDB，无法保存大量剪贴板 IP');
+            nsbClipboardDB = await openNSBClipboardDB();
+            let saved = await readAllNSBClipboardIPs(nsbClipboardDB);
+            const savedSet = new Set(saved);
+            let legacy = '';
+            try { legacy = localStorage.getItem(NSB_CLIPBOARD_STORAGE_KEY) || ''; } catch (_) {}
+            if (legacy) {
+                const legacyIPs = [...new Set(legacy.split(/\r?\n/).filter(Boolean))].filter(ip => !savedSet.has(ip));
+                if (legacyIPs.length) await saveNSBClipboardIPs(nsbClipboardDB, legacyIPs);
+                try { localStorage.removeItem(NSB_CLIPBOARD_STORAGE_KEY); } catch (_) {}
+                saved = saved.concat(legacyIPs);
+            }
+            nsbClipboardImportedIPs = saved.join('\n');
+            return nsbClipboardDB;
         })();
 
         function validNSBIPv4(value) {
@@ -2434,7 +2520,7 @@
             return result;
         }
 
-        // 对应参考版 parseImported(content, false)：逐行读取行首 IPv4/CIDR，展开并按首次出现顺序去重。
+        // 逐行读取行首 IPv4/CIDR，展开并按首次出现顺序去重。
         function parseNSBClipboardImported(content) {
             const found = [];
             const tokenPattern = /^([0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*\/\s*[0-9]{1,2})?)/;
@@ -2456,7 +2542,7 @@
         function updateNSBClipboardStats(message) {
             const stats = document.getElementById('nsbClipboardStats');
             if (!stats) return;
-            const count = nsbClipboardImportedIPs.split(/\r?\n/).filter(Boolean).length;
+            const count = nsbClipboardImportedIPs ? nsbClipboardImportedIPs.split(/\r?\n/).filter(Boolean).length : 0;
             stats.textContent = message || ('剪切板已保存唯一 IPv4：' + count);
         }
 
@@ -2480,37 +2566,54 @@
                 return;
             }
             try {
+                await nsbClipboardDBReady;
                 const parsed = parseNSBClipboardImported(clipboardText);
                 if (!parsed.ips.length) {
                     showNoticeCard('剪切板中没有识别到有效的 IPv4 或 CIDR');
                     return;
                 }
-                const previous = nsbClipboardImportedIPs.split(/\r?\n/).filter(Boolean);
+                const previous = nsbClipboardImportedIPs ? nsbClipboardImportedIPs.split(/\r?\n/).filter(Boolean) : [];
                 const previousSet = new Set(previous);
                 const overlaps = parsed.ips.filter(ip => previousSet.has(ip)).length;
-                const merged = [...new Set([...previous, ...parsed.ips])];
-                const serialized = merged.join('\n');
-                localStorage.setItem(NSB_CLIPBOARD_STORAGE_KEY, serialized);
-                nsbClipboardImportedIPs = serialized;
-                updateNSBClipboardStats('剪切板重复：' + (parsed.duplicates + overlaps) + '；本次新增：' + (merged.length - previous.length) + '；累计保存唯一 IPv4：' + merged.length);
-                log('剪切板导入完成：新增 ' + (merged.length - previous.length) + ' 个，累计 ' + merged.length + ' 个唯一 IPv4');
+                const newIPs = parsed.ips.filter(ip => !previousSet.has(ip));
+                await saveNSBClipboardIPs(nsbClipboardDB, newIPs);
+                nsbClipboardImportedIPs = previous.concat(newIPs).join('\n');
+                updateNSBClipboardStats('剪切板重复：' + (parsed.duplicates + overlaps) + '；本次新增：' + newIPs.length + '；累计保存唯一 IPv4：' + (previous.length + newIPs.length));
+                log('剪切板导入完成：新增 ' + newIPs.length + ' 个，累计 ' + (previous.length + newIPs.length) + ' 个唯一 IPv4');
             } catch (error) {
+                try {
+                    await nsbClipboardDBReady;
+                    nsbClipboardImportedIPs = (await readAllNSBClipboardIPs(nsbClipboardDB)).join('\n');
+                    updateNSBClipboardStats();
+                } catch (_) {}
                 showNoticeCard('剪切板导入失败：' + (error.message || String(error)));
             }
         }
 
-        function clearNSBClipboardIPs() {
-            try { localStorage.removeItem(NSB_CLIPBOARD_STORAGE_KEY); }
-            catch (error) {
-                showNoticeCard('清除剪切板 IP 失败：' + (error.message || String(error)));
+        async function clearNSBClipboardIPs() {
+            try {
+                await nsbClipboardDBReady;
+                await new Promise((resolve, reject) => {
+                    const transaction = nsbClipboardDB.transaction('ips', 'readwrite');
+                    transaction.objectStore('ips').clear();
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = () => reject(transaction.error || new Error('清除剪贴板 IP 失败'));
+                    transaction.onabort = () => reject(transaction.error || new Error('清除剪贴板 IP 已中止'));
+                });
+                try { localStorage.removeItem(NSB_CLIPBOARD_STORAGE_KEY); } catch (_) {}
+            } catch (error) {
+                showNoticeCard('清除剪贴板 IP 失败：' + (error.message || String(error)));
                 return;
             }
             nsbClipboardImportedIPs = '';
             updateNSBClipboardStats('剪切板已保存唯一 IPv4：0');
-            log('已清除剪切板导入的 IP');
+            log('已清除剪贴板导入的 IP');
         }
 
-        updateNSBClipboardStats();
+        nsbClipboardDBReady.then(() => updateNSBClipboardStats()).catch(error => {
+            updateNSBClipboardStats('剪贴板存储初始化失败：' + (error.message || String(error)));
+            console.error('剪贴板 IndexedDB 初始化失败', error);
+        });
 
         function applyTheme(theme) {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
