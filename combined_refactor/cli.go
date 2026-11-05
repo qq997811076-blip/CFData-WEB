@@ -90,7 +90,6 @@ type cliFileConfig struct {
 	SpeedTest       int     `json:"nsbspeedtest"`
 	Progress        bool    `json:"progress"`
 	NoColor         bool    `json:"nocolor"`
-	SkipGeo         bool    `json:"skipgeo"`
 	URL             string  `json:"offurl"`
 	NSBURL          string  `json:"nsburl"`
 	DNS             string  `json:"dns"`
@@ -204,7 +203,6 @@ var (
 		{name: "out", description: "输出文件名", defaultValue: "cfdata-results"},
 		{name: "progress", description: "是否输出进度日志", defaultValue: "true"},
 		{name: "nocolor", description: "禁用颜色输出（cmd 等不支持 ANSI 的终端可开启避免乱码）", defaultValue: "false"},
-		{name: "skipgeo", description: "跳过地区/代理环境验证，CLI 启动测试前不再确认代理警告", defaultValue: "false"},
 		{name: "url", description: "测速下载地址；auto 表示由后端自动选择内置测速源", defaultValue: autoSpeedURLValue},
 		{name: "dns", description: "自定义 DNS 服务器，例如 1.1.1.1 或 223.5.5.5,8.8.8.8；默认系统 DNS 优先，失败回退内置 DNS；显式设置时强制使用指定 DNS", defaultValue: defaultDNSServers},
 		{name: "debug", description: "调试输出等级：error、all；true 等同 error", defaultValue: "false"},
@@ -332,17 +330,6 @@ func runCLI(cfg *cliConfig) error {
 
 	applyCLISpeedDefault()
 	printCLIConfig(cfg)
-
-	if !skipGeoCheck {
-		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
-		country, ok := detectCloudflareTraceCountry(ctx)
-		cancel()
-		if !confirmCLIProxyCountry(country, ok) {
-			return fmt.Errorf("已取消：当前网络环境标签为 %s", firstNonEmpty(country, "未知"))
-		}
-	} else {
-		fmt.Println("[proxy-check] 已跳过地区/代理环境验证")
-	}
 
 	mode := strings.ToLower(strings.TrimSpace(cfg.mode))
 	switch mode {
@@ -744,7 +731,6 @@ func buildCLIConfigHelp() []cliConfigHelp {
 		{Name: "nsbspeedtest", Description: "非标测速线程数；0 表示不测速。多 IP 并发影响实际速度，需要准确应设为 1", Default: "0"},
 		{Name: "progress", Description: "输出进度日志", Default: "true", Options: []string{"true", "false"}},
 		{Name: "nocolor", Description: "禁用 ANSI 颜色输出", Default: "false", Options: []string{"true", "false"}},
-		{Name: "skipgeo", Description: "跳过地区/代理环境验证（等同命令行 -skipgeo）", Default: "false", Options: []string{"true", "false"}},
 		{Name: "offurl", Description: "官方测速下载地址；auto 表示由后端自动选择内置测速源", Default: autoSpeedURLValue},
 		{Name: "nsburl", Description: "非标测速下载地址；auto 表示由后端自动选择内置测速源", Default: autoSpeedURLValue},
 		{Name: "dns", Description: "自定义 DNS 服务器；默认系统 DNS 优先，失败回退内置 DNS；显式设置时强制使用指定 DNS。用于 IP 库、locations、ASN、GitHub、网络 URL 输入等需要 DNS 的外部请求", Default: defaultDNSServers},
@@ -828,9 +814,6 @@ func applyCLIFileConfig(cfg *cliConfig, fileCfg cliFileConfig, provided map[stri
 	}
 	if !provided["nocolor"] {
 		cfg.noColor = fileCfg.NoColor
-	}
-	if !provided["skipgeo"] {
-		skipGeoCheck = fileCfg.SkipGeo
 	}
 	if !provided["offurl"] && strings.TrimSpace(fileCfg.URL) != "" {
 		cfg.offURL = fileCfg.URL
