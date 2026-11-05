@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - fix/speed-timeouts-6s-from-41970526128
     paths:
       - "combined_refactor/**"
       - "app/**"
