@@ -3587,19 +3587,25 @@
             const stoppedMode = runningTaskMode || currentMode;
             clearStopWatchdog();
             isStoppingTask = false;
-            officialAutoSpeedPending = false;
-            officialAutoStage = '';
-            officialBatchSpeedRunning = false;
-            nsbBatchSpeedRunning = false;
-            nsbReallinkRunning = false;
-            officialTestCompletePending = false;
-            officialSpeedEndedByRateLimit = false;
-            currentTestingDC = '';
+            if (stoppedMode === 'nsb') {
+                nsbBatchSpeedRunning = false;
+                nsbReallinkRunning = false;
+            } else {
+                officialAutoSpeedPending = false;
+                officialAutoStage = '';
+                officialBatchSpeedRunning = false;
+                officialTestCompletePending = false;
+                officialSpeedEndedByRateLimit = false;
+                currentTestingDC = '';
+            }
             resetCurrentSpeedButton();
             finishRunningTask('✨ 开始扫描与测试');
-            updateBatchSpeedButton();
-            updateNSBSpeedButtons();
-            finishCompactIPv4();
+            if (stoppedMode === 'nsb') {
+                updateNSBSpeedButtons();
+            } else {
+                updateBatchSpeedButton();
+                finishCompactIPv4();
+            }
             const status = document.getElementById('currentTestDC');
             if (stoppedMode !== 'nsb') {
                 showDCSelection(dcList);
