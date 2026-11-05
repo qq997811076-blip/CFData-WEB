@@ -3899,18 +3899,15 @@
             if (preset) preset.value = 'default';
         }
 
-        function getNSBRelinkHost(followAutoSpeed = false) {
+        function getNSBRelinkHost() {
             const preset = document.getElementById('nsbRelinkPreset');
             const input = document.getElementById('nsbRelinkHost');
-            if (preset && preset.value === 'off') {
-                if (followAutoSpeed) return NSB_RELINK_DEFAULT_HOST;
-                return '';
+            if (!preset || preset.value === 'off') return '';
+            if (preset.value === 'custom') {
+                return (input && input.value ? input.value : '').trim();
             }
-            if (preset && preset.value === 'custom') {
-                const custom = (input && input.value ? input.value : '').trim();
-                return custom || NSB_RELINK_DEFAULT_HOST;
-            }
-            return NSB_RELINK_DEFAULT_HOST;
+            if (preset.value === 'default') return NSB_RELINK_DEFAULT_HOST;
+            return '';
         }
 
         function startNSBReallink() {
@@ -3927,7 +3924,11 @@
                 showNoticeCard('当前没有可复验的非标结果');
                 return;
             }
-            const probeHost = getNSBRelinkHost() || NSB_RELINK_DEFAULT_HOST;
+            const probeHost = getNSBRelinkHost();
+            if (!probeHost) {
+                showNoticeCard('链路复验已关闭，或手动输入探针地址为空。请选择公共探针或填写有效地址。');
+                return;
+            }
             showConfirmCard(`确认开始链路复验？将对 ${rows.length} 个候选进行真实链路验证（TCP+TLS+HTTP），不可用的候选将从结果中剔除。`, () => {
                 const speedCfg = syncNSBSpeedConfigState();
                 const outFile = document.getElementById('nsbOutFile')?.value.trim() || 'ip.csv';
@@ -4139,7 +4140,7 @@
         }
 
         const NSB_LIVE_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织', '访问协议', 'TLS版本', 'SNI', 'HTTP版本', 'WARP', 'Gateway', 'RBI', '密钥交换', '时间戳'];
-        const NSB_COMPACT_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织'];
+        const NSB_COMPACT_HEADERS = ['IP地址', '端口号', '扫描方式', 'IP类型', '数据中心', '源IP位置', '网络延迟', '下载速度'];
 
         function normalizeNSBHeader(header) {
             if (header === 'IP') return 'IP地址';
@@ -4970,6 +4971,12 @@
             const speedURL = resolveSpeedTestUrl('nsbSpeedUrl', 'nsbSpeedUrlPreset');
             const outFile = document.getElementById('nsbOutFile').value.trim() || 'ip.csv';
             const speedTest = speedEnabled ? speedTestInput : 0;
+            const relinkPreset = document.getElementById('nsbRelinkPreset')?.value || 'off';
+            const relinkHost = speedEnabled ? getNSBRelinkHost() : '';
+            if (speedEnabled && relinkPreset === 'custom' && !relinkHost) {
+                showNoticeCard('已选择手动输入链路复验，但探针地址为空，请填写地址或切换到公共探针/关闭。');
+                return;
+            }
             nsbSpeedEnabledForResults = speedTest > 0 && (parseInt(document.getElementById('nsbSpeedLimit').value) || 0) > 0;
             nsbContinueSpeedUnlocked = false;
             const tlsMode = String(document.getElementById('nsbTls').value || 'on').toLowerCase();
@@ -5047,7 +5054,7 @@
                     speedLimit,
                     compact,
                     scanMode: getScanMode(),
-                    relinkHost: getNSBRelinkHost(speedTest > 0),
+                    relinkHost,
                 }
             })) {
                 finishRunningTask('✨ 开始扫描与测试');
