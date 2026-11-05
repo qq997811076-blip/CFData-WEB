@@ -330,7 +330,7 @@ func scanNSBEntry(ctx context.Context, item string, fallbackPort int, enableTLS 
 	if err != nil {
 		return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "Trace请求失败", detail: err.Error()}
 	}
-	duration := time.Since(measuredStart)
+	duration := time.Since(start)
 	if duration > maxDuration {
 		resp.Body.Close()
 		return nil, &nsbFailureRecord{index: inputIndex, ipAddr: ipAddr, port: portStr, phase: "scan", reason: "Trace请求超时", detail: fmt.Sprintf("duration=%dms, max=%dms", duration.Milliseconds(), maxDuration.Milliseconds())}
