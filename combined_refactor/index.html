@@ -2056,13 +2056,7 @@
             </div>
             <div class="modal-body">
                 <div class="modal-grid">
-                    <div class="modal-field">
-                        <label>文件格式</label>
-                        <select id="resultFormat" onchange="handleResultFormatChange()">
-                            <option value="txt" selected>TXT</option>
-                            <option value="csv">CSV</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="resultFormat" value="txt">
                     <div class="modal-field" id="resultIPTypeFilterField">
                         <label>IP 类型筛选</label>
                         <select id="resultIPTypeFilter" onchange="updateResultPreview()">
@@ -2077,14 +2071,7 @@
                             <option value="qualified" selected>仅导出合格</option>
                         </select>
                     </div>
-                    <div class="modal-field">
-                        <label>延迟低于（毫秒，0=不限制）</label>
-                        <input id="resultLatencyFilter" type="number" min="0" step="1" value="0" oninput="updateResultPreview()">
-                    </div>
-                    <div class="modal-field">
-                        <label>丢包低于（%，100=不限制）</label>
-                        <input id="resultLossFilter" type="number" min="0" max="100" step="0.01" value="100" oninput="updateResultPreview()">
-                    </div>
+
                     <div class="modal-field full">
                         <label>输出示例</label>
                         <pre class="result-preview" id="resultPreview">暂无预览</pre>
@@ -2104,24 +2091,7 @@
                         <label>自定义字段</label>
                         <input id="resultCustomFields" type="text" placeholder="标题:内容，多项用逗号分隔，例如 备注:测试版,归属:cfdata" oninput="handleCustomResultFieldsChange()">
                     </div>
-                    <div class="modal-field full" id="resultTextSeparatorField">
-                        <label>TXT 字段分隔符</label>
-                        <div class="separator-row">
-                            <select id="resultTextSeparatorPreset" onchange="applyTextSeparatorPreset('result', this.value)">
-                                <option value="-" selected>-</option>
-                                <option value="|">|</option>
-                                <option value="space">空格</option>
-                                <option value="~">~</option>
-                                <option value="_">_</option>
-                                <option value="/">/</option>
-                                <option value="&#92;">&#92;</option>
-                                <option value=",">,</option>
-                                <option value=".">.</option>
-                                <option value="custom">自定义</option>
-                            </select>
-                            <input id="resultTextSeparatorCustom" type="text" value="-" placeholder="自定义分隔符" oninput="markTextSeparatorCustom('result')">
-                        </div>
-                    </div>
+
                     <div class="modal-field full" id="resultIPv6BracketsField">
                         <label class="inline-check"><input type="checkbox" id="resultIPv6Brackets" checked onchange="updateResultPreview()"> IPv6 地址添加方括号</label>
                     </div>
@@ -2163,10 +2133,7 @@
                     <div class="modal-field full github-field">
                         <label class="inline-check"><input id="githubSaveToken" type="checkbox"> 保存 token 到本机浏览器（使用 WebCrypto 加密存储）</label>
                     </div>
-                    <div class="modal-field full github-field">
-                        <label>快速上传指定文件（不使用上方结果内容）</label>
-                        <input id="githubQuickFile" type="file" accept=".txt,.csv,text/plain,text/csv">
-                    </div>
+
                     <div class="modal-field full github-field">
                         <label>上传状态</label>
                         <div class="upload-status" id="githubUploadStatus">等待上传</div>
@@ -5177,11 +5144,7 @@
         }
 
         function getDefaultResultFieldOrderFor(mode, format) {
-            if (format === 'txt') return mode === 'nsb' ? ['ipport', 'dc', 'loc'] : ['ipport', 'dc', 'dcCountry'];
-            if (format === 'csv') return getCompactResultFieldOrderFor(mode);
-            const rows = getCurrentResultRows(mode);
-            if (!rows.length) return ['ipport'];
-            return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
+            return ['ipport', 'dc', 'dcCountry', 'speed'];
         }
 
         function getAllResultFieldOrder() {
@@ -5212,8 +5175,6 @@
             const format = document.getElementById('resultFormat').value;
             if (!resultFieldOrder.length) resultFieldOrder = getDefaultResultFieldOrder(format);
             if (format === 'txt' && !resultFieldOrder.includes('ipport')) resultFieldOrder.unshift('ipport');
-            const separatorField = document.getElementById('resultTextSeparatorField');
-            if (separatorField) separatorField.style.display = format === 'txt' ? '' : 'none';
             const bracketsField = document.getElementById('resultIPv6BracketsField');
             if (bracketsField) bracketsField.style.display = format === 'txt' ? '' : 'none';
             const rows = getCurrentResultRows(resultModalMode);
@@ -5528,22 +5489,9 @@
             const filter = document.getElementById('resultIPTypeFilter')?.value || 'all';
             const qualified = 'qualified';
             if (currentMode === 'nsb') {
-                return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified) && exportLatencyLossMatch(row));
+                return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
             }
-            return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified) && exportLatencyLossMatch(row));
-        }
-
-        function exportLatencyLossMatch(row) {
-            let latencyFilter = parseFloat(document.getElementById('resultLatencyFilter')?.value);
-            if (!Number.isFinite(latencyFilter) || latencyFilter < 0) latencyFilter = 0;
-            let lossFilter = parseFloat(document.getElementById('resultLossFilter')?.value);
-            if (!Number.isFinite(lossFilter)) lossFilter = 100;
-            lossFilter = Math.min(100, Math.max(0, lossFilter));
-            const latencyMs = latencyMsForFilter(row.latency);
-            const lossPct = parseFilterNumber(row.lossRate);
-            if (latencyFilter > 0 && !(Number.isFinite(latencyMs) && latencyMs < latencyFilter)) return false;
-            if (lossFilter < 100 && !(Number.isFinite(lossPct) && lossPct < lossFilter)) return false;
-            return true;
+            return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
         }
 
         function getDisplayedResultRows(mode) {
@@ -5601,34 +5549,7 @@
             const rows = getSelectedResultRows();
             if (!rows.length) throw new Error('暂无可操作结果');
             const fields = resultFieldOrder.length ? resultFieldOrder : getDefaultResultFieldOrder(format);
-            return buildResultContent(format, rows, fields, getTextSeparator('result'), useIPv6BracketsFor('result'));
-        }
-
-        function applyTextSeparatorPreset(prefix, value) {
-            const input = document.getElementById(`${prefix}TextSeparatorCustom`);
-            if (input && value === 'custom') {
-                input.value = '';
-                input.focus();
-            } else if (input) {
-                input.value = value === 'space' ? '空格' : value;
-            }
-            updateTextSeparatorPreview(prefix);
-        }
-
-        function markTextSeparatorCustom(prefix) {
-            const preset = document.getElementById(`${prefix}TextSeparatorPreset`);
-            if (preset && preset.value !== 'custom') preset.value = 'custom';
-            updateTextSeparatorPreview(prefix);
-        }
-
-        function updateTextSeparatorPreview(prefix) {
-            updateResultPreview();
-        }
-
-        function getTextSeparator(prefix) {
-            const raw = document.getElementById(`${prefix}TextSeparatorCustom`)?.value ?? '-';
-            if (raw === '空格') return ' ';
-            return raw;
+            return buildResultContent(format, rows, fields, '-', useIPv6BracketsFor('result'));
         }
 
         function buildResultContent(format, rows, fields, textSeparator = '-', useBrackets = true) {
@@ -5723,20 +5644,8 @@
             el.innerHTML = `上传完成：<span class="copy-ip" onclick="copyToClipboard('${jsURL}', event)" title="点击复制 Raw 地址">${safeURL}</span>`;
         }
 
-        function readQuickUploadFile() {
-            const input = document.getElementById('githubQuickFile');
-            const file = input && input.files ? input.files[0] : null;
-            if (!file) return Promise.resolve(null);
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve({ name: file.name, content: String(reader.result || '') });
-                reader.onerror = () => reject(new Error('读取快速上传文件失败'));
-                reader.readAsText(file);
-            });
-        }
-
         function downloadSelectedResults() {
-            const format = document.getElementById('resultFormat').value;
+            const format = 'txt';
             let content;
             try {
                 content = buildSelectedResultContent(format);
@@ -5749,11 +5658,10 @@
         }
 
         async function uploadSelectedResultsToGitHub() {
-            const format = document.getElementById('resultFormat').value;
-            const quickFile = await readQuickUploadFile();
+            const format = 'txt';
             let content;
             try {
-                content = quickFile ? quickFile.content : buildSelectedResultContent(format);
+                content = buildSelectedResultContent(format);
             } catch (err) {
                 showNoticeCard(err.message || '暂无可操作结果');
                 return;
@@ -5764,7 +5672,7 @@
                 token: document.getElementById('githubToken').value.trim(),
                 owner: repoParts[0], repo: repoParts[1],
                 branch: document.getElementById('githubBranch').value.trim() || 'main',
-                path: document.getElementById('githubPath').value.trim() || (quickFile ? `results/${quickFile.name}` : `results/ip.${format}`),
+                path: document.getElementById('githubPath').value.trim() || 'results/ip.txt',
                 message: document.getElementById('githubMessage').value.trim() || 'update cfdata results',
                 content,
             };
