@@ -1058,10 +1058,7 @@ func runNSBReallinkTask(ctx context.Context, session *appSession, rows []nsbScan
 	completionStatus := "complete"
 	completionMessage := "测试完成"
 	qualifiedCount := 0
-	if wasCanceled {
-		completionStatus = "partial"
-		completionMessage = "任务已手动终止，已整理当前可用结果"
-	} else if speedTest > 0 && speedLimit > 0 {
+	if speedTest > 0 && speedLimit > 0 {
 		session.sendWSMessage("log", fmt.Sprintf("开始测速：%d 条记录，线程数=%d，目标上限=%d，测速阈值=%.2fMB/s", len(results), speedTest, speedLimit, speedMin))
 		reportNSBProgress(session, "speed", 0, speedLimit, "测速中")
 		speedCanceled := runNSBSpeedWorkers(ctx, results, speedTest, speedLimit, speedMin, func(tested, qualified int) {
@@ -1086,10 +1083,7 @@ func runNSBReallinkTask(ctx context.Context, session *appSession, rows []nsbScan
 			}
 		}
 		sortNSBResults(results, speedTest)
-		if wasCanceled {
-			completionStatus = "partial"
-			completionMessage = "任务已手动终止，已整理当前可用结果"
-		} else if qualifiedCount == 0 {
+		if qualifiedCount == 0 {
 			completionStatus = "failed"
 			completionMessage = "未找到符合要求的结果"
 		} else if speedLimit > 0 && qualifiedCount < speedLimit {
