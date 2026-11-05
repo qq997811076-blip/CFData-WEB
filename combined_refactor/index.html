@@ -5205,15 +5205,24 @@
             localStorage.setItem(githubAccountStorageKey, JSON.stringify(accounts));
         }
 
+        function getGitHubAccountOwner(account) {
+            const parts = String(account?.repo || '').split('/');
+            return parts.length === 2 && parts[0] ? parts[0] : (account?.name || '');
+        }
+
+        function getGitHubAccountRepo(account) {
+            return String(account?.repo || '').split('/').pop();
+        }
+
         function renderGitHubAccounts() {
             const select = document.getElementById('githubAccountSelect');
             const accounts = getGitHubAccounts();
-            const accountOptions = '<option value="">新账户/不使用保存配置</option>' + accounts.map((a, i) => `<option value="${i}">${escapeHTML(a.name || a.repo || 'GitHub账户')} ${a.tokenHash ? '(' + escapeHTML(a.tokenHash.slice(0, 10)) + ')' : ''}</option>`).join('');
+            const accountOptions = '<option value="">新账户/不使用保存配置</option>' + accounts.map((a, i) => `<option value="${i}">${escapeHTML(getGitHubAccountOwner(a) || a.repo || 'GitHub账户')} ${a.tokenHash ? '(' + escapeHTML(a.tokenHash.slice(0, 10)) + ')' : ''}</option>`).join('');
             if (select) select.innerHTML = accountOptions;
             const autoSelect = document.getElementById('nsbAutoUploadAccount');
-            if (autoSelect) autoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option>`).join('');
+            if (autoSelect) autoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(getGitHubAccountOwner(a) || a.repo || 'GitHub账户')} - TXT</option>`).join('');
             const officialAutoSelect = document.getElementById('officialAutoUploadAccount');
-            if (officialAutoSelect) officialAutoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(a.name || a.repo || 'GitHub账户')} - TXT</option>`).join('');
+            if (officialAutoSelect) officialAutoSelect.innerHTML = '<option value="">关闭自动上传</option>' + accounts.map((a, i) => `<option value="${i}:txt">${escapeHTML(getGitHubAccountOwner(a) || a.repo || 'GitHub账户')} - TXT</option>`).join('');
         }
 
         function normalizeGitHubAccountKey(account) {
@@ -5244,8 +5253,8 @@
             }
             const account = getGitHubAccounts()[idx];
             if (!account) return;
-            document.getElementById('githubAccountName').value = account.name || '';
-            document.getElementById('githubRepo').value = String(account.repo || '').split('/').pop();
+            document.getElementById('githubAccountName').value = getGitHubAccountOwner(account);
+            document.getElementById('githubRepo').value = getGitHubAccountRepo(account);
             document.getElementById('githubBranch').value = account.branch || 'main';
             document.getElementById('githubPath').value = account.path || '';
             document.getElementById('githubMessage').value = account.message || 'update cfdata results';
@@ -5691,7 +5700,7 @@
                 return;
             }
             const content = buildResultContent('txt', rows, fields);
-            const repo = String(account.repo || '').split('/').pop();
+            const repo = getGitHubAccountRepo(account);
             const path = (account.path || 'results/ip.txt').replace(/\.(csv|txt)$/i, '.txt');
             const uploadKey = `${mode}:${idx}:${format || 'txt'}:${path}`;
             if (autoUploadKeys.has(uploadKey)) {
@@ -5701,7 +5710,7 @@
             autoUploadKeys.add(uploadKey);
             const payload = {
                 token,
-                owner: account.name, repo,
+                owner: getGitHubAccountOwner(account), repo,
                 branch: account.branch || 'main',
                 path,
                 message: account.message || 'update cfdata results',
