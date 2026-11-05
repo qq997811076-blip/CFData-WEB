@@ -6,12 +6,7 @@ on:
       - main
       - fix/nsb-speed-timeout-align-from-41970526128
     paths:
-      - "combined_refactor/**"
-      - "app/**"
-      - ".github/workflows/build.yml"
-      - "build.gradle"
-      - "settings.gradle"
-      - "gradle/**"
+      - ".github/apk-build-trigger"
   workflow_dispatch:
     inputs:
       version:
