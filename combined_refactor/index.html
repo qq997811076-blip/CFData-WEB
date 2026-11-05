@@ -3899,16 +3899,12 @@
             if (preset) preset.value = 'default';
         }
 
-        function getNSBRelinkHost(followAutoSpeed = false) {
+        function getNSBRelinkHost() {
             const preset = document.getElementById('nsbRelinkPreset');
             const input = document.getElementById('nsbRelinkHost');
-            if (preset && preset.value === 'off') {
-                if (followAutoSpeed) return NSB_RELINK_DEFAULT_HOST;
-                return '';
-            }
-            if (preset && preset.value === 'custom') {
-                const custom = (input && input.value ? input.value : '').trim();
-                return custom || NSB_RELINK_DEFAULT_HOST;
+            if (!preset || preset.value === 'off') return '';
+            if (preset.value === 'custom') {
+                return (input && input.value ? input.value : '').trim();
             }
             return NSB_RELINK_DEFAULT_HOST;
         }
@@ -4139,7 +4135,7 @@
         }
 
         const NSB_LIVE_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织', '访问协议', 'TLS版本', 'SNI', 'HTTP版本', 'WARP', 'Gateway', 'RBI', '密钥交换', '时间戳'];
-        const NSB_COMPACT_HEADERS = ['IP地址', '端口号', 'TLS', '丢包率', '扫描方式', '网络延迟', '下载速度', '出站IP', 'IP类型', 'OriginalInput', '数据中心', '源IP位置', '地区', '城市', 'ASN号码', 'ASN组织'];
+        const NSB_COMPACT_HEADERS = ['IP地址', '端口号', '扫描方式', 'IP类型', '数据中心', '源IP位置', '网络延迟', '下载速度'];
 
         function normalizeNSBHeader(header) {
             if (header === 'IP') return 'IP地址';
@@ -5047,7 +5043,7 @@
                     speedLimit,
                     compact,
                     scanMode: getScanMode(),
-                    relinkHost: getNSBRelinkHost(speedTest > 0),
+                    relinkHost: speedTest > 0 ? getNSBRelinkHost() : '',
                 }
             })) {
                 finishRunningTask('✨ 开始扫描与测试');
