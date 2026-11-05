@@ -94,8 +94,7 @@ func scanOfficialIP(ctx context.Context, ip string, port int, delay int) (*ScanR
 }
 
 func scanOfficialHTTP(ctx context.Context, ip string, port int, delay int) (*ScanResult, string, string) {
-	mul := latencyMultiplier(scanModeHTTPing, isTLSPort(port))
-	effectiveDelay := int(float64(delay) * mul)
+	effectiveDelay := delay
 
 	dialer := &net.Dialer{Timeout: timeout}
 	start := time.Now()
@@ -106,7 +105,7 @@ func scanOfficialHTTP(ctx context.Context, ip string, port int, delay int) (*Sca
 	if delay > 0 {
 		if time.Since(start).Milliseconds() > int64(effectiveDelay) {
 			conn.Close()
-			return nil, "delay_exceeded", fmt.Sprintf("connect=%dms, effective_delay=%dms", time.Since(start).Milliseconds(), effectiveDelay)
+			return nil, "delay_exceeded", fmt.Sprintf("connect=%dms, delay_limit=%dms", time.Since(start).Milliseconds(), effectiveDelay)
 		}
 	}
 
@@ -190,11 +189,7 @@ func testIPLatency(ctx context.Context, ip string, port int, delay int, scanMode
 	if isHTTPing {
 		attempts = 3
 	}
-	mul := 1.0
-	if isHTTPing {
-		mul = latencyMultiplier(scanModeHTTPing, isTLSPort(port))
-	}
-	effectiveDelay := int(float64(delay) * mul)
+	effectiveDelay := delay
 	dialerTimeout := time.Duration(delay) * time.Millisecond
 	if delay <= 0 {
 		dialerTimeout = 3 * time.Second
@@ -305,7 +300,7 @@ func measureHTTPTTFB(ctx context.Context, ip string, port int, effectiveDelay in
 	io.Copy(io.Discard, resp.Body)
 	ttfb := time.Since(reqStart)
 	if effectiveDelay > 0 && ttfb.Milliseconds() > int64(effectiveDelay) {
-		return -1, fmt.Sprintf("ttfb %s exceeds effective delay %dms", ttfb, effectiveDelay)
+		return -1, fmt.Sprintf("ttfb %s exceeds delay limit %dms", ttfb, effectiveDelay)
 	}
 	return ttfb, ""
 }
