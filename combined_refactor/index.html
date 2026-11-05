@@ -5402,14 +5402,15 @@
             }
 
             const fieldDefinitions = [
-                { key: 'token', label: 'GitHub token', pattern: /^\\s*github\\s*token\\s*[:：]\\s*(.*?)\\s*$/i },
-                { key: 'owner', label: 'GitHub 用户名', pattern: /^\\s*github\\s*用户名\\s*[:：]\\s*(.*?)\\s*$/i },
-                { key: 'branch', label: '分支', pattern: /^\\s*分支\\s*[:：]\\s*(.*?)\\s*$/i },
-                { key: 'path', label: '目标路径', pattern: /^\\s*目标路径\\s*[:：]\\s*(.*?)\\s*$/i },
-                { key: 'repo', label: '仓库名称', pattern: /^\\s*仓库名称\\s*[:：]\\s*(.*?)\\s*$/i },
+                { key: 'token', label: 'GitHub token', pattern: /^\s*github\s*token\s*[:：]\s*(.*?)\s*$/i },
+                { key: 'owner', label: 'GitHub 用户名', pattern: /^\s*github\s*用户名\s*[:：]\s*(.*?)\s*$/i },
+                { key: 'branch', label: '分支', pattern: /^\s*分支\s*[:：]\s*(.*?)\s*$/i },
+                { key: 'path', label: '目标路径', pattern: /^\s*目标路径\s*[:：]\s*(.*?)\s*$/i },
+                { key: 'repo', label: '仓库名称', pattern: /^\s*仓库名称\s*[:：]\s*(.*?)\s*$/i },
             ];
             const values = {};
-            clipboardText.replace(/^\\uFEFF/, '').split(/\\r?\\n/).forEach((line) => {
+            const normalizedClipboardText = clipboardText.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+            normalizedClipboardText.split('\n').forEach((line) => {
                 for (const field of fieldDefinitions) {
                     const match = line.match(field.pattern);
                     if (match) {
@@ -5421,7 +5422,7 @@
 
             const missing = fieldDefinitions.filter((field) => !values[field.key]).map((field) => field.label);
             if (missing.length) {
-                showNoticeCard('剪贴板配置不完整，缺少或为空的字段：\\n' + missing.join('、'));
+                showNoticeCard('剪贴板配置不完整，缺少或为空的字段：\n' + missing.join('、'));
                 return;
             }
 
