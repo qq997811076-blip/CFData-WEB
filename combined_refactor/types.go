@@ -68,6 +68,7 @@ type DataCenterInfo struct {
 type ScanResult struct {
 	IP          string
 	Port        int
+	TraceIP     string
 	DataCenter  string
 	DCCountry   string
 	Region      string
