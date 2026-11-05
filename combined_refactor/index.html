@@ -4019,7 +4019,7 @@
 
         function getOfficialIPType(row) {
             const ip = String(row?.IP || row?.ip || '').trim();
-            return ip.includes(':') ? 'ipv6' : 'ipv4';
+            return ip.includes(':') ? 'IPv6' : 'IPv4';
         }
 
         function isOfficialSpeedQualified(value) {
@@ -5966,7 +5966,7 @@
         }
 
         function scanResultToObject(r) {
-            return { ip: r.IP || '', port: String(r.Port ?? ''), ipport: `${r.IP || ''}:${r.Port ?? ''}`, dc: r.DataCenter || '', dcCountry: r.DCCountry || '', region: r.Region || '', city: r.City || '', latency: r.LatencyStr || '', lossRate: r.LossRate != null ? `${(r.LossRate * 100).toFixed(0)}%` : '' };
+            return { ip: r.IP || '', port: String(r.Port ?? ''), ipport: `${r.IP || ''}:${r.Port ?? ''}`, ipType: getOfficialIPType(r), dc: r.DataCenter || '', dcCountry: r.DCCountry || '', region: r.Region || '', city: r.City || '', latency: r.LatencyStr || '', lossRate: r.LossRate != null ? `${(r.LossRate * 100).toFixed(0)}%` : '' };
         }
 
         function testResultToObject(r) {
@@ -5974,6 +5974,7 @@
             const scan = scanData.find((item) => item.IP === r.IP) || {};
             return {
                 ip: r.IP || '',
+                ipType: getOfficialIPType(r),
                 port: String(port),
                 ipport: `${r.IP || ''}:${port}`,
                 dc: scan.DataCenter || r.DataCenter || '',
