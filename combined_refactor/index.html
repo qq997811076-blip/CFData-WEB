@@ -2127,10 +2127,6 @@
                         <input id="githubMessage" type="text" value="update cfdata results">
                     </div>
                     <div class="modal-field full github-field">
-                        <label class="inline-check"><input id="githubSaveToken" type="checkbox"> 保存 token 到本机浏览器（使用 WebCrypto 加密存储）</label>
-                    </div>
-
-                    <div class="modal-field full github-field">
                         <label>上传状态</label>
                         <div class="upload-status" id="githubUploadStatus">等待上传</div>
                     </div>
@@ -2318,6 +2314,7 @@
         const githubAccountStorageKey = 'cfdata-github-accounts';
         const githubSessionTokens = new Map();
         const githubTokenCryptoSalt = 'cfdata-github-token-v1';
+        let githubTokenAutoSaveTimer = null;
 
         const LATENCY_COLORS = [
             { end: 50, color: '#1f8a3b' },
@@ -5262,7 +5259,6 @@
             const accountKey = normalizeGitHubAccountKey(account);
             const sessionToken = githubSessionTokens.get(accountKey) || '';
             document.getElementById('githubToken').value = sessionToken;
-            document.getElementById('githubSaveToken').checked = !!account.tokenCipher || !!account.token || githubSessionTokens.has(accountKey);
             if (!sessionToken && account.token) {
                 migrateLegacyGitHubToken(account, idx).then((token) => {
                     if (token && document.getElementById('githubAccountSelect').value === String(idx)) {
@@ -5285,7 +5281,6 @@
             ['githubAccountName', 'githubRepo', 'githubPath', 'githubToken'].forEach((id) => document.getElementById(id).value = '');
             document.getElementById('githubBranch').value = 'main';
             document.getElementById('githubMessage').value = 'update cfdata results';
-            document.getElementById('githubSaveToken').checked = false;
         }
 
         function deleteSelectedGitHubAccount() {
@@ -5342,31 +5337,51 @@
             }
         }
 
+        async function persistGitHubTokenForCurrentAccount() {
+            const name = document.getElementById('githubAccountName').value.trim();
+            const token = document.getElementById('githubToken').value.trim();
+            if (!name || !token) return;
+            const accounts = getGitHubAccounts();
+            let account = accounts.find((item) => item.name === name);
+            if (!account) {
+                account = { name, repo: document.getElementById('githubRepo').value.trim(), branch: document.getElementById('githubBranch').value.trim() || 'main', path: document.getElementById('githubPath').value.trim(), message: document.getElementById('githubMessage').value.trim() || 'update cfdata results' };
+                accounts.push(account);
+            }
+            account.tokenHash = await sha256Hex(token);
+            account.tokenCipher = await encryptGitHubToken(name, token);
+            githubSessionTokens.set(name, token);
+            if (!account.tokenCipher) {
+                showNoticeCard('当前浏览器不支持 WebCrypto，无法安全持久保存 token');
+                return;
+            }
+            saveGitHubAccounts(accounts);
+            renderGitHubAccounts();
+        }
+
+        function scheduleGitHubTokenAutoSave(immediate = false) {
+            if (githubTokenAutoSaveTimer) clearTimeout(githubTokenAutoSaveTimer);
+            const save = () => persistGitHubTokenForCurrentAccount().catch((err) => showNoticeCard('Token 保存失败: ' + (err.message || '未知错误')));
+            if (immediate) save();
+            else githubTokenAutoSaveTimer = setTimeout(save, 500);
+        }
+
         async function saveCurrentGitHubAccount(payload) {
             const name = document.getElementById('githubAccountName').value.trim();
             if (!name) return;
-            const rememberToken = document.getElementById('githubSaveToken').checked;
             const accounts = getGitHubAccounts();
-            const tokenHash = await sha256Hex(payload.token);
             const next = {
                 name,
                 repo: payload.repo,
                 branch: payload.branch,
                 path: payload.path,
                 message: payload.message,
-                tokenHash,
+                tokenHash: await sha256Hex(payload.token),
+                tokenCipher: await encryptGitHubToken(name, payload.token),
             };
-            if (rememberToken) {
-                githubSessionTokens.set(name, payload.token);
-                next.tokenCipher = await encryptGitHubToken(name, payload.token);
-                if (!next.tokenCipher) {
-                    showNoticeCard('当前浏览器不支持 WebCrypto，无法安全保存 token；本次仍会上传，但不会持久保存 token');
-                }
-            } else {
-                githubSessionTokens.delete(name);
-            }
+            githubSessionTokens.set(name, payload.token);
+            if (!next.tokenCipher) showNoticeCard('当前浏览器不支持 WebCrypto，无法安全保存 token；本次仍会上传，但不会持久保存 token');
             const existing = accounts.findIndex((a) => a.name === name);
-            if (existing >= 0) accounts[existing] = next;
+            if (existing >= 0) accounts[existing] = { ...accounts[existing], ...next };
             else accounts.push(next);
             saveGitHubAccounts(accounts);
             renderGitHubAccounts();
@@ -6170,6 +6185,10 @@
             connect();
             localStorage.removeItem('cfdata-edgetunnel-accounts');
             initializeUI();
+            document.getElementById('githubToken').addEventListener('input', () => scheduleGitHubTokenAutoSave(false));
+            document.getElementById('githubToken').addEventListener('change', () => scheduleGitHubTokenAutoSave(true));
+            document.getElementById('githubToken').addEventListener('blur', () => scheduleGitHubTokenAutoSave(true));
+            document.getElementById('githubAccountName').addEventListener('blur', () => scheduleGitHubTokenAutoSave(true));
             renderGitHubAccounts();
             switchMode('official');
             initThemeFromStorage();
