@@ -5224,14 +5224,20 @@
         function getCurrentGitHubAccountIndex(accounts) {
             const selectValue = document.getElementById('githubAccountSelect')?.value || '';
             const selectedIndex = parseInt(selectValue, 10);
-            if (Number.isInteger(selectedIndex) && accounts[selectedIndex]) return selectedIndex;
+            if (Number.isInteger(selectedIndex) && accounts[selectedIndex] && getGitHubAccountRepo(accounts[selectedIndex])) return selectedIndex;
             const owner = document.getElementById('githubAccountName')?.value?.trim() || '';
             const repo = document.getElementById('githubRepo')?.value?.trim() || '';
             const matchedIndex = accounts.findIndex((account) =>
                 getGitHubAccountOwner(account) === owner &&
                 getGitHubAccountRepo(account) === repo
             );
-            return matchedIndex >= 0 ? matchedIndex : (accounts.length ? 0 : -1);
+            if (matchedIndex >= 0 && getGitHubAccountRepo(accounts[matchedIndex])) return matchedIndex;
+            return accounts.findIndex((account) => !!getGitHubAccountRepo(account));
+        }
+
+        function getGitHubAccountStableId(account) {
+            return [normalizeGitHubAccountKey(account), String(account?.repo || ''), String(account?.tokenHash || '')]
+                .map((part) => encodeURIComponent(part)).join('~');
         }
 
         function saveAutoUploadSelection(page, value) {
@@ -5249,28 +5255,36 @@
                 select.innerHTML = accountOptions;
                 if (previousAccountIndex !== '' && accounts[Number(previousAccountIndex)]) select.value = previousAccountIndex;
             }
-
             const defaultIndex = getCurrentGitHubAccountIndex(accounts);
             const renderAutoSelect = (elementId, page) => {
                 const autoSelect = document.getElementById(elementId);
                 if (!autoSelect) return;
                 const options = ['<option value="">关闭自动上传</option>'];
-                accounts.forEach((account, index) => {
+                accounts.forEach((account) => {
+                    if (!getGitHubAccountRepo(account)) return;
                     const owner = escapeHTML(getGitHubAccountOwner(account) || account.name || 'GitHub账户');
-                    options.push(`<option value="${index}:overwrite">${owner} - 覆盖</option>`);
-                    options.push(`<option value="${index}:append">${owner} - 追加</option>`);
+                    const id = getGitHubAccountStableId(account);
+                    options.push(`<option value="${id}:overwrite">${owner} - 覆盖</option>`);
+                    options.push(`<option value="${id}:append">${owner} - 追加</option>`);
                 });
                 autoSelect.innerHTML = options.join('');
                 let savedValue = '';
-                try {
-                    savedValue = localStorage.getItem(`cfdata-auto-upload-${page}`) || '';
-                } catch (_) {}
-                const validSaved = /^\d+:(overwrite|append)$/.test(savedValue) &&
-                    !!accounts[parseInt(savedValue.split(':')[0], 10)];
-                autoSelect.value = validSaved
-                    ? savedValue
-                    : (defaultIndex >= 0 ? `${defaultIndex}:overwrite` : '');
-                if (!validSaved) saveAutoUploadSelection(page, autoSelect.value);
+                try { savedValue = localStorage.getItem(`cfdata-auto-upload-${page}`) || ''; } catch (_) {}
+                let selectedValue = '';
+                const legacy = savedValue.match(/^(\\d+):(overwrite|append)$/);
+                if (legacy) {
+                    const oldAccount = accounts[parseInt(legacy[1], 10)];
+                    if (oldAccount && getGitHubAccountRepo(oldAccount)) selectedValue = `${getGitHubAccountStableId(oldAccount)}:${legacy[2]}`;
+                } else {
+                    const split = savedValue.lastIndexOf(':');
+                    if (split > 0) {
+                        const id = savedValue.slice(0, split), action = savedValue.slice(split + 1);
+                        if (['overwrite', 'append'].includes(action) && accounts.some((a) => getGitHubAccountRepo(a) && getGitHubAccountStableId(a) === id)) selectedValue = savedValue;
+                    }
+                }
+                if (!selectedValue && defaultIndex >= 0) selectedValue = `${getGitHubAccountStableId(accounts[defaultIndex])}:overwrite`;
+                autoSelect.value = selectedValue;
+                if (selectedValue !== savedValue) saveAutoUploadSelection(page, selectedValue);
             };
             renderAutoSelect('nsbAutoUploadAccount', 'nsb');
             renderAutoSelect('officialAutoUploadAccount', 'official');
@@ -5300,6 +5314,7 @@
             const idx = parseInt(select.value, 10);
             if (Number.isNaN(idx)) {
                 clearGitHubAccountInputs();
+                scheduleGitHubConfigDraftSave();
                 return;
             }
             const account = getGitHubAccounts()[idx];
@@ -5312,10 +5327,12 @@
             const accountKey = normalizeGitHubAccountKey(account);
             const sessionToken = githubSessionTokens.get(accountKey) || '';
             document.getElementById('githubToken').value = sessionToken;
+            scheduleGitHubConfigDraftSave();
             if (!sessionToken && account.token) {
                 migrateLegacyGitHubToken(account, idx).then((token) => {
                     if (token && document.getElementById('githubAccountSelect').value === String(idx)) {
                         document.getElementById('githubToken').value = token;
+                        scheduleGitHubConfigDraftSave();
                     }
                 });
             } else if (!sessionToken && account.tokenCipher) {
@@ -5324,6 +5341,7 @@
                         githubSessionTokens.set(accountKey, token);
                         if (document.getElementById('githubAccountSelect').value === String(idx)) {
                             document.getElementById('githubToken').value = token;
+                        scheduleGitHubConfigDraftSave();
                         }
                     }
                 });
@@ -5395,10 +5413,10 @@
             const token = document.getElementById('githubToken').value.trim();
             if (!name || !token) return;
             const accounts = getGitHubAccounts();
-            let account = accounts.find((item) => item.name === name);
+            const account = accounts.find((item) => item.name === name);
             if (!account) {
-                account = { name, repo: document.getElementById('githubRepo').value.trim(), branch: document.getElementById('githubBranch').value.trim() || 'main', path: document.getElementById('githubPath').value.trim(), message: document.getElementById('githubMessage').value.trim() || 'update cfdata results' };
-                accounts.push(account);
+                githubSessionTokens.set(name, token);
+                return;
             }
             account.tokenHash = await sha256Hex(token);
             account.tokenCipher = await encryptGitHubToken(name, token);
@@ -5416,6 +5434,50 @@
             const save = () => persistGitHubTokenForCurrentAccount().catch((err) => showNoticeCard('Token 保存失败: ' + (err.message || '未知错误')));
             if (immediate) save();
             else githubTokenAutoSaveTimer = setTimeout(save, 500);
+        }
+
+        const githubConfigDraftStorageKey = 'cfdata-github-config-draft-v1';
+        const githubConfigDraftCryptoName = '__cfdata-github-config-draft__';
+        let githubConfigDraftSaveTimer = null;
+        let githubConfigDraftSaveRevision = 0;
+
+        async function saveGitHubConfigDraft() {
+            const revision = ++githubConfigDraftSaveRevision;
+            const token = document.getElementById('githubToken').value;
+            const snapshot = {
+                version: 1,
+                username: document.getElementById('githubAccountName').value,
+                repo: document.getElementById('githubRepo').value,
+                branch: document.getElementById('githubBranch').value,
+                path: document.getElementById('githubPath').value,
+                tokenCipher: '',
+            };
+            if (token) {
+                snapshot.tokenCipher = await encryptGitHubToken(githubConfigDraftCryptoName, token);
+                if (!snapshot.tokenCipher) throw new Error('当前环境无法加密保存 Token');
+            }
+            if (revision !== githubConfigDraftSaveRevision) return;
+            localStorage.setItem(githubConfigDraftStorageKey, JSON.stringify(snapshot));
+        }
+
+        function scheduleGitHubConfigDraftSave(immediate = false) {
+            if (githubConfigDraftSaveTimer) clearTimeout(githubConfigDraftSaveTimer);
+            const save = () => saveGitHubConfigDraft().catch((err) => showNoticeCard('GitHub 配置保存失败: ' + (err.message || '未知错误')));
+            if (immediate) save();
+            else githubConfigDraftSaveTimer = setTimeout(save, 180);
+        }
+
+        async function restoreGitHubConfigDraft() {
+            let snapshot;
+            try { snapshot = JSON.parse(localStorage.getItem(githubConfigDraftStorageKey) || 'null'); } catch (_) { return; }
+            if (!snapshot || snapshot.version !== 1) return;
+            document.getElementById('githubAccountName').value = typeof snapshot.username === 'string' ? snapshot.username : '';
+            document.getElementById('githubRepo').value = typeof snapshot.repo === 'string' ? snapshot.repo : '';
+            document.getElementById('githubBranch').value = typeof snapshot.branch === 'string' ? snapshot.branch : '';
+            document.getElementById('githubPath').value = typeof snapshot.path === 'string' ? snapshot.path : '';
+            let token = '';
+            if (snapshot.tokenCipher) token = await decryptStoredGitHubToken({name: githubConfigDraftCryptoName, tokenCipher: snapshot.tokenCipher});
+            document.getElementById('githubToken').value = token;
         }
 
         async function saveCurrentGitHubAccount(payload) {
@@ -5747,14 +5809,18 @@
 
         async function autoUploadResults(value, mode, logPrefix) {
             if (!value) return;
-            const [indexText, action] = value.split(':');
-            const idx = parseInt(indexText, 10);
+            const separator = value.lastIndexOf(':');
+            if (separator <= 0) return;
+            const accountReference = value.slice(0, separator);
+            const action = value.slice(separator + 1);
             const appendMode = action === 'append';
-            if (!Number.isInteger(idx) || !['overwrite', 'append'].includes(action)) return;
+            if (!['overwrite', 'append'].includes(action)) return;
             const accounts = getGitHubAccounts();
+            let idx = /^\\d+$/.test(accountReference) ? parseInt(accountReference, 10) :
+                accounts.findIndex((item) => getGitHubAccountStableId(item) === accountReference);
             const account = accounts[idx];
-            if (!account || !account.repo) {
-                log('自动上传失败: 已保存账户缺少仓库配置');
+            if (!account || !getGitHubAccountRepo(account)) {
+                log('自动上传失败: 自动上传选中的账户不存在或仓库配置为空，请重新选择已保存账户');
                 return;
             }
             const accountKey = normalizeGitHubAccountKey(account);
@@ -6268,10 +6334,17 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             connect();
             localStorage.removeItem('cfdata-edgetunnel-accounts');
             initializeUI();
+            await restoreGitHubConfigDraft();
+            ['githubAccountName', 'githubToken', 'githubRepo', 'githubBranch', 'githubPath'].forEach((id) => {
+                const input = document.getElementById(id);
+                input.addEventListener('input', () => scheduleGitHubConfigDraftSave(false));
+                input.addEventListener('change', () => scheduleGitHubConfigDraftSave(true));
+                input.addEventListener('blur', () => scheduleGitHubConfigDraftSave(true));
+            });
             document.getElementById('githubToken').addEventListener('input', () => scheduleGitHubTokenAutoSave(false));
             document.getElementById('githubToken').addEventListener('change', () => scheduleGitHubTokenAutoSave(true));
             document.getElementById('githubToken').addEventListener('blur', () => scheduleGitHubTokenAutoSave(true));
