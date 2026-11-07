@@ -1813,13 +1813,12 @@
             <div id="nsbControls" class="hidden">
                 <div class="control-title">
                     <span>非标参数</span>
-                    <span style="font-size:12px;color:var(--text-secondary);">支持上传 txt/csv 文件或填写网络
-                        URL（二选一）；若识别失败，请整理为每行一个目标，格式：IP 空格 端口，例如 1.2.3.4 443</span>
+                    <span style="font-size:12px;color:var(--text-secondary);">IP 文件、网络 URL、剪切板三种来源自动互斥选择；若识别失败，请整理为每行一个目标，格式：IP 空格 端口，例如 1.2.3.4 443</span>
                 </div>
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="支持 txt/csv 格式">
                         <span>📄 IP 文件</span>
-                        <label style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><input id="nsbUseFileSource" type="checkbox" style="width:auto;margin:0;"> 启用</label>
+                        <input id="nsbUseFileSource" type="checkbox" style="display:none;">
                     </div>
                     <input id="nsbFileInput" type="file" accept=".txt,.csv,text/plain,text/csv"
                         onchange="syncNSBInputMode('file')">
@@ -1827,7 +1826,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="从网络地址获取 IP 列表">
                         <span>🌐 网络 URL</span>
-                        <label style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><input id="nsbUseUrlSource" type="checkbox" style="width:auto;margin:0;"> 启用</label>
+                        <input id="nsbUseUrlSource" type="checkbox" style="display:none;">
                     </div>
                     <input id="nsbSourceUrl" type="url" placeholder="https://example.com/ip-list.txt"
                         oninput="syncNSBInputMode('url')">
@@ -1835,7 +1834,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="从 Android 剪切板导入 IPv4 与 CIDR">
                         <span>📋 剪切板导入IP</span>
-                        <label style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><input id="nsbUseClipboardSource" type="checkbox" style="width:auto;margin:0;"> 启用</label>
+                        <input id="nsbUseClipboardSource" type="checkbox" style="display:none;">
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <button type="button" class="action-btn" onclick="importNSBIPsFromClipboard()">从剪切板导入IP</button>
@@ -2390,8 +2389,18 @@
             reader.readAsText(file);
         });
 
-        function syncNSBInputMode() {
-            // 三种来源分别保留内容；来源选择由各自的勾选控件独立管理。
+        function syncNSBInputMode(source) {
+            if (!source) return;
+            const sourceIds = {
+                file: 'nsbUseFileSource',
+                url: 'nsbUseUrlSource',
+                clipboard: 'nsbUseClipboardSource'
+            };
+            if (!sourceIds[source]) return;
+            Object.entries(sourceIds).forEach(([type, id]) => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) checkbox.checked = type === source;
+            });
         }
 
         const NSB_CLIPBOARD_STORAGE_KEY = 'cfdata-nsb-clipboard-imported-ips';
@@ -2577,6 +2586,7 @@
         }
 
         async function importNSBIPsFromClipboard() {
+            syncNSBInputMode('clipboard');
             let clipboardText = '';
             try {
                 if (window.CFDataAndroid && typeof window.CFDataAndroid.readClipboardText === 'function') {
@@ -2987,9 +2997,12 @@
             if (n.compactView) setValue('nsbCompactView', n.compactView);
             setValue('nsbOutFile', n.outFile);
             setValue('nsbSourceUrl', n.sourceUrl);
-            if (n.useFileSource !== undefined) document.getElementById('nsbUseFileSource').checked = !!n.useFileSource;
-            if (n.useUrlSource !== undefined) document.getElementById('nsbUseUrlSource').checked = !!n.useUrlSource;
-            if (n.useClipboardSource !== undefined) document.getElementById('nsbUseClipboardSource').checked = !!n.useClipboardSource;
+            const savedNSBSources = [
+                ['file', !!n.useFileSource],
+                ['url', !!n.useUrlSource],
+                ['clipboard', !!n.useClipboardSource]
+            ].filter(([, checked]) => checked);
+            syncNSBInputMode(savedNSBSources.length === 1 ? savedNSBSources[0][0] : '');
             if (n.relinkPreset !== undefined) {
                 setValue('nsbRelinkPreset', n.relinkPreset);
                 if (n.relinkHost !== undefined) setValue('nsbRelinkHost', n.relinkHost);
