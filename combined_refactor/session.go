@@ -365,7 +365,6 @@ func (s *appSession) applyBackgroundMessageLocked(msgType string, data interface
 	case "nsb_csv_complete":
 		s.backgroundSnapshot.Phase = "完成"
 		s.backgroundSnapshot.Message = "结果文件已生成"
-		s.finishBackgroundStatsLocked()
 		if payload, ok := data.(nsbCSVCompletePayload); ok {
 			s.nsbMutex.Lock()
 			s.nsbCompletePayload = &payload
