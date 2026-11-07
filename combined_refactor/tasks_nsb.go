@@ -523,6 +523,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
 	const speedWindow = 2 * time.Second
+	const speedContinueWindow = 4 * time.Second
 	const speedMaxBytes = 200 * 1024 * 1024
 
 	scheme := "http"
@@ -594,6 +595,8 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 
 	windowTimer := time.NewTimer(speedWindow)
 	defer windowTimer.Stop()
+	firstWindowPassed := false
+	firstWindowFailed := false
 
 	var written int64
 	for {
@@ -604,10 +607,23 @@ func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS boo
 			<-readerDone
 			return 0, "测速任务已终止"
 		case <-windowTimer.C:
-			cancel()
-			resp.Body.Close()
-			<-readerDone
-			goto done
+			if !firstWindowPassed {
+				firstWindowPassed = true
+				firstDuration := time.Since(measuredStart).Seconds()
+				if firstDuration <= 0 || float64(written)/firstDuration/1024/1024 < 0.09 {
+					firstWindowFailed = true
+					cancel()
+					resp.Body.Close()
+					<-readerDone
+					goto done
+				}
+				windowTimer.Reset(speedContinueWindow)
+			} else {
+				cancel()
+				resp.Body.Close()
+				<-readerDone
+				goto done
+			}
 		case chunk := <-chunks:
 			if chunk.n > 0 {
 				written += int64(chunk.n)
@@ -634,7 +650,7 @@ done:
 	}
 
 	speedMB := float64(written) / duration.Seconds() / 1024 / 1024
-	if speedMB < 0.09 {
+	if firstWindowFailed || speedMB < 0.09 {
 		return speedMB, "下载速度低于最低门槛 0.09MB/s"
 	}
 	return speedMB, ""

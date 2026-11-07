@@ -62,8 +62,11 @@ func runWindowedSpeedTest(ctx context.Context, ip string, port int, customURL st
 	buf := make([]byte, 32*1024)
 	var totalBytes int64
 
-	timeout := time.After(2 * time.Second)
+	timeout := time.NewTimer(2 * time.Second)
+	defer timeout.Stop()
 	measuredStart := time.Now()
+	firstWindowPassed := false
+	firstWindowFailed := false
 
 	readerCtx, readerCancel := context.WithCancel(ctx)
 	defer readerCancel()
@@ -97,8 +100,19 @@ loop:
 		case <-ctx.Done():
 			canceled = true
 			done = true
-		case <-timeout:
-			done = true
+		case <-timeout.C:
+			if !firstWindowPassed {
+				firstWindowPassed = true
+				firstDuration := time.Since(measuredStart).Seconds()
+				if firstDuration <= 0 || float64(totalBytes)/firstDuration/1024/1024 < 0.09 {
+					firstWindowFailed = true
+					done = true
+				} else {
+					timeout.Reset(4 * time.Second)
+				}
+			} else {
+				done = true
+			}
 		case chunk := <-chunks:
 			if chunk.n > 0 {
 				totalBytes += int64(chunk.n)
@@ -127,7 +141,7 @@ loop:
 		duration = 1
 	}
 	speedMB := float64(totalBytes) / duration / 1024 / 1024
-	if speedMB < 0.09 {
+	if firstWindowFailed || speedMB < 0.09 {
 		return speedMB, "下载速度低于最低门槛 0.09MB/s"
 	}
 	return speedMB, ""
