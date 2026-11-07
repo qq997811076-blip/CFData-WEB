@@ -262,22 +262,31 @@ func extractCompactSubnet(ip string) string {
 
 func sortedCompactSubnets(set map[string]bool) []string {
 	subnets := make([]string, 0, len(set))
+	type subnetSortKey struct {
+		octets [4]int
+		valid  bool
+	}
+	keys := make(map[string]subnetSortKey, len(set))
 	for subnet := range set {
 		subnets = append(subnets, subnet)
+		parts := strings.Split(strings.TrimSuffix(subnet, "/24"), ".")
+		key := subnetSortKey{valid: len(parts) == 4}
+		if key.valid {
+			for i := range key.octets {
+				key.octets[i], _ = strconv.Atoi(parts[i])
+			}
+		}
+		keys[subnet] = key
 	}
 	sort.Slice(subnets, func(i, j int) bool {
-		a := strings.TrimSuffix(subnets[i], "/24")
-		b := strings.TrimSuffix(subnets[j], "/24")
-		ai := strings.Split(a, ".")
-		bi := strings.Split(b, ".")
-		if len(ai) != 4 || len(bi) != 4 {
+		a := keys[subnets[i]]
+		b := keys[subnets[j]]
+		if !a.valid || !b.valid {
 			return subnets[i] < subnets[j]
 		}
 		for k := 0; k < 4; k++ {
-			na, _ := strconv.Atoi(ai[k])
-			nb, _ := strconv.Atoi(bi[k])
-			if na != nb {
-				return na < nb
+			if a.octets[k] != b.octets[k] {
+				return a.octets[k] < b.octets[k]
 			}
 		}
 		return false

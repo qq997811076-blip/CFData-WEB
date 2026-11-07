@@ -571,14 +571,6 @@ func formatFailureSummary(title string, counts map[string]int, samples map[strin
 	return title + ": " + strings.Join(parts, "; ")
 }
 
-func sumFailureCounts(counts map[string]int) int {
-	total := 0
-	for _, count := range counts {
-		total += count
-	}
-	return total
-}
-
 func sortOfficialTestResults(results []TestResult) {
 	sort.Slice(results, func(i, j int) bool {
 		if results[i].LossRate != results[j].LossRate {
