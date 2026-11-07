@@ -1818,7 +1818,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="支持 txt/csv 格式">
                         <span>📄 IP 文件</span>
-                        <input id="nsbUseFileSource" type="checkbox" style="display:none;">
+                        <input id="nsbUseFileSource" type="checkbox">
                     </div>
                     <input id="nsbFileInput" type="file" accept=".txt,.csv,text/plain,text/csv"
                         onchange="syncNSBInputMode('file')">
@@ -1826,7 +1826,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="从网络地址获取 IP 列表">
                         <span>🌐 网络 URL</span>
-                        <input id="nsbUseUrlSource" type="checkbox" style="display:none;">
+                        <input id="nsbUseUrlSource" type="checkbox">
                     </div>
                     <input id="nsbSourceUrl" type="url" placeholder="https://example.com/ip-list.txt"
                         oninput="syncNSBInputMode('url')">
@@ -1834,7 +1834,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="从 Android 剪切板导入 IPv4 与 CIDR">
                         <span>📋 剪切板导入IP</span>
-                        <input id="nsbUseClipboardSource" type="checkbox" style="display:none;">
+                        <input id="nsbUseClipboardSource" type="checkbox">
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <button type="button" class="action-btn" onclick="importNSBIPsFromClipboard()">从剪切板导入IP</button>
