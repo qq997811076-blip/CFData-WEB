@@ -26,21 +26,27 @@ func runBoundedWorkers(ctx context.Context, total, maxWorkers, progressEvery int
 	wasCanceled := false
 
 	for i := 0; i < total; i++ {
+		if ctx.Err() != nil {
+			wasCanceled = true
+			break
+		}
 		select {
 		case <-ctx.Done():
 			wasCanceled = true
-			return wasCanceled
 		case slots <- struct{}{}:
+		}
+		if wasCanceled {
+			break
 		}
 
 		wg.Add(1)
 		go func(idx int) {
+			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
 					fmt.Printf("worker panic (idx=%d): %v\n%s\n", idx, r, debug.Stack())
 				}
 				<-slots
-				wg.Done()
 
 				countMutex.Lock()
 				count++
@@ -82,7 +88,7 @@ func runBoundedWorkers(ctx context.Context, total, maxWorkers, progressEvery int
 	}
 
 	wg.Wait()
-	return wasCanceled
+	return wasCanceled || ctx.Err() != nil
 }
 
 func reportNSBProgress(session *appSession, phase string, current, total int, text string) {

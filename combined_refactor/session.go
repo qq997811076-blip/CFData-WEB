@@ -362,7 +362,6 @@ func (s *appSession) applyBackgroundMessageLocked(msgType string, data interface
 	case "official_speed_complete", "nsb_speed_complete":
 		s.backgroundSnapshot.Phase = "测速完成"
 		s.backgroundSnapshot.Message = "测速完成"
-		s.finishBackgroundStatsLocked()
 	case "nsb_csv_complete":
 		s.backgroundSnapshot.Phase = "完成"
 		s.backgroundSnapshot.Message = "结果文件已生成"
@@ -438,9 +437,6 @@ func (s *appSession) backgroundSpeedMinLocked() float64 {
 		}
 	}
 	return 0
-}
-
-func (s *appSession) finishBackgroundStatsLocked() {
 }
 
 func (s *appSession) updateProgressSnapshotLocked(phase string, current int, total int, message string) {

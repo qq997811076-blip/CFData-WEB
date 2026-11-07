@@ -24,6 +24,8 @@ var (
 	hostPortWhitespaceRegex   = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)\s+(\d{1,5})(?:\s|$)`)
 	bareIPv4OrDomainRegex     = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9.:-])((?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)(?:\s|$|[|，,。；;、])`)
 	possibleBareIPv6LineRegex = regexp.MustCompile(`(?i)([0-9a-f]{1,4}:[0-9a-f:.]+)`)
+	nsbCSVIPv4TokenRegex     = regexp.MustCompile(`[0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*/\s*[0-9]{1,2})?`)
+	nsbCSVIPv4SlashRegex     = regexp.MustCompile(`\s*/\s*`)
 )
 
 type nsbEndpoint struct {
@@ -95,7 +97,7 @@ func parseNSBCSVIPv4Inputs(content string, fallbackPort int) ([]string, error) {
 		return nil, fmt.Errorf("备用端口无效: %d", fallbackPort)
 	}
 
-	tokenRegex := regexp.MustCompile(`[0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:\s*/\s*[0-9]{1,2})?`)
+	tokenRegex := nsbCSVIPv4TokenRegex
 	unique := make(map[string]struct{})
 	items := make([]string, 0)
 	for _, line := range strings.Split(content, "\n") {
@@ -116,7 +118,7 @@ func parseNSBCSVIPv4Inputs(content string, fallbackPort int) ([]string, error) {
 				}
 			}
 
-			token := regexp.MustCompile(`\s*/\s*`).ReplaceAllString(strings.TrimSpace(line[start:end]), "/")
+			token := nsbCSVIPv4SlashRegex.ReplaceAllString(strings.TrimSpace(line[start:end]), "/")
 			parts := strings.SplitN(token, "/", 2)
 			octets := strings.Split(parts[0], ".")
 			if len(octets) != 4 {

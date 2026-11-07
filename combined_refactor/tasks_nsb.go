@@ -428,7 +428,6 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 	}
 	jobs := make(chan int)
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 	accepted := 0
 	inFlight := 0
 	wasCanceled := false
@@ -462,9 +461,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 		if wasCanceled {
 			break
 		}
-		mu.Lock()
 		shouldStop := resultLimit > 0 && accepted >= resultLimit
-		mu.Unlock()
 		if shouldStop {
 			break
 		}
@@ -473,52 +470,47 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 			wasCanceled = true
 			next = total
 		case acceptedTotal := <-completion:
-			mu.Lock()
 			inFlight--
 			if acceptedTotal > accepted {
 				accepted = acceptedTotal
 			}
 			currentAccepted := accepted
-			mu.Unlock()
 			if onProgress != nil {
 				onProgress(currentAccepted)
 			}
 		case jobs <- next:
-			mu.Lock()
 			inFlight++
-			mu.Unlock()
 			next++
 		}
 	}
 	close(jobs)
 	if wasCanceled {
+		wg.Wait()
 		return true
-	}
+}
 	for {
-		mu.Lock()
 		remaining := inFlight
-		mu.Unlock()
 		if remaining <= 0 {
 			break
 		}
 		var acceptedTotal int
 		select {
 		case <-ctx.Done():
+			wg.Wait()
 			return true
 		case acceptedTotal = <-completion:
 		}
-		mu.Lock()
 		inFlight--
 		if acceptedTotal > accepted {
 			accepted = acceptedTotal
 		}
 		currentAccepted := accepted
-		mu.Unlock()
 		if onProgress != nil {
 			onProgress(currentAccepted)
 		}
 	}
-	return wasCanceled
+	wg.Wait()
+	return wasCanceled || ctx.Err() != nil
 }
 
 func runNSBDownloadSpeed(ctx context.Context, ip string, port int, enableTLS bool, testURL string) (float64, string) {
@@ -1352,6 +1344,7 @@ func runNSBSpeedWorkers(ctx context.Context, results []iptestResult, maxWorkers,
 			wasCanceled = true
 			next = len(results)
 			close(jobs)
+			wg.Wait()
 			return true
 		case item := <-done:
 			inFlight--
