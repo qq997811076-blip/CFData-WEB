@@ -163,6 +163,18 @@ public class MainActivity extends Activity {
         view.requestApplyInsets();
     }
 
+    private boolean shouldOverrideExternalUrl(Uri uri) {
+        if (uri != null && ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))) {
+            String host = uri.getHost();
+            if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
+                return false;
+            }
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            return true;
+        }
+        return false;
+    }
+
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     private void configureWebView() {
         WebSettings settings = webView.getSettings();
@@ -175,16 +187,7 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri uri = request.getUrl();
-                if (uri != null && ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))) {
-                    String host = uri.getHost();
-                    if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
-                        return false;
-                    }
-                    startActivity(new Intent(Intent.ACTION_VIEW, uri));
-                    return true;
-                }
-                return false;
+                return shouldOverrideExternalUrl(request.getUrl());
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -319,7 +322,6 @@ public class MainActivity extends Activity {
                 String script = "(function(){"
                         + "if(!window.CFDataAndroid||window.__cfdataAndroidExport)return;"
                         + "window.__cfdataAndroidExport=true;"
-                        + "var old=window.downloadFile;"
                         + "window.downloadFile=function(content,nameBase,ext){"
                         + "var ts=new Date().toISOString().replace(/[-:T]/g,'').split('.')[0];"
                         + "var name=(nameBase||'cfdata-results')+'_'+ts+'.'+(ext||'txt');"
@@ -332,16 +334,7 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri uri = request.getUrl();
-                if (uri != null && ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))) {
-                    String host = uri.getHost();
-                    if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
-                        return false;
-                    }
-                    startActivity(new Intent(Intent.ACTION_VIEW, uri));
-                    return true;
-                }
-                return false;
+                return shouldOverrideExternalUrl(request.getUrl());
             }
         }));
     }
@@ -363,8 +356,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public boolean isDarkMode() {
-            int nightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-            return nightMode == Configuration.UI_MODE_NIGHT_YES;
+            return MainActivity.this.isDarkMode();
         }
 
         @JavascriptInterface
