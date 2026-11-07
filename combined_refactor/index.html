@@ -3537,16 +3537,6 @@
             updateBackgroundButton();
         }
 
-        function stopBackgroundTask() {
-            if (!wsSend({ type: 'stop_task', data: {} })) {
-                showNoticeCard('连接未就绪，无法发送停止命令');
-                return;
-            }
-            isStoppingTask = true;
-            showStoppingProgress();
-            startStopWatchdog();
-        }
-
         function followBackgroundTask() {
             if (!wsSend({ type: 'follow_background_task', data: {} })) {
                 showNoticeCard('连接未就绪，请等待重连后再试');
@@ -3990,21 +3980,6 @@
                 return;
             }
             renderScanHeaders('nsb');
-            renderAllNSBLiveRows();
-        }
-
-        function setNSBTableIPTypeFilter(value) {
-            const normalized = normalizeIPTypeFilter(value);
-            nsbTableIPTypeFilter = normalized;
-            const filter = document.getElementById('nsbTableIPTypeFilter');
-            if (filter && filter.value !== nsbTableIPTypeFilter) filter.value = nsbTableIPTypeFilter;
-            if (currentMode === 'official') {
-                return;
-            }
-            if (nsbRows.length) {
-                renderScanRowsCSV(nsbHeaders, nsbRows);
-                return;
-            }
             renderAllNSBLiveRows();
         }
 
@@ -5394,10 +5369,6 @@
             return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
         }
 
-        function getCompactResultFieldOrder() {
-            return getCompactResultFieldOrderFor(resultModalMode);
-        }
-
         function getCompactResultFieldOrderFor(mode) {
             if (mode === 'nsb') return ['ip', 'port', 'tls', 'lossRate', 'latency', 'speed', 'outboundIP', 'ipType', 'originalInput', 'dc', 'loc', 'region', 'city', 'asnNumber', 'asnOrg'];
             return getOfficialResultFieldOrder(mode);
@@ -5424,16 +5395,6 @@
             updateResultPreview();
         }
 
-        function handleResultFormatChange() {
-            const format = document.getElementById('resultFormat').value;
-            resultFieldOrder = getDefaultResultFieldOrder(format);
-            const pathInput = document.getElementById('githubPath');
-            if (pathInput && pathInput.value.trim()) {
-                pathInput.value = pathInput.value.trim().replace(/\.(csv|txt)$/i, `.${format}`);
-            }
-            renderResultFieldOptions();
-        }
-
         function getGitHubAccounts() {
             try {
                 const parsed = JSON.parse(localStorage.getItem(githubAccountStorageKey) || '[]');
@@ -5454,20 +5415,6 @@
 
         function getGitHubAccountRepo(account) {
             return String(account?.repo || '').split('/').pop();
-        }
-
-        function getCurrentGitHubAccountIndex(accounts) {
-            const selectValue = document.getElementById('githubAccountSelect')?.value || '';
-            const selectedIndex = parseInt(selectValue, 10);
-            if (Number.isInteger(selectedIndex) && accounts[selectedIndex] && getGitHubAccountRepo(accounts[selectedIndex])) return selectedIndex;
-            const owner = document.getElementById('githubAccountName')?.value?.trim() || '';
-            const repo = document.getElementById('githubRepo')?.value?.trim() || '';
-            const matchedIndex = accounts.findIndex((account) =>
-                getGitHubAccountOwner(account) === owner &&
-                getGitHubAccountRepo(account) === repo
-            );
-            if (matchedIndex >= 0 && getGitHubAccountRepo(accounts[matchedIndex])) return matchedIndex;
-            return accounts.findIndex((account) => !!getGitHubAccountRepo(account));
         }
 
         function getGitHubAccountStableId(account) {
@@ -5830,11 +5777,6 @@
             renderResultFieldOptions();
         }
 
-        function selectResultFields(all) {
-            resultFieldOrder = all ? getAllResultFieldOrder() : ['ipport'];
-            renderResultFieldOptions();
-        }
-
         function getAvailableResultFieldKeys() {
             const rows = getCurrentResultRows(resultModalMode);
             return RESULT_FIELDS.filter((f) => f.key === 'ipport' || rows.some((r) => String(r[f.key] ?? '').trim() !== '')).map((f) => f.key);
@@ -5893,16 +5835,6 @@
                 return rows.filter((row) => matchesIPTypeFilter(row.ipType, filter) && matchesQualifiedFilter(row, qualified));
             }
             return rows.filter((row) => matchesIPTypeFilter(getOfficialIPType(row), filter) && matchesOfficialQualifiedFilter(row, qualified));
-        }
-
-        function getDisplayedResultRows(mode) {
-            if (currentMode === 'nsb') {
-                return getNSBResultObjects().filter((row) => matchesIPTypeFilter(row.ipType, nsbTableIPTypeFilter) && matchesQualifiedFilter(row, nsbTableQualifiedFilter) && matchesLatencyLossFilter(latencyMsForFilter(row.latency), parseFilterNumber(row.lossRate)));
-            }
-            if (mode === 'test') {
-                return getFilteredOfficialTestData().map(testResultToObject);
-            }
-            return getFilteredOfficialScanData().map(scanResultToObject);
         }
 
         function scanResultToObject(r) {
@@ -6193,16 +6125,6 @@
 
             await uploadSelectedResultsToGitHub(appendMode);
             log(`${logPrefix}: ${owner} - ${appendMode ? '追加' : '覆盖'}`);
-        }
-
-        function downloadFile(content, nameBase, ext) {
-            const timestamp = new Date().toISOString().replace(/[-:T]/g, '').split('.')[0];
-            const mime = ext === 'csv' ? 'text/csv;charset=utf-8;' : 'text/plain;charset=utf-8;';
-            const blob = new Blob(["\uFEFF" + content], { type: mime });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${nameBase}_${timestamp}.${ext}`;
-            link.click();
         }
 
         function handleMessage(msg) {
