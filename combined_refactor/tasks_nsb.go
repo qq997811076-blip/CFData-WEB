@@ -487,7 +487,7 @@ func runNSBScanWorkers(ctx context.Context, total, maxWorkers, resultLimit int, 
 	if wasCanceled {
 		wg.Wait()
 		return true
-}
+	}
 	for {
 		remaining := inFlight
 		if remaining <= 0 {
