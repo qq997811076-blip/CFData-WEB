@@ -5369,11 +5369,6 @@
             return RESULT_FIELDS.filter((f) => rows.some((r) => String(r[f.key] ?? '').trim() !== '') && f.key !== 'ipport').map((f) => f.key);
         }
 
-        function getCompactResultFieldOrderFor(mode) {
-            if (mode === 'nsb') return ['ip', 'port', 'tls', 'lossRate', 'latency', 'speed', 'outboundIP', 'ipType', 'originalInput', 'dc', 'loc', 'region', 'city', 'asnNumber', 'asnOrg'];
-            return getOfficialResultFieldOrder(mode);
-        }
-
         function getOfficialResultFieldOrder(mode = resultModalMode) {
             return mode === 'test'
                 ? ['ip', 'port', 'latency', 'speed', 'dc', 'dcCountry', 'region', 'city']
