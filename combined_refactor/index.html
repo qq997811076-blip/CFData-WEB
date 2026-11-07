@@ -789,6 +789,7 @@
             white-space: nowrap;
             flex-shrink: 0;
         }
+        #nsbControls .nsb-source-checkbox {width:13px!important;height:13px!important;min-height:13px!important;max-width:13px!important;padding:0!important;margin:0!important;flex:0 0 13px!important;align-self:center;accent-color:var(--primary-color);}
 
         .speed-result {
             min-width: 136px;
@@ -1818,7 +1819,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="支持 txt/csv 格式">
                         <span>📄 IP 文件</span>
-                        <input id="nsbUseFileSource" type="checkbox">
+                        <input id="nsbUseFileSource" class="nsb-source-checkbox" type="checkbox">
                     </div>
                     <input id="nsbFileInput" type="file" accept=".txt,.csv,text/plain,text/csv"
                         onchange="syncNSBInputMode('file')">
@@ -1826,7 +1827,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="从网络地址获取 IP 列表">
                         <span>🌐 网络 URL</span>
-                        <input id="nsbUseUrlSource" type="checkbox">
+                        <input id="nsbUseUrlSource" class="nsb-source-checkbox" type="checkbox">
                     </div>
                     <input id="nsbSourceUrl" type="url" placeholder="https://example.com/ip-list.txt"
                         oninput="syncNSBInputMode('url')">
@@ -1834,7 +1835,7 @@
                 <div class="option-item full-width">
                     <div class="label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;" title="从 Android 剪切板导入 IPv4 与 CIDR">
                         <span>📋 剪切板导入IP</span>
-                        <input id="nsbUseClipboardSource" type="checkbox">
+                        <input id="nsbUseClipboardSource" class="nsb-source-checkbox" type="checkbox">
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <button type="button" class="action-btn" onclick="importNSBIPsFromClipboard()">从剪切板导入IP</button>
@@ -2324,6 +2325,9 @@
         let officialAutoStage = '';
         let officialBatchSpeedRunning = false;
         let nsbBatchSpeedRunning = false;
+        let nsbBatchSpeedContinued = false;
+        let nsbSingleSpeedTestingKey = '';
+        let nsbSingleSpeedTaskRunning = false;
         let nsbContinueSpeedUnlocked = false;
         let officialTestCompletePending = false;
         let officialSpeedEndedByRateLimit = false;
@@ -3752,6 +3756,9 @@
             isStoppingTask = false;
             if (stoppedMode === 'nsb') {
                 nsbBatchSpeedRunning = false;
+                nsbBatchSpeedContinued = false;
+                nsbSingleSpeedTaskRunning = false;
+                nsbSingleSpeedTestingKey = '';
                 nsbReallinkRunning = false;
             } else {
                 officialAutoSpeedPending = false;
@@ -3832,23 +3839,22 @@
         }
 
         function updateNSBSpeedButtons() {
-            const btn = document.getElementById('btnNSBBatchSpeed');
-            const continueBtn = document.getElementById('btnNSBContinueSpeed');
-            const visible = currentMode === 'nsb';
-            const rows = visible ? getNSBSpeedTargetRows() : [];
-            const disabled = !visible || isTaskRunning || nsbBatchSpeedRunning || rows.length === 0;
-            if (btn) {
-                btn.style.display = visible ? 'inline-flex' : 'none';
-                btn.disabled = disabled;
-                btn.textContent = nsbBatchSpeedRunning ? '测速中...' : '🚀 一键测速';
-            }
-            if (continueBtn) {
-                continueBtn.style.display = visible ? 'inline-flex' : 'none';
-                continueBtn.disabled = disabled || !nsbContinueSpeedUnlocked || !rows.some((row) => getSpeedStatus(row.speed, isNSBSpeedQualified(row.speed)) === 'untested');
-                continueBtn.textContent = nsbBatchSpeedRunning ? '测速中...' : '⏭️ 继续测速';
-            }
-            const sortBtn = document.getElementById('btnNSBSort');
-            if (sortBtn) sortBtn.style.display = visible ? 'inline-flex' : 'none';
+            const btn=document.getElementById('btnNSBBatchSpeed'), continueBtn=document.getElementById('btnNSBContinueSpeed');
+            const visible=currentMode==='nsb', rows=visible?getNSBSpeedTargetRows():[];
+            const disabled=!visible||isTaskRunning||nsbBatchSpeedRunning||nsbSingleSpeedTaskRunning||rows.length===0;
+            if(btn){btn.style.display=visible?'inline-flex':'none';btn.disabled=disabled;btn.textContent=nsbBatchSpeedRunning&&!nsbBatchSpeedContinued?'⏳ 一键测速中...':'🚀 一键测速';}
+            if(continueBtn){continueBtn.style.display=visible?'inline-flex':'none';continueBtn.disabled=disabled||!nsbContinueSpeedUnlocked||!rows.some(row=>getSpeedStatus(row.speed,isNSBSpeedQualified(row.speed))==='untested');continueBtn.textContent=nsbBatchSpeedRunning&&nsbBatchSpeedContinued?'⏳ 继续测速中...':'⏭️ 继续测速';}
+            const sortBtn=document.getElementById('btnNSBSort');if(sortBtn)sortBtn.style.display=visible?'inline-flex':'none';refreshNSBSingleSpeedButtons();
+        }
+        function getNSBSpeedRowKey(ip,port){return String(ip||'').trim()+':'+String(port||'').trim();}
+        function getNSBSpeedRowDomId(ip,port){return Array.from(getNSBSpeedRowKey(ip,port)).map(c=>c.codePointAt(0).toString(16)).join('-');}
+        function refreshNSBSingleSpeedButtons(){
+            const visible=currentMode==='nsb';
+            document.querySelectorAll('.nsb-speed-btn').forEach(btn=>{
+                const key=btn.dataset.nsbSpeedKey||'',status=btn.dataset.nsbSpeedStatus||'untested',testing=!!key&&key===nsbSingleSpeedTestingKey;
+                btn.textContent=testing?'测速中':(status==='untested'?'测速':'重新测速');
+                btn.disabled=!visible||isTaskRunning||nsbBatchSpeedRunning||nsbSingleSpeedTaskRunning||(nsbSingleSpeedTestingKey!==''&&!testing);
+            });
         }
 
         function syncNSBSpeedConfigState() {
@@ -4068,38 +4074,20 @@
             return `<span class="ip-cell"><span class="copy-ip" onclick="copyToClipboard('${jsIP}', event)">${safeIP}</span>${domainIcon}<a class="ip-detail-link" href="https://ippure.com/?ip=${hrefIP}" target="_blank" rel="noopener noreferrer" title="前往 ippure.com 查看 IP 详情" onclick="event.stopPropagation()">ⓘ</a></span>`;
         }
 
-        function renderNSBRowFromCSV(headers, r, originalInput) {
-            let ipIndex = headers.indexOf('IP地址');
-            let portIndex = headers.indexOf('端口号');
-            let latencyIndex = headers.indexOf('网络延迟');
-            let lossIndex = headers.indexOf('丢包率');
-            let speedIndex = headers.indexOf('下载速度');
-            const speedQualified = speedIndex < 0 || isNSBSpeedQualified(r[speedIndex]);
-            const speedStatus = speedIndex < 0 ? 'qualified' : getSpeedStatus(r[speedIndex], speedQualified);
-            return headers.map((_, idx) => {
-                const val = escapeHTML(r[idx] ?? '');
-                const rawVal = String(r[idx] ?? '');
-                if (idx === ipIndex && ipIndex !== -1) {
-                    return `<td>${renderIPCell(rawVal, originalInput)}</td>`;
-                } else if (idx === portIndex && portIndex !== -1) {
-                    return `<td><span class="copy-ip" onclick="copyToClipboard('${escapeJSString(rawVal)}', event)">${val}</span></td>`;
-                } else if (idx === latencyIndex && latencyIndex !== -1) {
-                    const latencyVal = parseFloat(rawVal);
-                    const lcFactor = getLatencyColorFactor();
-                    const color = getLatencyColor(latencyVal, lcFactor);
-                    return `<td style="color:${color}; font-weight:600;">${val}</td>`;
-                } else if (idx === lossIndex && lossIndex !== -1) {
-                    const lossVal = parseFloat(rawVal);
-                    const color = Number.isFinite(lossVal) && lossVal > 0 ? '#ef4444' : '#10b981';
-                    return `<td style="color:${color}; font-weight:600;">${val}</td>`;
-                } else if (idx === speedIndex && speedIndex !== -1) {
-                    const speedVal = parseFloat(rawVal);
-                    const color = speedStatus === 'untested' ? 'inherit' : (speedVal > SPEED_GREEN ? '#10b981' : (speedVal > 0 ? '#f59e0b' : '#ef4444'));
-                    const cls = speedQualified ? '' : ' class="speed-unqualified"';
-                    return `<td${cls} style="color:${color}; font-weight:600;"><span class="speed-cell-content"><span>${val}</span>${renderSpeedStatusTag(speedStatus)}</span></td>`;
-                } else {
-                    return `<td>${val}</td>`;
-                }
+        function renderNSBRowFromCSV(headers,r,originalInput){
+            const ipIndex=headers.indexOf('IP地址'),portIndex=headers.indexOf('端口号'),latencyIndex=headers.indexOf('网络延迟'),lossIndex=headers.indexOf('丢包率'),speedIndex=headers.indexOf('下载速度');
+            const ip=ipIndex>=0?String(r[ipIndex]??'').trim():'',port=portIndex>=0?String(r[portIndex]??'').trim():'';
+            const speedQualified=speedIndex<0||isNSBSpeedQualified(r[speedIndex]),speedStatus=speedIndex<0?'qualified':getSpeedStatus(r[speedIndex],speedQualified);
+            const speedKey=getNSBSpeedRowKey(ip,port),speedDomId=getNSBSpeedRowDomId(ip,port),isTesting=!!speedKey&&nsbSingleSpeedTestingKey===speedKey;
+            const buttonText=isTesting?'测速中':(speedStatus==='untested'?'测速':'重新测速'),buttonDisabled=!ip||!port||isTesting||isTaskRunning||nsbBatchSpeedRunning||nsbSingleSpeedTaskRunning;
+            return headers.map((_,idx)=>{
+                const val=escapeHTML(r[idx]??''),rawVal=String(r[idx]??'');
+                if(idx===ipIndex&&ipIndex!==-1)return `<td>${renderIPCell(rawVal,originalInput)}</td>`;
+                if(idx===portIndex&&portIndex!==-1)return `<td><span class="copy-ip" onclick="copyToClipboard('${escapeJSString(rawVal)}', event)">${val}</span></td>`;
+                if(idx===latencyIndex&&latencyIndex!==-1){const n=parseFloat(rawVal),f=getLatencyColorFactor();return `<td style="color:${getLatencyColor(n,f)};font-weight:600;">${val}</td>`;}
+                if(idx===lossIndex&&lossIndex!==-1){const n=parseFloat(rawVal),c=Number.isFinite(n)&&n>0?'#ef4444':'#10b981';return `<td style="color:${c};font-weight:600;">${val}</td>`;}
+                if(idx===speedIndex&&speedIndex!==-1){const n=parseFloat(rawVal),c=speedStatus==='untested'?'inherit':(n>SPEED_GREEN?'#10b981':(n>0?'#f59e0b':'#ef4444')),cls=speedQualified?'':' class="speed-unqualified"';return `<td${cls} style="font-weight:600;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:190px;"><span class="speed-result" id="nsb-speed-val-${speedDomId}" style="color:${c};"><span>${val}</span>${renderSpeedStatusTag(speedStatus)}</span><button type="button" class="action-btn speed-btn nsb-speed-btn" id="btn-nsb-speed-${speedDomId}" data-nsb-speed-key="${escapeHTML(speedKey)}" data-nsb-speed-status="${speedStatus}" onclick="runNSBSingleSpeedTest('${escapeJSString(ip)}','${escapeJSString(port)}')" ${buttonDisabled?'disabled':''}>${buttonText}</button></div></td>`;}
+                return `<td>${val}</td>`;
             }).join('');
         }
 
@@ -4718,7 +4706,7 @@
         }
 
         function startNSBBatchSpeed(continued = false) {
-            if (nsbBatchSpeedRunning) return false;
+            if (nsbBatchSpeedRunning || nsbSingleSpeedTaskRunning) return false;
             if (currentMode !== 'nsb') {
                 showNoticeCard('请切换到非标模式后再测速');
                 return false;
@@ -4743,6 +4731,7 @@
                 return false;
             }
             nsbBatchSpeedRunning = true;
+            nsbBatchSpeedContinued = continued;
             isTaskRunning = true;
             isStoppingTask = false;
             runningTaskLabel = continued ? '非标继续测速' : '非标一键测速';
@@ -4760,10 +4749,27 @@
             updateNSBSpeedButtons();
             if (!wsSend({ type: 'start_nsb_speed_batch', data: { results: rows, speedTest: cfg.speedTest, speedURL: cfg.speedURL, enableTLS: cfg.enableTLS, speedMin: cfg.speedMin, speedLimit: cfg.speedLimit, skipTested: continued, compact: nsbCompactView } })) {
                 nsbBatchSpeedRunning = false;
+                nsbBatchSpeedContinued = false;
                 finishRunningTask('✨ 开始扫描与测试');
                 updateNSBSpeedButtons();
                 showNoticeCard('连接未就绪，请等待重连后再试');
                 return false;
+            }
+            return true;
+        }
+
+        function runNSBSingleSpeedTest(ip,port){
+            const key=getNSBSpeedRowKey(ip,port);
+            if(currentMode!=='nsb'){showNoticeCard('请切换到非标模式后再测速');return false;}
+            if(isTaskRunning||nsbBatchSpeedRunning||nsbSingleSpeedTaskRunning){log('当前已有任务运行，单条非标测速已忽略');return false;}
+            const row=getNSBSpeedTargetRows().find(item=>getNSBSpeedRowKey(item.ip,item.port)===key);
+            if(!row){showNoticeCard('找不到当前 IP + 端口对应的非标结果');return false;}
+            const cfg=syncNSBSpeedConfigState();
+            nsbSingleSpeedTestingKey=key;nsbSingleSpeedTaskRunning=true;isTaskRunning=true;isStoppingTask=false;
+            runningTaskLabel='非标单 IP 测速';runningTaskMode='nsb';runningTaskTab='scan';
+            setStartLoading('单 IP 测速中...');resetProgress();progressBox.style.display='block';updateNSBSpeedButtons();
+            if(!wsSend({type:'start_nsb_single_speed_test',data:{result:row,speedURL:cfg.speedURL,enableTLS:cfg.enableTLS,speedMin:cfg.speedMin,compact:nsbCompactView}})){
+                nsbSingleSpeedTestingKey='';nsbSingleSpeedTaskRunning=false;finishRunningTask('✨ 开始扫描与测试');updateNSBSpeedButtons();showNoticeCard('连接未就绪，请等待重连后再试');return false;
             }
             return true;
         }
@@ -6286,11 +6292,14 @@
                     break;
                 case 'nsb_scan_result':
                     if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
-                    if (nsbBatchSpeedRunning) {
-                        updateNSBDisplayedResult(msg.data || {});
-                    } else {
-                        addNSBLiveResult(msg.data || {}, currentMode === 'nsb');
-                    }
+                    if (nsbBatchSpeedRunning) updateNSBDisplayedResult(msg.data || {});
+                    else addNSBLiveResult(msg.data || {}, currentMode === 'nsb');
+                    break;
+                case 'nsb_single_speed_result':
+                    if (isStoppingTask) break;
+                    updateNSBDisplayedResult(msg.data || {});
+                    nsbSingleSpeedTestingKey='';
+                    updateNSBSpeedButtons();
                     break;
                 case 'nsb_scan_sorted':
                     if (isStoppingTask && (runningTaskMode === 'nsb' || currentMode === 'nsb')) break;
@@ -6308,6 +6317,7 @@
                         break;
                     }
                     nsbBatchSpeedRunning = false;
+                    nsbBatchSpeedContinued = false;
                     nsbSpeedEnabledForResults = ((msg.data?.totalQualified ?? msg.data?.qualified) || 0) > 0;
                     nsbContinueSpeedUnlocked = true;
                     finishRunningTask('✨ 开始扫描与测试');
@@ -6407,6 +6417,7 @@
                     finishRunningTask('✨ 开始扫描与测试');
                 } else if (nsbBatchSpeedRunning) {
                     nsbBatchSpeedRunning = false;
+                    nsbBatchSpeedContinued = false;
                     finishRunningTask('✨ 开始扫描与测试');
                 } else if (nsbReallinkRunning) {
                     nsbReallinkRunning = false;
@@ -6429,6 +6440,9 @@
                         officialAutoStage = '';
                         officialBatchSpeedRunning = false;
                         nsbBatchSpeedRunning = false;
+                        nsbBatchSpeedContinued = false;
+                        nsbSingleSpeedTaskRunning = false;
+                        nsbSingleSpeedTestingKey = '';
                         officialTestCompletePending = false;
                         officialSpeedEndedByRateLimit = false;
                         if (currentSpeedTestingIP) {
@@ -6497,6 +6511,7 @@
                         break;
                     }
                     finishRunningTask('✨ 开始扫描与测试');
+                    if (nsbSingleSpeedTaskRunning) { nsbSingleSpeedTaskRunning = false; nsbSingleSpeedTestingKey = ''; updateNSBSpeedButtons(); }
                     updateBatchSpeedButton();
                     if (officialTestCompletePending) {
                         officialTestCompletePending = false;
