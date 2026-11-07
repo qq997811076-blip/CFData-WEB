@@ -6297,8 +6297,8 @@
                     break;
                 case 'nsb_single_speed_result':
                     if (isStoppingTask) break;
-                    updateNSBDisplayedResult(msg.data || {});
                     nsbSingleSpeedTestingKey='';
+                    updateNSBDisplayedResult(msg.data || {});
                     updateNSBSpeedButtons();
                     break;
                 case 'nsb_scan_sorted':
@@ -6423,6 +6423,11 @@
                     nsbReallinkRunning = false;
                     finishRunningTask('✨ 开始扫描与测试');
                 }
+                if (nsbSingleSpeedTaskRunning) {
+                    nsbSingleSpeedTaskRunning = false;
+                    nsbSingleSpeedTestingKey = '';
+                }
+                nsbBatchSpeedContinued = false;
                 resetCurrentSpeedButton();
                 updateBatchSpeedButton();
                 updateNSBSpeedButtons();
